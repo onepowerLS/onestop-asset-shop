@@ -58,7 +58,7 @@
    - Note the **SSH key pair** name
 
 3. **Set Up Domain**
-   - Point `assets.1pwrafrica.com` to EC2 public IP
+   - Point `am.1pwrafrica.com` to EC2 public IP
    - Or use Route 53 for DNS management
 
 ### Step 2: Initial Server Setup
@@ -86,7 +86,7 @@
 
 4. **Set Up SSL**
    ```bash
-   sudo certbot --apache -d assets.1pwrafrica.com
+   sudo certbot --apache -d am.1pwrafrica.com
    ```
 
 ### Step 3: Configure GitHub Secrets
@@ -141,7 +141,7 @@ Add these secrets:
    ```
 
 4. **Verify deployment**
-   - Check: `https://assets.1pwrafrica.com/health.php`
+   - Check: `https://am.1pwrafrica.com/health.php`
    - Should return: `{"status":"healthy",...}`
 
 ### Step 6: Production Testing
@@ -193,7 +193,7 @@ DB_PASS=your_secure_password
 
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://assets.1pwrafrica.com
+APP_URL=https://am.1pwrafrica.com
 ```
 
 ### GitHub Repository Settings

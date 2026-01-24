@@ -4,7 +4,7 @@
 
 - AWS Account with appropriate permissions
 - Access to AWS Console
-- Domain name ready (assets.1pwrafrica.com) or use EC2 public IP
+- Domain name ready (am.1pwrafrica.com) or use EC2 public IP
 
 ## Step 1: Launch EC2 Instance
 
@@ -109,7 +109,7 @@ For a static IP address (recommended for production):
 
 ### 3.1 Point Domain to EC2
 
-If you have `assets.1pwrafrica.com`:
+If you have `am.1pwrafrica.com`:
 
 1. Go to your domain registrar (where you manage 1pwrafrica.com)
 2. Add/Edit DNS A record:
@@ -123,7 +123,7 @@ If you have `assets.1pwrafrica.com`:
 **Verify DNS:**
 ```bash
 # In terminal/command prompt
-nslookup assets.1pwrafrica.com
+nslookup am.1pwrafrica.com
 # Should return your EC2 IP
 ```
 
@@ -239,7 +239,7 @@ DB_PASS=CREATE_A_STRONG_PASSWORD_HERE
 
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://assets.1pwrafrica.com
+APP_URL=https://am.1pwrafrica.com
 ```
 
 **Save and exit** (Ctrl+X, then Y, then Enter for nano)
@@ -304,8 +304,8 @@ sudo nano /etc/apache2/sites-available/onestop-asset-shop.conf
 
 ```apache
 <VirtualHost *:80>
-    ServerName assets.1pwrafrica.com
-    ServerAlias www.assets.1pwrafrica.com
+    ServerName am.1pwrafrica.com
+    ServerAlias www.am.1pwrafrica.com
     
     DocumentRoot /var/www/onestop-asset-shop/web
     
@@ -368,7 +368,7 @@ sudo yum install -y certbot python3-certbot-apache
 sudo apt-get install -y certbot python3-certbot-apache
 
 # Get SSL certificate
-sudo certbot --apache -d assets.1pwrafrica.com
+sudo certbot --apache -d am.1pwrafrica.com
 
 # Follow prompts:
 # - Email address: your-email@1pwrafrica.com
@@ -455,7 +455,7 @@ If using S3 for deployment package:
    - Value: Your EC2 instance ID (e.g., `i-0123456789abcdef0`)
 
    **Secret 4: `EC2_HOST`**
-   - Value: Your EC2 public IP or domain (e.g., `assets.1pwrafrica.com` or `54.123.45.67`)
+   - Value: Your EC2 public IP or domain (e.g., `am.1pwrafrica.com` or `54.123.45.67`)
 
    **Secret 5: `EC2_SSH_KEY`**
    - Value: Contents of your `.pem` file
@@ -523,14 +523,14 @@ curl http://localhost/health.php
    ```
 
 2. Watch GitHub Actions deploy
-3. Verify: `https://assets.1pwrafrica.com/health.php`
+3. Verify: `https://am.1pwrafrica.com/health.php`
 4. Should return: `{"status":"healthy",...}`
 
 ## Step 7: Verify Everything Works
 
 ### 7.1 Test Web Application
 
-1. Open browser: `https://assets.1pwrafrica.com`
+1. Open browser: `https://am.1pwrafrica.com`
 2. Should see login page
 3. Test login (create a test user first in database)
 

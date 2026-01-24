@@ -1,0 +1,77 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main  # Deploy to production on main branch
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  AWS_REGION: us-east-1  # Change to your preferred region
+  EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+  EC2_USER: ec2-user  # or 'ubuntu' for Ubuntu instances
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo, pdo_mysql, mbstring, json, curl
+      
+      - name: Run tests
+        run: |
+          echo "Running basic syntax checks..."
+          find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \;
+      
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r web deploy/
+          cp -r database deploy/
+          cp -r qr deploy/
+          cp -r deployment deploy/
+          cp .env.example deploy/.env
+          tar -czf deploy.tar.gz deploy/
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Copy deployment package to EC2
+        run: |
+          aws s3 cp deploy.tar.gz s3://onestop-asset-deploy/deploy.tar.gz
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id ${{ env.EC2_INSTANCE_ID }} \
+            --availability-zone $(aws ec2 describe-instances --instance-ids ${{ env.EC2_INSTANCE_ID }} --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text) \
+            --instance-os-user ${{ env.EC2_USER }} \
+            --ssh-public-key file://$HOME/.ssh/id_rsa.pub || true
+      
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ env.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /var/www/onestop-asset-shop
+            git pull origin main
+            composer install --no-dev --optimize-autoloader
+            php artisan migrate --force || true
+            sudo systemctl reload php-fpm || sudo systemctl reload apache2 || true
+            echo "Deployment completed successfully"
+      
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://am.1pwrafrica.com/health.php || exit 1
