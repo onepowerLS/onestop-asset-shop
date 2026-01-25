@@ -1,0 +1,25 @@
+# OneStop Asset Shop - Apache Configuration
+
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Base URL rewriting
+RewriteBase /
+
+# Redirect to index.php if file doesn't exist
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?path=$1 [QSA,L]
+
+# Security: Prevent directory listing
+Options -Indexes
+
+# Security: Protect sensitive files
+<FilesMatch "\.(env|sql|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Enable PHP error reporting (disable in production)
+php_flag display_errors On
+php_value error_reporting E_ALL
