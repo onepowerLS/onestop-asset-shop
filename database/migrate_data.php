@@ -13,6 +13,7 @@
  */
 
 require_once __DIR__ . '/../web/config/database.php';
+require_once __DIR__ . '/migration_utils.php';
 
 // Configuration
 $old_db_host = getenv('OLD_DB_HOST') ?: 'localhost';
@@ -33,18 +34,7 @@ $stats = [
 ];
 
 /**
- * Log message
- */
-function log_message($message) {
-    global $log_file;
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[$timestamp] $message\n";
-    file_put_contents($log_file, $log_entry, FILE_APPEND);
-    echo $log_entry;
-}
-
-/**
- * Connect to old database
+ * Connect to old database (if needed)
  */
 function connect_old_db() {
     global $old_db_host, $old_db_name, $old_db_user, $old_db_pass;
@@ -61,84 +51,18 @@ function connect_old_db() {
         );
         return $pdo;
     } catch (PDOException $e) {
-        log_message("ERROR: Cannot connect to old database: " . $e->getMessage());
+        migration_log("ERROR: Cannot connect to old database: " . $e->getMessage());
         return null;
     }
 }
 
 /**
- * Detect country from location string
+ * Check if asset is duplicate (extended version with name+manufacturer+model check)
  */
-function detect_country($location) {
-    $location_lower = strtolower($location ?? '');
-    
-    if (strpos($location_lower, 'zambia') !== false || strpos($location_lower, 'zmb') !== false) {
-        return 'ZMB';
-    }
-    if (strpos($location_lower, 'benin') !== false || strpos($location_lower, 'ben') !== false) {
-        return 'BEN';
-    }
-    // Default to Lesotho
-    return 'LSO';
-}
-
-/**
- * Map old status to new status
- */
-function map_status($old_status) {
-    $status_map = [
-        'available' => 'Available',
-        'unallocated' => 'Available',
-        'allocated' => 'Allocated',
-        'checked out' => 'CheckedOut',
-        'checkout' => 'CheckedOut',
-        'missing' => 'Missing',
-        'written off' => 'WrittenOff',
-        'write-off' => 'WrittenOff',
-        'retired' => 'Retired'
-    ];
-    
-    $old_lower = strtolower($old_status ?? 'available');
-    return $status_map[$old_lower] ?? 'Available';
-}
-
-/**
- * Map old condition to new condition
- */
-function map_condition($old_condition) {
-    $condition_map = [
-        'new' => 'New',
-        'good' => 'Good',
-        'fair' => 'Fair',
-        'poor' => 'Poor',
-        'damaged' => 'Damaged',
-        'retired' => 'Retired'
-    ];
-    
-    $old_lower = strtolower($old_condition ?? 'good');
-    return $condition_map[$old_lower] ?? 'Good';
-}
-
-/**
- * Check if asset is duplicate
- */
-function is_duplicate($pdo, $serial_number, $asset_tag, $name, $manufacturer, $model) {
-    // Check by serial number
-    if (!empty($serial_number)) {
-        $stmt = $pdo->prepare("SELECT asset_id FROM assets WHERE serial_number = ?");
-        $stmt->execute([$serial_number]);
-        if ($stmt->fetch()) {
-            return true;
-        }
-    }
-    
-    // Check by asset tag
-    if (!empty($asset_tag)) {
-        $stmt = $pdo->prepare("SELECT asset_id FROM assets WHERE asset_tag = ?");
-        $stmt->execute([$asset_tag]);
-        if ($stmt->fetch()) {
-            return true;
-        }
+function is_duplicate_extended($pdo, $serial_number, $asset_tag, $name, $manufacturer, $model) {
+    // Use base duplicate check
+    if (is_asset_duplicate($pdo, $serial_number, $asset_tag)) {
+        return true;
     }
     
     // Check by name + manufacturer + model (fuzzy match)
@@ -154,51 +78,6 @@ function is_duplicate($pdo, $serial_number, $asset_tag, $name, $manufacturer, $m
     }
     
     return false;
-}
-
-/**
- * Get or create location
- */
-function get_or_create_location($pdo, $location_name, $country_code) {
-    if (empty($location_name)) {
-        return null;
-    }
-    
-    // Get country_id
-    $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
-    $stmt->execute([$country_code]);
-    $country = $stmt->fetch();
-    if (!$country) {
-        return null;
-    }
-    $country_id = $country['country_id'];
-    
-    // Check if location exists
-    $stmt = $pdo->prepare("
-        SELECT location_id FROM locations 
-        WHERE location_name = ? AND country_id = ?
-    ");
-    $stmt->execute([$location_name, $country_id]);
-    $location = $stmt->fetch();
-    
-    if ($location) {
-        return $location['location_id'];
-    }
-    
-    // Create new location
-    $location_code = strtoupper($country_code) . '-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $location_name), 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-    
-    $stmt = $pdo->prepare("
-        INSERT INTO locations (country_id, location_code, location_name, location_type, active)
-        VALUES (?, ?, ?, 'Site', 1)
-    ");
-    $stmt->execute([$country_id, $location_code, $location_name]);
-    
-    global $stats;
-    $stats['locations_created']++;
-    log_message("Created location: $location_name ($location_code)");
-    
-    return $pdo->lastInsertId();
 }
 
 /**
@@ -232,16 +111,9 @@ function get_or_create_category($pdo, $category_name, $category_type = 'General'
     
     global $stats;
     $stats['categories_created']++;
-    log_message("Created category: $category_name ($category_code)");
+    migration_log("Created category: $category_name ($category_code)");
     
     return $pdo->lastInsertId();
-}
-
-/**
- * Generate QR code ID
- */
-function generate_qr_code_id($country_code, $asset_id) {
-    return '1PWR-' . strtoupper($country_code) . '-' . str_pad($asset_id, 6, '0', STR_PAD_LEFT);
 }
 
 /**
@@ -257,15 +129,15 @@ function import_asset_from_old_db($pdo, $old_asset) {
     $manufacturer = $old_asset['Manufacturer'] ?? '';
     $model = $old_asset['Model'] ?? '';
     
-    if (is_duplicate($pdo, $serial, $tag, $name, $manufacturer, $model)) {
+    if (is_duplicate_extended($pdo, $serial, $tag, $name, $manufacturer, $model)) {
         $stats['assets_skipped_duplicate']++;
-        log_message("SKIPPED (duplicate): $name (Serial: $serial, Tag: $tag)");
+        migration_log("SKIPPED (duplicate): $name (Serial: $serial, Tag: $tag)");
         return false;
     }
     
     // Detect country
     $location_str = $old_asset['location'] ?? '';
-    $country_code = detect_country($location_str);
+    $country_code = detect_country_from_location($location_str);
     
     // Get country_id
     $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
@@ -288,8 +160,8 @@ function import_asset_from_old_db($pdo, $old_asset) {
     }
     
     // Map fields
-    $status = map_status($old_asset['status'] ?? 'available');
-    $condition = map_condition($old_asset['ConditionStatus'] ?? 'good');
+    $status = map_old_status($old_asset['status'] ?? 'available');
+    $condition = map_old_condition($old_asset['ConditionStatus'] ?? 'good');
     
     // Insert asset
     $stmt = $pdo->prepare("
@@ -339,7 +211,7 @@ function import_asset_from_old_db($pdo, $old_asset) {
     $stmt->execute([$qr_code_id, $new_asset_id]);
     
     $stats['assets_imported']++;
-    log_message("IMPORTED: $name (ID: $new_asset_id, QR: $qr_code_id)");
+    migration_log("IMPORTED: $name (ID: $new_asset_id, QR: $qr_code_id)");
     
     return true;
 }
@@ -349,20 +221,20 @@ function import_asset_from_old_db($pdo, $old_asset) {
  */
 function import_from_csv($pdo, $csv_file, $category_type = 'General') {
     if (!file_exists($csv_file)) {
-        log_message("ERROR: CSV file not found: $csv_file");
+        migration_log("ERROR: CSV file not found: $csv_file");
         return;
     }
     
     $handle = fopen($csv_file, 'r');
     if (!$handle) {
-        log_message("ERROR: Cannot open CSV file: $csv_file");
+        migration_log("ERROR: Cannot open CSV file: $csv_file");
         return;
     }
     
     // Read header row
     $headers = fgetcsv($handle);
     if (!$headers) {
-        log_message("ERROR: Empty CSV file: $csv_file");
+        migration_log("ERROR: Empty CSV file: $csv_file");
         fclose($handle);
         return;
     }
@@ -406,40 +278,40 @@ function import_from_csv($pdo, $csv_file, $category_type = 'General') {
     }
     
     fclose($handle);
-    log_message("Completed CSV import: $csv_file ($row_num rows processed)");
+    migration_log("Completed CSV import: $csv_file ($row_num rows processed)");
 }
 
 // Main execution
-log_message("=== Starting Data Migration ===");
+migration_log("=== Starting Data Migration ===");
 
 // Step 1: Import from old database
-log_message("Step 1: Importing from old database...");
+migration_log("Step 1: Importing from old database...");
 $old_pdo = connect_old_db();
 if ($old_pdo) {
     try {
         $stmt = $old_pdo->query("SELECT * FROM assets");
         $old_assets = $stmt->fetchAll();
         
-        log_message("Found " . count($old_assets) . " assets in old database");
+        migration_log("Found " . count($old_assets) . " assets in old database");
         
         foreach ($old_assets as $old_asset) {
             import_asset_from_old_db($pdo, $old_asset);
         }
     } catch (PDOException $e) {
-        log_message("ERROR: " . $e->getMessage());
+        migration_log("ERROR: " . $e->getMessage());
         $stats['errors'][] = $e->getMessage();
     }
 } else {
-    log_message("WARNING: Old database not accessible, skipping...");
+    migration_log("WARNING: Old database not accessible, skipping...");
 }
 
 // Step 2: Import from CSV files (Google Sheets)
-log_message("Step 2: Importing from CSV files...");
+migration_log("Step 2: Importing from CSV files...");
 if (is_dir($csv_directory)) {
     $csv_files = glob($csv_directory . '/*.csv');
     foreach ($csv_files as $csv_file) {
         $filename = basename($csv_file);
-        log_message("Processing CSV: $filename");
+        migration_log("Processing CSV: $filename");
         
         // Detect category type from filename
         $category_type = 'General';
@@ -460,12 +332,12 @@ if (is_dir($csv_directory)) {
         import_from_csv($pdo, $csv_file, $category_type);
     }
 } else {
-    log_message("WARNING: CSV directory not found: $csv_directory");
-    log_message("Create this directory and place CSV exports from Google Sheets there");
+    migration_log("WARNING: CSV directory not found: $csv_directory");
+    migration_log("Create this directory and place CSV exports from Google Sheets there");
 }
 
 // Step 3: Initialize inventory levels
-log_message("Step 3: Initializing inventory levels...");
+migration_log("Step 3: Initializing inventory levels...");
 try {
     $stmt = $pdo->query("
         INSERT INTO inventory_levels (asset_id, location_id, country_id, quantity_on_hand, last_counted_at)
@@ -480,24 +352,24 @@ try {
         AND location_id IS NOT NULL
         ON DUPLICATE KEY UPDATE quantity_on_hand = VALUES(quantity_on_hand)
     ");
-    log_message("Inventory levels initialized");
+    migration_log("Inventory levels initialized");
 } catch (PDOException $e) {
-    log_message("ERROR initializing inventory: " . $e->getMessage());
+    migration_log("ERROR initializing inventory: " . $e->getMessage());
     $stats['errors'][] = $e->getMessage();
 }
 
 // Summary
-log_message("=== Migration Complete ===");
-log_message("Assets imported: " . $stats['assets_imported']);
-log_message("Assets skipped (duplicates): " . $stats['assets_skipped_duplicate']);
-log_message("Categories created: " . $stats['categories_created']);
-log_message("Locations created: " . $stats['locations_created']);
-log_message("Errors: " . count($stats['errors']));
+migration_log("=== Migration Complete ===");
+migration_log("Assets imported: " . $stats['assets_imported']);
+migration_log("Assets skipped (duplicates): " . $stats['assets_skipped_duplicate']);
+migration_log("Categories created: " . $stats['categories_created']);
+migration_log("Locations created: " . $stats['locations_created']);
+migration_log("Errors: " . count($stats['errors']));
 
 if (!empty($stats['errors'])) {
-    log_message("Error details:");
+    migration_log("Error details:");
     foreach ($stats['errors'] as $error) {
-        log_message("  - $error");
+        migration_log("  - $error");
     }
 }
 

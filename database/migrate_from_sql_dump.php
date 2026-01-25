@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../web/config/database.php';
+require_once __DIR__ . '/migration_utils.php';
 
 // Try multiple possible locations for SQL dump
 $possible_paths = [
@@ -36,108 +37,7 @@ $stats = [
     'errors' => []
 ];
 
-function log_message($message) {
-    global $log_file;
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[$timestamp] $message\n";
-    file_put_contents($log_file, $log_entry, FILE_APPEND);
-    echo $log_entry;
-}
-
-function detect_country($location) {
-    $location_lower = strtolower($location ?? '');
-    if (strpos($location_lower, 'zambia') !== false || strpos($location_lower, 'zmb') !== false) {
-        return 'ZMB';
-    }
-    if (strpos($location_lower, 'benin') !== false || strpos($location_lower, 'ben') !== false) {
-        return 'BEN';
-    }
-    return 'LSO';
-}
-
-function map_status($old_status) {
-    $status_map = [
-        'available' => 'Available',
-        'unallocated' => 'Available',
-        'allocated' => 'Allocated',
-        'checked out' => 'CheckedOut',
-        'checkout' => 'CheckedOut',
-        'missing' => 'Missing',
-        'written off' => 'WrittenOff',
-        'write-off' => 'WrittenOff',
-        'retired' => 'Retired'
-    ];
-    $old_lower = strtolower($old_status ?? 'available');
-    return $status_map[$old_lower] ?? 'Available';
-}
-
-function map_condition($old_condition) {
-    $condition_map = [
-        'new' => 'New',
-        'good' => 'Good',
-        'fair' => 'Fair',
-        'poor' => 'Poor',
-        'damaged' => 'Damaged',
-        'retired' => 'Retired'
-    ];
-    $old_lower = strtolower($old_condition ?? 'good');
-    return $condition_map[$old_lower] ?? 'Good';
-}
-
-function is_duplicate($pdo, $serial_number, $asset_tag) {
-    if (!empty($serial_number)) {
-        $stmt = $pdo->prepare("SELECT asset_id FROM assets WHERE serial_number = ?");
-        $stmt->execute([$serial_number]);
-        if ($stmt->fetch()) {
-            return true;
-        }
-    }
-    if (!empty($asset_tag)) {
-        $stmt = $pdo->prepare("SELECT asset_id FROM assets WHERE asset_tag = ?");
-        $stmt->execute([$asset_tag]);
-        if ($stmt->fetch()) {
-            return true;
-        }
-    }
-    return false;
-}
-
-function get_or_create_location($pdo, $location_name, $country_code) {
-    if (empty($location_name)) {
-        return null;
-    }
-    
-    $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
-    $stmt->execute([$country_code]);
-    $country = $stmt->fetch();
-    if (!$country) {
-        return null;
-    }
-    $country_id = $country['country_id'];
-    
-    $stmt = $pdo->prepare("SELECT location_id FROM locations WHERE location_name = ? AND country_id = ?");
-    $stmt->execute([$location_name, $country_id]);
-    $location = $stmt->fetch();
-    
-    if ($location) {
-        return $location['location_id'];
-    }
-    
-    $location_code = strtoupper($country_code) . '-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $location_name), 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-    
-    $stmt = $pdo->prepare("INSERT INTO locations (country_id, location_code, location_name, location_type, active) VALUES (?, ?, ?, 'Site', 1)");
-    $stmt->execute([$country_id, $location_code, $location_name]);
-    
-    global $stats;
-    $stats['locations_created']++;
-    log_message("Created location: $location_name ($location_code)");
-    
-    return $pdo->lastInsertId();
-}
-
-function generate_qr_code_id($country_code, $asset_id) {
-    return '1PWR-' . strtoupper($country_code) . '-' . str_pad($asset_id, 6, '0', STR_PAD_LEFT);
-}
+// Functions moved to migration_utils.php
 
 /**
  * Parse SQL INSERT statement and extract values
@@ -194,8 +94,8 @@ function parse_insert_statement($sql_line) {
 }
 
 // Main execution
-log_message("=== Starting Migration from SQL Dump ===");
-log_message("Reading SQL dump: $sql_dump_file");
+migration_log("=== Starting Migration from SQL Dump ===");
+migration_log("Reading SQL dump: $sql_dump_file");
 
 if (!file_exists($sql_dump_file)) {
     die("ERROR: SQL dump file not found: $sql_dump_file\n");
@@ -206,7 +106,7 @@ $sql_content = file_get_contents($sql_dump_file);
 // Extract all INSERT statements for assets (handle multi-line)
 preg_match_all('/INSERT INTO `assets`[^;]*;/is', $sql_content, $matches);
 
-log_message("Found " . count($matches[0]) . " INSERT statements");
+migration_log("Found " . count($matches[0]) . " INSERT statements");
 
 $imported_count = 0;
 foreach ($matches[0] as $insert_stmt) {
@@ -226,15 +126,15 @@ foreach ($matches[0] as $insert_stmt) {
     $tag = $asset_data['NewTagNumber'] ?? $asset_data['OldTagNumber'] ?? null;
     
     // Check for duplicates
-    if (is_duplicate($pdo, $serial, $tag)) {
+    if (is_asset_duplicate($pdo, $serial, $tag)) {
         $stats['assets_skipped_duplicate']++;
-        log_message("SKIPPED (duplicate): " . ($asset_data['name'] ?? 'Unknown') . " (Serial: $serial, Tag: $tag)");
+        migration_log("SKIPPED (duplicate): " . ($asset_data['name'] ?? 'Unknown') . " (Serial: $serial, Tag: $tag)");
         continue;
     }
     
     // Detect country from location
     $location_str = $asset_data['location'] ?? '';
-    $country_code = detect_country($location_str);
+    $country_code = detect_country_from_location($location_str);
     
     // Get country_id
     $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
@@ -250,8 +150,8 @@ foreach ($matches[0] as $insert_stmt) {
     $location_id = get_or_create_location($pdo, $location_str, $country_code);
     
     // Map status and condition
-    $status = map_status($asset_data['status'] ?? 'available');
-    $condition = map_condition($asset_data['ConditionStatus'] ?? 'good');
+    $status = map_old_status($asset_data['status'] ?? 'available');
+    $condition = map_old_condition($asset_data['ConditionStatus'] ?? 'good');
     
     // Build notes
     $notes = '';
@@ -302,16 +202,16 @@ foreach ($matches[0] as $insert_stmt) {
         $stmt->execute([$qr_code_id, $new_asset_id]);
         
         $stats['assets_imported']++;
-        log_message("IMPORTED: " . ($asset_data['name'] ?? 'Unknown') . " (ID: $new_asset_id, QR: $qr_code_id)");
+        migration_log("IMPORTED: " . ($asset_data['name'] ?? 'Unknown') . " (ID: $new_asset_id, QR: $qr_code_id)");
         
     } catch (PDOException $e) {
-        log_message("ERROR importing asset: " . $e->getMessage());
+        migration_log("ERROR importing asset: " . $e->getMessage());
         $stats['errors'][] = $e->getMessage();
     }
 }
 
 // Initialize inventory levels
-log_message("Initializing inventory levels...");
+migration_log("Initializing inventory levels...");
 try {
     $stmt = $pdo->query("
         INSERT INTO inventory_levels (asset_id, location_id, country_id, quantity_on_hand, last_counted_at)
@@ -324,17 +224,17 @@ try {
         AND location_id IS NOT NULL
         ON DUPLICATE KEY UPDATE quantity_on_hand = VALUES(quantity_on_hand)
     ");
-    log_message("Inventory levels initialized");
+    migration_log("Inventory levels initialized");
 } catch (PDOException $e) {
-    log_message("ERROR initializing inventory: " . $e->getMessage());
+    migration_log("ERROR initializing inventory: " . $e->getMessage());
     $stats['errors'][] = $e->getMessage();
 }
 
-log_message("=== Migration Complete ===");
-log_message("Assets imported: " . $stats['assets_imported']);
-log_message("Assets skipped (duplicates): " . $stats['assets_skipped_duplicate']);
-log_message("Locations created: " . $stats['locations_created']);
-log_message("Errors: " . count($stats['errors']));
+migration_log("=== Migration Complete ===");
+migration_log("Assets imported: " . $stats['assets_imported']);
+migration_log("Assets skipped (duplicates): " . $stats['assets_skipped_duplicate']);
+migration_log("Locations created: " . $stats['locations_created']);
+migration_log("Errors: " . count($stats['errors']));
 
 echo "\n=== Summary ===\n";
 echo "Assets imported: {$stats['assets_imported']}\n";
