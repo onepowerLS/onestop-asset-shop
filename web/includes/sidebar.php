@@ -32,9 +32,9 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 
         <ul class="nav flex-column pt-3 pt-md-0">
             <li class="nav-item">
-                <a href="<?php echo base_url(); ?>" class="nav-link d-flex align-items-center">
-                    <span class="sidebar-icon">
-                        <strong class="text-white">1PWR</strong>
+                <a href="<?php echo base_url(); ?>" class="nav-link d-flex align-items-center mb-4">
+                    <span class="sidebar-icon me-2">
+                        <img src="<?php echo base_url('assets/img/brand/1pwr_logo.png'); ?>" alt="1PWR Logo" style="max-width: 120px; height: auto;" />
                     </span>
                 </a>
             </li>

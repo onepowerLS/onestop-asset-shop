@@ -49,6 +49,32 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
         .scan-mode-indicator.active {
             display: block;
         }
+        /* Ensure sidebar is fixed on the left */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1000;
+        }
+        /* Ensure content area accounts for sidebar */
+        .content {
+            margin-left: 0;
+        }
+        @media (min-width: 992px) {
+            .content {
+                margin-left: 280px;
+            }
+        }
+        /* Compact topbar */
+        .navbar-top {
+            min-height: 56px;
+        }
+        /* Logo styling in sidebar */
+        .sidebar .nav-link img {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
 </head>
 <body>
@@ -63,7 +89,7 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
 
     <nav class="navbar navbar-dark navbar-theme-primary px-4 col-12 d-lg-none">
         <a class="navbar-brand me-lg-5" href="<?php echo base_url(); ?>">
-            <strong>1PWR</strong> Asset Shop
+            <img src="<?php echo base_url('assets/img/brand/1pwr_logo.png'); ?>" alt="1PWR Logo" style="max-height: 30px; width: auto;" />
         </a>
         <div class="d-flex align-items-center">
             <button class="navbar-toggler d-lg-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">

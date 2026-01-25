@@ -3,11 +3,11 @@
  * Top Navigation Bar
  */
 ?>
-<nav class="navbar navbar-top navbar-expand navbar-dark bg-primary border-bottom">
-    <div class="container-fluid">
+<nav class="navbar navbar-top navbar-expand navbar-dark bg-primary border-bottom py-2">
+    <div class="container-fluid px-4">
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav align-items-center ms-md-auto">
-                <li class="nav-item dropdown ms-lg-3">
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle pt-1 px-0" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="media d-flex align-items-center">
                             <div class="media-body ms-2 text-dark align-items-center d-none d-lg-block">
