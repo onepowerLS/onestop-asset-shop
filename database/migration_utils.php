@@ -106,3 +106,38 @@ function get_or_create_location($pdo, $location_name, $country_code) {
 function generate_qr_code_id($country_code, $asset_id) {
     return '1PWR-' . strtoupper($country_code) . '-' . str_pad($asset_id, 6, '0', STR_PAD_LEFT);
 }
+
+function get_or_create_category($pdo, $category_name, $category_type = 'General') {
+    if (empty($category_name)) {
+        return null;
+    }
+    
+    // Check if category exists
+    $stmt = $pdo->prepare("
+        SELECT category_id FROM categories 
+        WHERE category_name = ? AND category_type = ?
+    ");
+    $stmt->execute([$category_name, $category_type]);
+    $category = $stmt->fetch();
+    
+    if ($category) {
+        return $category['category_id'];
+    }
+    
+    // Create new category
+    $category_code = strtoupper(substr($category_type, 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+    
+    $stmt = $pdo->prepare("
+        INSERT INTO categories (category_code, category_name, category_type, active)
+        VALUES (?, ?, ?, 1)
+    ");
+    $stmt->execute([$category_code, $category_name, $category_type]);
+    
+    global $stats;
+    if (isset($stats)) {
+        $stats['categories_created']++;
+    }
+    migration_log("Created category: $category_name ($category_code)");
+    
+    return $pdo->lastInsertId();
+}

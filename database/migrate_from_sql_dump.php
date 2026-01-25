@@ -104,22 +104,78 @@ if (!file_exists($sql_dump_file)) {
 $sql_content = file_get_contents($sql_dump_file);
 
 // Extract all INSERT statements for assets (handle multi-line)
-preg_match_all('/INSERT INTO `assets`[^;]*;/is', $sql_content, $matches);
+preg_match_all('/INSERT INTO `assets`[^;]*?VALUES\s*\([^;]*?\)[^;]*?;/is', $sql_content, $matches);
 
-migration_log("Found " . count($matches[0]) . " INSERT statements");
+migration_log("Found " . count($matches[0]) . " INSERT statement(s)");
+
+// Extract individual value rows from multi-line INSERTs
+$all_rows = [];
+foreach ($matches[0] as $insert_stmt) {
+    // Extract column names
+    if (preg_match('/INSERT INTO `assets`\s*\(([^)]+)\)/i', $insert_stmt, $col_match)) {
+        $columns = array_map('trim', array_map(function($c) {
+            return trim($c, '`');
+        }, explode(',', $col_match[1])));
+        
+        // Extract all value rows (handle both single and multi-row INSERTs)
+        if (preg_match_all('/\(([^)]+)\)/s', $insert_stmt, $value_matches)) {
+            foreach ($value_matches[1] as $value_row) {
+                // Parse values (handle NULL, strings, numbers)
+                $values = [];
+                $current = '';
+                $in_quotes = false;
+                $quote_char = null;
+                
+                for ($i = 0; $i < strlen($value_row); $i++) {
+                    $char = $value_row[$i];
+                    
+                    if (($char === '"' || $char === "'") && ($i === 0 || $value_row[$i-1] !== '\\')) {
+                        if (!$in_quotes) {
+                            $in_quotes = true;
+                            $quote_char = $char;
+                        } elseif ($char === $quote_char) {
+                            $in_quotes = false;
+                            $quote_char = null;
+                        }
+                        $current .= $char;
+                    } elseif ($char === ',' && !$in_quotes) {
+                        $values[] = trim($current);
+                        $current = '';
+                    } else {
+                        $current .= $char;
+                    }
+                }
+                if (!empty($current)) {
+                    $values[] = trim($current);
+                }
+                
+                // Clean values
+                $cleaned_values = [];
+                foreach ($values as $val) {
+                    $val = trim($val);
+                    if (strtoupper($val) === 'NULL') {
+                        $cleaned_values[] = null;
+                    } else {
+                        $cleaned_values[] = trim($val, "'\"");
+                    }
+                }
+                
+                // Combine with column names
+                if (count($cleaned_values) === count($columns)) {
+                    $all_rows[] = array_combine($columns, $cleaned_values);
+                }
+            }
+        }
+    }
+}
+
+migration_log("Extracted " . count($all_rows) . " asset records from SQL dump");
 
 $imported_count = 0;
-foreach ($matches[0] as $insert_stmt) {
-    // Remove newlines and extra spaces
-    $insert_stmt = preg_replace('/\s+/', ' ', trim($insert_stmt));
-    
-    // Parse the INSERT statement
-    $asset_data = parse_insert_statement($insert_stmt);
-    
-    if (!$asset_data) {
-        log_message("WARNING: Could not parse INSERT statement");
-        continue;
-    }
+
+// Process all extracted rows
+if (!empty($all_rows)) {
+    foreach ($all_rows as $asset_data) {
     
     // Map old field names to new structure
     $serial = $asset_data['serial_number'] ?? null;
@@ -207,6 +263,97 @@ foreach ($matches[0] as $insert_stmt) {
     } catch (PDOException $e) {
         migration_log("ERROR importing asset: " . $e->getMessage());
         $stats['errors'][] = $e->getMessage();
+    }
+    }
+} else {
+    migration_log("WARNING: No asset records extracted. Trying alternative parsing method...");
+    // Fallback to original method if new method fails
+    foreach ($matches[0] as $insert_stmt) {
+        $insert_stmt = preg_replace('/\s+/', ' ', trim($insert_stmt));
+        $asset_data = parse_insert_statement($insert_stmt);
+        if (!$asset_data) {
+            continue;
+        }
+        
+        // Process this asset (same logic as above)
+        $serial = $asset_data['serial_number'] ?? null;
+        $tag = $asset_data['NewTagNumber'] ?? $asset_data['OldTagNumber'] ?? null;
+        
+        if (is_asset_duplicate($pdo, $serial, $tag)) {
+            $stats['assets_skipped_duplicate']++;
+            migration_log("SKIPPED (duplicate): " . ($asset_data['name'] ?? 'Unknown') . " (Serial: $serial, Tag: $tag)");
+            continue;
+        }
+        
+        $location_str = $asset_data['location'] ?? '';
+        $country_code = detect_country_from_location($location_str);
+        
+        $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
+        $stmt->execute([$country_code]);
+        $country = $stmt->fetch();
+        if (!$country) {
+            $stats['errors'][] = "Country not found: $country_code";
+            continue;
+        }
+        $country_id = $country['country_id'];
+        
+        $location_id = get_or_create_location($pdo, $location_str, $country_code);
+        $status = map_old_status($asset_data['status'] ?? 'available');
+        $condition = map_old_condition($asset_data['ConditionStatus'] ?? 'good');
+        
+        $notes = '';
+        if (!empty($asset_data['Comments'])) {
+            $notes .= "Comments: " . $asset_data['Comments'] . "\n";
+        }
+        if (!empty($asset_data['OldTagNumber']) && $asset_data['OldTagNumber'] != $tag) {
+            $notes .= "Old Tag: " . $asset_data['OldTagNumber'] . "\n";
+        }
+        if (!empty($asset_data['AssignedTo'])) {
+            $notes .= "Assigned To: " . $asset_data['AssignedTo'] . "\n";
+        }
+        
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO assets (
+                    name, description, serial_number, manufacturer, model,
+                    purchase_date, purchase_price, current_value, warranty_expiry,
+                    condition_status, status, location_id, country_id,
+                    asset_tag, quantity, notes, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            
+            $stmt->execute([
+                $asset_data['name'] ?? '',
+                $asset_data['description'] ?? null,
+                $serial,
+                $asset_data['Manufacturer'] ?? null,
+                $asset_data['Model'] ?? null,
+                !empty($asset_data['purchase_date']) && $asset_data['purchase_date'] !== 'NULL' ? $asset_data['purchase_date'] : null,
+                !empty($asset_data['PurchasePrice']) && $asset_data['PurchasePrice'] !== 'NULL' ? $asset_data['PurchasePrice'] : null,
+                !empty($asset_data['CurrentValue']) && $asset_data['CurrentValue'] !== 'NULL' ? $asset_data['CurrentValue'] : null,
+                !empty($asset_data['warranty_expiry']) && $asset_data['warranty_expiry'] !== 'NULL' ? $asset_data['warranty_expiry'] : null,
+                $condition,
+                $status,
+                $location_id,
+                $country_id,
+                $tag,
+                !empty($asset_data['Quantity']) && $asset_data['Quantity'] !== 'NULL' ? intval($asset_data['Quantity']) : 1,
+                !empty($notes) ? $notes : null,
+            ]);
+            
+            $new_asset_id = $pdo->lastInsertId();
+            $qr_code_id = generate_qr_code_id($country_code, $new_asset_id);
+            
+            $stmt = $pdo->prepare("UPDATE assets SET qr_code_id = ? WHERE asset_id = ?");
+            $stmt->execute([$qr_code_id, $new_asset_id]);
+            
+            $stats['assets_imported']++;
+            migration_log("IMPORTED: " . ($asset_data['name'] ?? 'Unknown') . " (ID: $new_asset_id, QR: $qr_code_id)");
+            
+        } catch (PDOException $e) {
+            migration_log("ERROR importing asset: " . $e->getMessage());
+            $stats['errors'][] = $e->getMessage();
+        }
     }
 }
 
