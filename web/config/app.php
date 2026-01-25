@@ -30,8 +30,9 @@ if ($app_env === 'production') {
 function base_url($path = '') {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'];
-    $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-    return $protocol . '://' . $host . $base . '/' . ltrim($path, '/');
+    // Use fixed base path instead of dirname to avoid path duplication
+    $base = BASE_URL; // This is '/' from the constant
+    return $protocol . '://' . $host . rtrim($base, '/') . '/' . ltrim($path, '/');
 }
 
 // Helper function to redirect
