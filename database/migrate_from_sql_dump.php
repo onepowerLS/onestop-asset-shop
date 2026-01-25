@@ -8,7 +8,25 @@
 
 require_once __DIR__ . '/../web/config/database.php';
 
-$sql_dump_file = __DIR__ . '/../../../../Downloads/npower5_asset_management.sql';
+// Try multiple possible locations for SQL dump
+$possible_paths = [
+    '/tmp/npower5_asset_management.sql',
+    __DIR__ . '/../../../../Downloads/npower5_asset_management.sql',
+    __DIR__ . '/npower5_asset_management.sql'
+];
+
+$sql_dump_file = null;
+foreach ($possible_paths as $path) {
+    if (file_exists($path)) {
+        $sql_dump_file = $path;
+        break;
+    }
+}
+
+if (!$sql_dump_file) {
+    die("ERROR: SQL dump file not found. Tried:\n" . implode("\n", $possible_paths) . "\n");
+}
+
 $log_file = __DIR__ . '/migration_log.txt';
 
 $stats = [
@@ -121,7 +139,61 @@ function generate_qr_code_id($country_code, $asset_id) {
     return '1PWR-' . strtoupper($country_code) . '-' . str_pad($asset_id, 6, '0', STR_PAD_LEFT);
 }
 
-// Parse SQL dump file
+/**
+ * Parse SQL INSERT statement and extract values
+ */
+function parse_insert_statement($sql_line) {
+    // Match INSERT INTO `assets` (...) VALUES (...)
+    if (preg_match('/INSERT INTO `assets`\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i', $sql_line, $matches)) {
+        $columns = array_map('trim', explode(',', str_replace('`', '', $matches[1])));
+        $values_str = $matches[2];
+        
+        // Parse values (handle NULL, strings, numbers)
+        $values = [];
+        $current = '';
+        $in_quotes = false;
+        $quote_char = null;
+        
+        for ($i = 0; $i < strlen($values_str); $i++) {
+            $char = $values_str[$i];
+            
+            if (($char === '"' || $char === "'") && ($i === 0 || $values_str[$i-1] !== '\\')) {
+                if (!$in_quotes) {
+                    $in_quotes = true;
+                    $quote_char = $char;
+                } elseif ($char === $quote_char) {
+                    $in_quotes = false;
+                    $quote_char = null;
+                }
+                $current .= $char;
+            } elseif ($char === ',' && !$in_quotes) {
+                $values[] = trim($current);
+                $current = '';
+            } else {
+                $current .= $char;
+            }
+        }
+        if (!empty($current)) {
+            $values[] = trim($current);
+        }
+        
+        // Clean values (remove quotes, handle NULL)
+        $cleaned_values = [];
+        foreach ($values as $val) {
+            $val = trim($val);
+            if (strtoupper($val) === 'NULL') {
+                $cleaned_values[] = null;
+            } else {
+                $cleaned_values[] = trim($val, "'\"");
+            }
+        }
+        
+        return array_combine($columns, $cleaned_values);
+    }
+    return null;
+}
+
+// Main execution
 log_message("=== Starting Migration from SQL Dump ===");
 log_message("Reading SQL dump: $sql_dump_file");
 
@@ -131,120 +203,114 @@ if (!file_exists($sql_dump_file)) {
 
 $sql_content = file_get_contents($sql_dump_file);
 
-// Extract INSERT statements for assets table
-preg_match_all("/INSERT INTO `assets`[^;]+;/i", $sql_content, $matches);
+// Extract all INSERT statements for assets (handle multi-line)
+preg_match_all('/INSERT INTO `assets`[^;]*;/is', $sql_content, $matches);
 
-if (empty($matches[0])) {
-    log_message("WARNING: No INSERT statements found in SQL dump");
-    log_message("Attempting to create temporary database and import...");
+log_message("Found " . count($matches[0]) . " INSERT statements");
+
+$imported_count = 0;
+foreach ($matches[0] as $insert_stmt) {
+    // Remove newlines and extra spaces
+    $insert_stmt = preg_replace('/\s+/', ' ', trim($insert_stmt));
     
-    // Alternative: Create temp database and import
+    // Parse the INSERT statement
+    $asset_data = parse_insert_statement($insert_stmt);
+    
+    if (!$asset_data) {
+        log_message("WARNING: Could not parse INSERT statement");
+        continue;
+    }
+    
+    // Map old field names to new structure
+    $serial = $asset_data['serial_number'] ?? null;
+    $tag = $asset_data['NewTagNumber'] ?? $asset_data['OldTagNumber'] ?? null;
+    
+    // Check for duplicates
+    if (is_duplicate($pdo, $serial, $tag)) {
+        $stats['assets_skipped_duplicate']++;
+        log_message("SKIPPED (duplicate): " . ($asset_data['name'] ?? 'Unknown') . " (Serial: $serial, Tag: $tag)");
+        continue;
+    }
+    
+    // Detect country from location
+    $location_str = $asset_data['location'] ?? '';
+    $country_code = detect_country($location_str);
+    
+    // Get country_id
+    $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
+    $stmt->execute([$country_code]);
+    $country = $stmt->fetch();
+    if (!$country) {
+        $stats['errors'][] = "Country not found: $country_code";
+        continue;
+    }
+    $country_id = $country['country_id'];
+    
+    // Get or create location
+    $location_id = get_or_create_location($pdo, $location_str, $country_code);
+    
+    // Map status and condition
+    $status = map_status($asset_data['status'] ?? 'available');
+    $condition = map_condition($asset_data['ConditionStatus'] ?? 'good');
+    
+    // Build notes
+    $notes = '';
+    if (!empty($asset_data['Comments'])) {
+        $notes .= "Comments: " . $asset_data['Comments'] . "\n";
+    }
+    if (!empty($asset_data['OldTagNumber']) && $asset_data['OldTagNumber'] != $tag) {
+        $notes .= "Old Tag: " . $asset_data['OldTagNumber'] . "\n";
+    }
+    if (!empty($asset_data['AssignedTo'])) {
+        $notes .= "Assigned To: " . $asset_data['AssignedTo'] . "\n";
+    }
+    
+    // Insert asset
     try {
-        $temp_pdo = new PDO("mysql:host=localhost;charset=utf8mb4", 'root', '', [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        $stmt = $pdo->prepare("
+            INSERT INTO assets (
+                name, description, serial_number, manufacturer, model,
+                purchase_date, purchase_price, current_value, warranty_expiry,
+                condition_status, status, location_id, country_id,
+                asset_tag, quantity, notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        
+        $stmt->execute([
+            $asset_data['name'] ?? '',
+            $asset_data['description'] ?? null,
+            $serial,
+            $asset_data['Manufacturer'] ?? null,
+            $asset_data['Model'] ?? null,
+            !empty($asset_data['purchase_date']) && $asset_data['purchase_date'] !== 'NULL' ? $asset_data['purchase_date'] : null,
+            !empty($asset_data['PurchasePrice']) && $asset_data['PurchasePrice'] !== 'NULL' ? $asset_data['PurchasePrice'] : null,
+            !empty($asset_data['CurrentValue']) && $asset_data['CurrentValue'] !== 'NULL' ? $asset_data['CurrentValue'] : null,
+            !empty($asset_data['warranty_expiry']) && $asset_data['warranty_expiry'] !== 'NULL' ? $asset_data['warranty_expiry'] : null,
+            $condition,
+            $status,
+            $location_id,
+            $country_id,
+            $tag,
+            !empty($asset_data['Quantity']) && $asset_data['Quantity'] !== 'NULL' ? intval($asset_data['Quantity']) : 1,
+            !empty($notes) ? $notes : null,
         ]);
-        $temp_pdo->exec("CREATE DATABASE IF NOT EXISTS temp_migration");
-        $temp_pdo->exec("USE temp_migration");
         
-        // Import SQL dump
-        $temp_pdo->exec($sql_content);
+        $new_asset_id = $pdo->lastInsertId();
+        $qr_code_id = generate_qr_code_id($country_code, $new_asset_id);
         
-        // Read from temp database
-        $stmt = $temp_pdo->query("SELECT * FROM assets");
-        $old_assets = $stmt->fetchAll();
+        $stmt = $pdo->prepare("UPDATE assets SET qr_code_id = ? WHERE asset_id = ?");
+        $stmt->execute([$qr_code_id, $new_asset_id]);
         
-        log_message("Found " . count($old_assets) . " assets in SQL dump");
-        
-        foreach ($old_assets as $old_asset) {
-            $serial = $old_asset['serial_number'] ?? null;
-            $tag = $old_asset['NewTagNumber'] ?? $old_asset['OldTagNumber'] ?? null;
-            
-            if (is_duplicate($pdo, $serial, $tag)) {
-                $stats['assets_skipped_duplicate']++;
-                log_message("SKIPPED (duplicate): " . ($old_asset['name'] ?? 'Unknown') . " (Serial: $serial, Tag: $tag)");
-                continue;
-            }
-            
-            $location_str = $old_asset['location'] ?? '';
-            $country_code = detect_country($location_str);
-            
-            $stmt = $pdo->prepare("SELECT country_id FROM countries WHERE country_code = ?");
-            $stmt->execute([$country_code]);
-            $country = $stmt->fetch();
-            if (!$country) {
-                $stats['errors'][] = "Country not found: $country_code";
-                continue;
-            }
-            $country_id = $country['country_id'];
-            
-            $location_id = get_or_create_location($pdo, $location_str, $country_code);
-            
-            $status = map_status($old_asset['status'] ?? 'available');
-            $condition = map_condition($old_asset['ConditionStatus'] ?? 'good');
-            
-            $notes = '';
-            if (!empty($old_asset['Comments'])) {
-                $notes .= "Comments: " . $old_asset['Comments'] . "\n";
-            }
-            if (!empty($old_asset['OldTagNumber']) && $old_asset['OldTagNumber'] != $tag) {
-                $notes .= "Old Tag: " . $old_asset['OldTagNumber'] . "\n";
-            }
-            if (!empty($old_asset['AssignedTo'])) {
-                $notes .= "Assigned To: " . $old_asset['AssignedTo'] . "\n";
-            }
-            
-            $stmt = $pdo->prepare("
-                INSERT INTO assets (
-                    name, description, serial_number, manufacturer, model,
-                    purchase_date, purchase_price, current_value, warranty_expiry,
-                    condition_status, status, location_id, country_id,
-                    asset_tag, quantity, notes, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            
-            $stmt->execute([
-                $old_asset['name'] ?? '',
-                $old_asset['description'] ?? null,
-                $serial,
-                $old_asset['Manufacturer'] ?? null,
-                $old_asset['Model'] ?? null,
-                $old_asset['purchase_date'] ?? null,
-                $old_asset['PurchasePrice'] ?? null,
-                $old_asset['CurrentValue'] ?? null,
-                $old_asset['warranty_expiry'] ?? null,
-                $condition,
-                $status,
-                $location_id,
-                $country_id,
-                $tag,
-                $old_asset['Quantity'] ?? 1,
-                !empty($notes) ? $notes : null,
-            ]);
-            
-            $new_asset_id = $pdo->lastInsertId();
-            $qr_code_id = generate_qr_code_id($country_code, $new_asset_id);
-            
-            $stmt = $pdo->prepare("UPDATE assets SET qr_code_id = ? WHERE asset_id = ?");
-            $stmt->execute([$qr_code_id, $new_asset_id]);
-            
-            $stats['assets_imported']++;
-            log_message("IMPORTED: " . ($old_asset['name'] ?? 'Unknown') . " (ID: $new_asset_id, QR: $qr_code_id)");
-        }
-        
-        // Cleanup
-        $temp_pdo->exec("DROP DATABASE temp_migration");
+        $stats['assets_imported']++;
+        log_message("IMPORTED: " . ($asset_data['name'] ?? 'Unknown') . " (ID: $new_asset_id, QR: $qr_code_id)");
         
     } catch (PDOException $e) {
-        log_message("ERROR: " . $e->getMessage());
+        log_message("ERROR importing asset: " . $e->getMessage());
         $stats['errors'][] = $e->getMessage();
     }
-} else {
-    log_message("Found " . count($matches[0]) . " INSERT statements");
-    // Parse and process INSERT statements
-    // (This would require more complex parsing)
 }
 
-// Initialize inventory
+// Initialize inventory levels
 log_message("Initializing inventory levels...");
 try {
     $stmt = $pdo->query("
@@ -260,7 +326,8 @@ try {
     ");
     log_message("Inventory levels initialized");
 } catch (PDOException $e) {
-    log_message("ERROR: " . $e->getMessage());
+    log_message("ERROR initializing inventory: " . $e->getMessage());
+    $stats['errors'][] = $e->getMessage();
 }
 
 log_message("=== Migration Complete ===");
