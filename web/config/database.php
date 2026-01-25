@@ -8,7 +8,20 @@
 // Load environment variables if .env file exists
 $envPath = __DIR__ . '/../../.env';
 if (file_exists($envPath)) {
-    $env = parse_ini_file($envPath);
+    // Parse .env file (simple key=value format)
+    $env = [];
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        // Skip comments
+        if (strpos(trim($line), '#') === 0) {
+            continue;
+        }
+        // Parse key=value pairs
+        if (strpos($line, '=') !== false) {
+            list($key, $value) = explode('=', $line, 2);
+            $env[trim($key)] = trim($value);
+        }
+    }
     $db_host = $env['DB_HOST'] ?? 'localhost';
     $db_name = $env['DB_NAME'] ?? 'onestop_asset_shop';
     $db_user = $env['DB_USER'] ?? 'root';
