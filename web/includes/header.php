@@ -27,6 +27,9 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- jQuery (load early, before any scripts that need it) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    
     <!-- QR Code Scanner (hidden input for HID scanner) -->
     <style>
         .qr-scanner-input {
