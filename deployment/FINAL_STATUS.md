@@ -46,11 +46,14 @@
 ### 1. DNS Configuration (REQUIRED)
 **Action Required**: Point `am.1pwrafrica.com` to `16.28.64.221`
 
-See: `deployment/DNS_SETUP.md` for detailed instructions
+**For cPanel users**: See `deployment/CPANEL_DNS_SETUP.md` for step-by-step cPanel instructions
+
+**For other DNS providers**: See `deployment/DNS_SETUP.md` for general instructions
 
 **Quick Steps:**
-- Route 53: Create A record `am` → `16.28.64.221`
-- External DNS: Add A record `am` → `16.28.64.221`
+- **cPanel**: Use Zone Editor to add A record `am` → `16.28.64.221`
+- **Route 53**: Create A record `am` → `16.28.64.221`
+- **Other DNS**: Add A record `am` → `16.28.64.221`
 
 **Verify:**
 ```bash
@@ -121,10 +124,11 @@ mysql -u asset_user -p onestop_asset_shop
 
 All deployment documentation is in the `deployment/` directory:
 
-- `SETUP_COMPLETE.md` - Initial setup summary
-- `DNS_SETUP.md` - DNS configuration guide
+- `CPANEL_DNS_SETUP.md` - **cPanel DNS configuration (step-by-step guide)**
+- `DNS_SETUP.md` - General DNS configuration guide
 - `SSL_SETUP.md` - SSL certificate setup
 - `ADMIN_USER_INFO.md` - Admin user details
+- `SETUP_COMPLETE.md` - Initial setup summary
 - `CONNECT_EC2.md` - SSH connection guide
 - `AWS_SETUP_GUIDE.md` - Complete AWS setup guide
 - `QUICK_SETUP.md` - Quick reference commands
