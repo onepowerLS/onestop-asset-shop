@@ -150,13 +150,32 @@ function import_asset_from_old_db($pdo, $old_asset) {
         $notes .= "Assigned To: " . $old_asset['AssignedTo'] . "\n";
     }
     
+    // Format purchase date (handle Access date format: MM/DD/YY HH:MM:SS)
+    $purchase_date = null;
+    if (!empty($old_asset['purchase_date'])) {
+        $date_str = trim($old_asset['purchase_date']);
+        if ($date_str && $date_str !== '') {
+            // Try to parse Access date format
+            $date_obj = date_create_from_format('m/d/y H:i:s', $date_str);
+            if (!$date_obj) {
+                $date_obj = date_create_from_format('m/d/Y H:i:s', $date_str);
+            }
+            if (!$date_obj) {
+                $date_obj = date_create($date_str);
+            }
+            if ($date_obj) {
+                $purchase_date = $date_obj->format('Y-m-d');
+            }
+        }
+    }
+    
     $stmt->execute([
         $name,
         $old_asset['description'] ?? null,
         $serial,
         $manufacturer,
         $model,
-        $old_asset['purchase_date'] ?? null,
+        $purchase_date,
         $old_asset['PurchasePrice'] ?? null,
         $old_asset['CurrentValue'] ?? null,
         $old_asset['warranty_expiry'] ?? null,
@@ -164,7 +183,7 @@ function import_asset_from_old_db($pdo, $old_asset) {
         $status,
         $location_id,
         $country_id,
-        $tag,
+        !empty($tag) ? $tag : null,  // Set to NULL if empty to avoid duplicate constraint
         !empty($old_asset['Quantity']) && is_numeric($old_asset['Quantity']) ? intval($old_asset['Quantity']) : 1,
         !empty($notes) ? $notes : null,
     ]);
@@ -215,22 +234,24 @@ function import_from_csv($pdo, $csv_file, $category_type = 'General') {
         $row_num++;
         $data = array_combine($headers, $row);
         
-        // Map CSV columns to asset fields
+        // Map CSV columns to asset fields (handle Access database field names)
         $asset = [
-            'name' => $data['name'] ?? $data['item name'] ?? $data['description'] ?? '',
-            'description' => $data['description'] ?? $data['notes'] ?? null,
-            'serial_number' => $data['serial number'] ?? $data['serial'] ?? null,
+            'name' => $data['item'] ?? $data['name'] ?? $data['item name'] ?? $data['description'] ?? '',
+            'description' => $data['description'] ?? $data['comments'] ?? $data['notes'] ?? null,
+            'serial_number' => $data['serial_number'] ?? $data['serial number'] ?? $data['serial'] ?? null,
             'Manufacturer' => $data['manufacturer'] ?? $data['brand'] ?? null,
             'Model' => $data['model'] ?? null,
-            'purchase_date' => $data['purchase date'] ?? $data['date purchased'] ?? null,
-            'PurchasePrice' => $data['purchase price'] ?? $data['price'] ?? null,
-            'CurrentValue' => $data['current value'] ?? $data['value'] ?? null,
+            'purchase_date' => $data['acquireddate'] ?? $data['purchase date'] ?? $data['date purchased'] ?? null,
+            'PurchasePrice' => !empty($data['purchaseprice']) && floatval($data['purchaseprice']) > 0 ? $data['purchaseprice'] : (!empty($data['purchase price']) && floatval($data['purchase price']) > 0 ? $data['purchase price'] : (!empty($data['price']) && floatval($data['price']) > 0 ? $data['price'] : null)),
+            'CurrentValue' => !empty($data['currentvalue']) && floatval($data['currentvalue']) > 0 ? $data['currentvalue'] : (!empty($data['current value']) && floatval($data['current value']) > 0 ? $data['current value'] : (!empty($data['value']) && floatval($data['value']) > 0 ? $data['value'] : null)),
             'location' => $data['location'] ?? $data['site'] ?? null,
-            'status' => $data['status'] ?? 'available',
-            'ConditionStatus' => $data['condition'] ?? $data['condition status'] ?? 'good',
-            'NewTagNumber' => $data['tag number'] ?? $data['tag'] ?? $data['asset tag'] ?? null,
-            'Quantity' => $data['quantity'] ?? $data['qty'] ?? 1,
+            'status' => $data['availabilitystatus'] ?? $data['status'] ?? 'available',
+            'ConditionStatus' => $data['conditionstatus'] ?? $data['condition'] ?? $data['condition status'] ?? 'good',
+            'NewTagNumber' => $data['newtagnumber'] ?? $data['tag number'] ?? $data['tag'] ?? $data['asset tag'] ?? null,
+            'OldTagNumber' => $data['oldtagnumber'] ?? $data['old tag'] ?? null,
+            'Quantity' => !empty($data['quantity']) ? intval($data['quantity']) : 1,
             'Comments' => $data['comments'] ?? $data['notes'] ?? null,
+            'AssignedTo' => $data['assignedto'] ?? $data['assigned to'] ?? null,
             'category_id' => null
         ];
         

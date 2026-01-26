@@ -124,20 +124,51 @@ function get_or_create_category($pdo, $category_name, $category_type = 'General'
         return $category['category_id'];
     }
     
-    // Create new category
-    $category_code = strtoupper(substr($category_type, 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-    
-    $stmt = $pdo->prepare("
-        INSERT INTO categories (category_code, category_name, category_type, active)
-        VALUES (?, ?, ?, 1)
-    ");
-    $stmt->execute([$category_code, $category_name, $category_type]);
-    
-    global $stats;
-    if (isset($stats)) {
-        $stats['categories_created']++;
+    // Create new category with unique code
+    $max_attempts = 10;
+    $attempt = 0;
+    while ($attempt < $max_attempts) {
+        $category_code = strtoupper(substr($category_type, 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        
+        // Check if code already exists
+        $stmt = $pdo->prepare("SELECT category_id FROM categories WHERE category_code = ?");
+        $stmt->execute([$category_code]);
+        if (!$stmt->fetch()) {
+            // Code is unique, use it
+            break;
+        }
+        $attempt++;
     }
-    migration_log("Created category: $category_name ($category_code)");
     
-    return $pdo->lastInsertId();
+    // If still duplicate, use hash-based code
+    if ($attempt >= $max_attempts) {
+        $category_code = strtoupper(substr($category_type, 0, 3)) . '-' . strtoupper(substr(md5($category_name . time()), 0, 6));
+    }
+    
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO categories (category_code, category_name, category_type, active)
+            VALUES (?, ?, ?, 1)
+        ");
+        $stmt->execute([$category_code, $category_name, $category_type]);
+        
+        global $stats;
+        if (isset($stats)) {
+            $stats['categories_created']++;
+        }
+        migration_log("Created category: $category_name ($category_code)");
+        
+        return $pdo->lastInsertId();
+    } catch (PDOException $e) {
+        // If still duplicate, just get existing category by name
+        if ($e->getCode() == 23000) {
+            $stmt = $pdo->prepare("SELECT category_id FROM categories WHERE category_name = ? AND category_type = ?");
+            $stmt->execute([$category_name, $category_type]);
+            $category = $stmt->fetch();
+            if ($category) {
+                return $category['category_id'];
+            }
+        }
+        throw $e;
+    }
 }
