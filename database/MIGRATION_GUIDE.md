@@ -5,7 +5,10 @@
 This guide explains how to migrate data from:
 - **Old System**: `npower5_asset_management` database
 - **Google Sheets**: RET Materials, FAC Items, O&M Database, Meters, Ready Boards, etc.
+- **Dropbox Data Sources**: Excel spreadsheets and Access databases (see [DATA_SOURCES_ASSESSMENT.md](DATA_SOURCES_ASSESSMENT.md))
 - **Into**: New consolidated `onestop_asset_shop` schema
+
+> **Note**: The original migration source was found to be corrupt. See [DATA_SOURCES_ASSESSMENT.md](DATA_SOURCES_ASSESSMENT.md) for a comprehensive assessment of alternative data sources identified in January 2026.
 
 ## Key Improvements
 

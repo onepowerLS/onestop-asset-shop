@@ -25,7 +25,9 @@ A unified, modern asset management platform replacing fragmented Google Sheets a
 ✅ Source code extracted from InMotion hosting  
 ✅ Database schema analyzed (`npower5_asset_management.sql`)  
 ✅ Google Sheets inventory mapped (15+ sources)  
+✅ Dropbox data sources assessed (see [`database/DATA_SOURCES_ASSESSMENT.md`](database/DATA_SOURCES_ASSESSMENT.md))  
 🔄 Database consolidation in progress  
+⏳ Data migration from identified sources pending  
 ⏳ QR code integration pending  
 ⏳ Tablet UI development pending  
 
