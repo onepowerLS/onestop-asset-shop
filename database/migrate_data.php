@@ -80,41 +80,7 @@ function is_duplicate_extended($pdo, $serial_number, $asset_tag, $name, $manufac
     return false;
 }
 
-/**
- * Get or create category
- */
-function get_or_create_category($pdo, $category_name, $category_type = 'General') {
-    if (empty($category_name)) {
-        return null;
-    }
-    
-    // Check if category exists
-    $stmt = $pdo->prepare("
-        SELECT category_id FROM categories 
-        WHERE category_name = ? AND category_type = ?
-    ");
-    $stmt->execute([$category_name, $category_type]);
-    $category = $stmt->fetch();
-    
-    if ($category) {
-        return $category['category_id'];
-    }
-    
-    // Create new category
-    $category_code = strtoupper(substr($category_type, 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-    
-    $stmt = $pdo->prepare("
-        INSERT INTO categories (category_code, category_name, category_type, active)
-        VALUES (?, ?, ?, 1)
-    ");
-    $stmt->execute([$category_code, $category_name, $category_type]);
-    
-    global $stats;
-    $stats['categories_created']++;
-    migration_log("Created category: $category_name ($category_code)");
-    
-    return $pdo->lastInsertId();
-}
+// get_or_create_category() is now in migration_utils.php - no need to redeclare
 
 /**
  * Import asset from old database
@@ -199,7 +165,7 @@ function import_asset_from_old_db($pdo, $old_asset) {
         $location_id,
         $country_id,
         $tag,
-        $old_asset['Quantity'] ?? 1,
+        !empty($old_asset['Quantity']) && is_numeric($old_asset['Quantity']) ? intval($old_asset['Quantity']) : 1,
         !empty($notes) ? $notes : null,
     ]);
     
