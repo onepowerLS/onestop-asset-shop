@@ -9,7 +9,33 @@
  * Default CSV: vehicles_unique.csv
  */
 
-require_once __DIR__ . '/migration_utils.php';
+// Database connection
+function get_db_connection() {
+    $env_file = __DIR__ . '/../.env';
+    if (file_exists($env_file)) {
+        $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+                list($key, $value) = explode('=', $line, 2);
+                $_ENV[trim($key)] = trim($value);
+            }
+        }
+    }
+    
+    $host = $_ENV['DB_HOST'] ?? 'localhost';
+    $dbname = $_ENV['DB_DATABASE'] ?? 'onestop_asset_shop';
+    $username = $_ENV['DB_USERNAME'] ?? 'asset_user';
+    $password = $_ENV['DB_PASSWORD'] ?? 'ChangeThisPassword123!';
+    
+    try {
+        $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        return $pdo;
+    } catch (PDOException $e) {
+        die("Database connection failed: " . $e->getMessage() . "\n");
+    }
+}
 
 // Get CSV filename from argument or use default
 $csv_file = $argv[1] ?? 'vehicles_unique.csv';
