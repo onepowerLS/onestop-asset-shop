@@ -81,8 +81,8 @@ $params[] = $offset;
 // Get total count
 $countStmt = $pdo->prepare($countQuery);
 $countStmt->execute($countParams);
-$total_records = $countStmt->fetch()['total'];
-$total_pages = ceil($total_records / $records_per_page);
+$total_records = (int)$countStmt->fetch()['total'];
+$total_pages = (int)ceil($total_records / $records_per_page);
 
 // Get assets
 $stmt = $pdo->prepare($baseQuery);
