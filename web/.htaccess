@@ -6,6 +6,14 @@ RewriteEngine On
 # Base URL rewriting
 RewriteBase /
 
+# Allow direct access to API endpoints
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule ^ - [L]
+
+# Allow direct access to health check
+RewriteCond %{REQUEST_URI} ^/health\.php$ [NC]
+RewriteRule ^ - [L]
+
 # Redirect to index.php if file doesn't exist
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
