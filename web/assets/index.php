@@ -294,16 +294,16 @@ include __DIR__ . '/../includes/header.php';
                     ?>
                     
                     <!-- Previous -->
-                    <li class="page-item <?php echo $current_page <= 1 ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="<?php echo $current_page > 1 ? $paginationBase . ($current_page - 1) : '#'; ?>">
+                    <li class="page-item <?php echo (int)$current_page <= 1 ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo (int)$current_page > 1 ? $paginationBase . ((int)$current_page - 1) : '#'; ?>">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
                     
                     <!-- Page Numbers -->
                     <?php
-                    $start_page = max(1, $current_page - 2);
-                    $end_page = min($total_pages, $current_page + 2);
+                    $start_page = max(1, (int)$current_page - 2);
+                    $end_page = min((int)$total_pages, (int)$current_page + 2);
                     
                     if ($start_page > 1): ?>
                         <li class="page-item">
@@ -334,8 +334,8 @@ include __DIR__ . '/../includes/header.php';
                     <?php endif; ?>
                     
                     <!-- Next -->
-                    <li class="page-item <?php echo $current_page >= $total_pages ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="<?php echo $current_page < $total_pages ? $paginationBase . ($current_page + 1) : '#'; ?>">
+                    <li class="page-item <?php echo (int)$current_page >= (int)$total_pages ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo (int)$current_page < (int)$total_pages ? $paginationBase . ((int)$current_page + 1) : '#'; ?>">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
