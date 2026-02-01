@@ -273,6 +273,9 @@ include __DIR__ . '/../includes/header.php';
                                         <i class="fas fa-print"></i>
                                     </button>
                                     <?php endif; ?>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAsset(<?php echo $asset['asset_id']; ?>, '<?php echo htmlspecialchars(addslashes($asset['name'])); ?>')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -369,6 +372,28 @@ async function generateQR(assetId) {
         }
     } catch (error) {
         alert('Error generating QR code: ' + error.message);
+    }
+}
+
+// Delete asset
+async function deleteAsset(assetId, assetName) {
+    if (!confirm('Are you sure you want to delete "' + assetName + '"?\n\nThis action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('<?php echo base_url('api/assets/delete.php'); ?>?id=' + assetId, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Failed to delete asset'));
+        }
+    } catch (error) {
+        alert('Error deleting asset: ' + error.message);
     }
 }
 </script>
