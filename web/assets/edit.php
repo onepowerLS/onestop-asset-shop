@@ -78,6 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asset) {
     $notes = trim($_POST['notes'] ?? '');
     $asset_type = $_POST['asset_type'] ?? 'Non-Current';
     
+    // Vehicle-specific fields
+    $vehicle_year = !empty($_POST['vehicle_year']) ? intval($_POST['vehicle_year']) : null;
+    $engine_number = trim($_POST['engine_number'] ?? '');
+    $transmission_type = !empty($_POST['transmission_type']) ? $_POST['transmission_type'] : null;
+    $fuel_type = !empty($_POST['fuel_type']) ? $_POST['fuel_type'] : null;
+    $drive_type = !empty($_POST['drive_type']) ? $_POST['drive_type'] : null;
+    
     // Validation
     if (empty($name)) {
         $error = 'Asset name is required.';
@@ -110,7 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asset) {
                         name = ?, description = ?, category_id = ?, serial_number = ?, manufacturer = ?, model = ?,
                         purchase_date = ?, purchase_price = ?, current_value = ?, warranty_expiry = ?,
                         condition_status = ?, status = ?, location_id = ?, country_id = ?, asset_tag = ?,
-                        quantity = ?, unit_of_measure = ?, notes = ?, asset_type = ?, updated_at = NOW()
+                        quantity = ?, unit_of_measure = ?, notes = ?, asset_type = ?,
+                        vehicle_year = ?, engine_number = ?, transmission_type = ?, fuel_type = ?, drive_type = ?,
+                        updated_at = NOW()
                     WHERE asset_id = ?
                 ");
                 
@@ -118,7 +127,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asset) {
                     $name, $description, $category_id, $serial_number, $manufacturer, $model,
                     $purchase_date, $purchase_price, $current_value, $warranty_expiry,
                     $condition_status, $status, $location_id, $country_id, $asset_tag,
-                    $quantity, $unit_of_measure, $notes, $asset_type, $asset_id
+                    $quantity, $unit_of_measure, $notes, $asset_type,
+                    $vehicle_year, $engine_number ?: null, $transmission_type, $fuel_type, $drive_type,
+                    $asset_id
                 ]);
                 
                 $success = "Asset updated successfully!";
@@ -251,13 +262,53 @@ include __DIR__ . '/../includes/header.php';
                         <!-- Manufacturer Details -->
                         <h5 class="mb-3 mt-4"><i class="fas fa-industry me-2"></i>Manufacturer Details</h5>
                         <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <label for="manufacturer" class="form-label">Manufacturer</label>
+                            <div class="col-md-4 mb-3">
+                                <label for="manufacturer" class="form-label">Manufacturer / Make</label>
                                 <input type="text" class="form-control" id="manufacturer" name="manufacturer" value="<?php echo htmlspecialchars($asset['manufacturer'] ?? ''); ?>">
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="model" class="form-label">Model</label>
                                 <input type="text" class="form-control" id="model" name="model" value="<?php echo htmlspecialchars($asset['model'] ?? ''); ?>">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="vehicle_year" class="form-label">Model Year</label>
+                                <input type="number" class="form-control" id="vehicle_year" name="vehicle_year" value="<?php echo htmlspecialchars($asset['vehicle_year'] ?? ''); ?>" min="1900" max="2100" placeholder="e.g. 2024">
+                            </div>
+                        </div>
+
+                        <!-- Vehicle-Specific Fields (shown for all assets, but most relevant for vehicles) -->
+                        <h5 class="mb-3 mt-4"><i class="fas fa-car me-2"></i>Vehicle Details</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-4 mb-3">
+                                <label for="engine_number" class="form-label">Engine Number</label>
+                                <input type="text" class="form-control" id="engine_number" name="engine_number" value="<?php echo htmlspecialchars($asset['engine_number'] ?? ''); ?>">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="transmission_type" class="form-label">Transmission</label>
+                                <select class="form-select" id="transmission_type" name="transmission_type">
+                                    <option value="">Not Specified</option>
+                                    <option value="MT" <?php echo (($asset['transmission_type'] ?? '') === 'MT') ? 'selected' : ''; ?>>Manual (MT)</option>
+                                    <option value="AT" <?php echo (($asset['transmission_type'] ?? '') === 'AT') ? 'selected' : ''; ?>>Automatic (AT)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="fuel_type" class="form-label">Fuel Type</label>
+                                <select class="form-select" id="fuel_type" name="fuel_type">
+                                    <option value="">Not Specified</option>
+                                    <option value="Petrol" <?php echo (($asset['fuel_type'] ?? '') === 'Petrol') ? 'selected' : ''; ?>>Petrol</option>
+                                    <option value="Diesel" <?php echo (($asset['fuel_type'] ?? '') === 'Diesel') ? 'selected' : ''; ?>>Diesel</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-4 mb-3">
+                                <label for="drive_type" class="form-label">Drive Type</label>
+                                <select class="form-select" id="drive_type" name="drive_type">
+                                    <option value="">Not Specified</option>
+                                    <option value="2WD" <?php echo (($asset['drive_type'] ?? '') === '2WD') ? 'selected' : ''; ?>>2WD</option>
+                                    <option value="4WD" <?php echo (($asset['drive_type'] ?? '') === '4WD') ? 'selected' : ''; ?>>4WD</option>
+                                    <option value="6WD" <?php echo (($asset['drive_type'] ?? '') === '6WD') ? 'selected' : ''; ?>>6WD</option>
+                                </select>
                             </div>
                         </div>
 
@@ -365,6 +416,78 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+    <!-- Odometer Readings Section (for vehicles) -->
+    <?php 
+    // Check if this is a vehicle (category name contains 'Vehicle')
+    $isVehicle = ($asset['category_name'] ?? '') === 'Vehicles';
+    if ($isVehicle): 
+    ?>
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Odometer Readings</h5>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addOdometerModal">
+                        <i class="fas fa-plus me-1"></i> Add Reading
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="odometerTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reading (km)</th>
+                                    <th>Distance Since Last</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="odometerReadings">
+                                <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Odometer Reading Modal -->
+    <div class="modal fade" id="addOdometerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-tachometer-alt me-2"></i>Add Odometer Reading</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addOdometerForm">
+                        <div class="mb-3">
+                            <label for="reading_date" class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="reading_date" name="reading_date" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reading_km" class="form-label">Odometer Reading (km) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="reading_km" name="reading_km" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="odo_notes" class="form-label">Notes</label>
+                            <input type="text" class="form-control" id="odo_notes" name="notes" placeholder="e.g., Service, Trip to site">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveOdometerBtn">
+                        <i class="fas fa-save me-1"></i> Save Reading
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script>
     // Filter locations based on selected country
     document.getElementById('country_id').addEventListener('change', function() {
@@ -389,6 +512,115 @@ include __DIR__ . '/../includes/header.php';
             }
         });
     });
+
+    <?php if ($isVehicle): ?>
+    // Odometer readings functionality
+    const assetId = <?php echo $asset_id; ?>;
+    const odometerApiUrl = '<?php echo base_url('api/odometer/'); ?>';
+    
+    function loadOdometerReadings() {
+        fetch(odometerApiUrl + '?asset_id=' + assetId)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('odometerReadings');
+                if (data.readings && data.readings.length > 0) {
+                    let html = '';
+                    let prevReading = null;
+                    // Readings are sorted DESC, so reverse for distance calculation
+                    const readings = [...data.readings].reverse();
+                    readings.forEach((reading, index) => {
+                        const distance = prevReading ? (reading.reading_km - prevReading.reading_km) : '-';
+                        prevReading = reading;
+                    });
+                    // Display in DESC order (most recent first)
+                    prevReading = null;
+                    data.readings.forEach((reading, index) => {
+                        const nextReading = data.readings[index + 1];
+                        const distance = nextReading ? (reading.reading_km - nextReading.reading_km).toLocaleString() + ' km' : '-';
+                        html += `
+                            <tr>
+                                <td>${new Date(reading.reading_date).toLocaleDateString()}</td>
+                                <td><strong>${parseInt(reading.reading_km).toLocaleString()}</strong> km</td>
+                                <td>${distance}</td>
+                                <td>${reading.notes || '<span class="text-muted">-</span>'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteOdometerReading(${reading.reading_id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No odometer readings recorded yet.</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading odometer readings:', error);
+                document.getElementById('odometerReadings').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading readings</td></tr>';
+            });
+    }
+    
+    function deleteOdometerReading(readingId) {
+        if (!confirm('Are you sure you want to delete this reading?')) return;
+        
+        fetch(odometerApiUrl + '?id=' + readingId, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadOdometerReadings();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to delete reading'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting reading:', error);
+                alert('Error deleting reading');
+            });
+    }
+    
+    document.getElementById('saveOdometerBtn').addEventListener('click', function() {
+        const form = document.getElementById('addOdometerForm');
+        const readingDate = document.getElementById('reading_date').value;
+        const readingKm = document.getElementById('reading_km').value;
+        const notes = document.getElementById('odo_notes').value;
+        
+        if (!readingDate || !readingKm) {
+            alert('Please fill in date and odometer reading');
+            return;
+        }
+        
+        fetch(odometerApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                asset_id: assetId,
+                reading_date: readingDate,
+                reading_km: parseInt(readingKm),
+                notes: notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('addOdometerModal')).hide();
+                form.reset();
+                document.getElementById('reading_date').value = new Date().toISOString().split('T')[0];
+                loadOdometerReadings();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to save reading'));
+            }
+        })
+        .catch(error => {
+            console.error('Error saving reading:', error);
+            alert('Error saving reading');
+        });
+    });
+    
+    // Load readings on page load
+    loadOdometerReadings();
+    <?php endif; ?>
     </script>
 
     <?php else: ?>

@@ -74,14 +74,19 @@ $stmt = $pdo->prepare("
         a.asset_id as id,
         a.name as code,
         a.name,
-        a.serial_number as vinNumber,
+        a.asset_tag as registrationNumber,
+        a.vehicle_year as year,
         a.manufacturer as make,
         a.model,
-        a.asset_tag as registrationNumber,
+        a.serial_number as vinNumber,
+        a.engine_number as engineNumber,
         a.status,
+        a.condition_status as conditionStatus,
         CASE WHEN a.status = 'Available' THEN 1 ELSE 0 END as isActive,
         c.country_code as organization,
-        l.location_name as location
+        l.location_name as location,
+        a.notes,
+        a.qr_code_id as qrCode
     FROM assets a
     LEFT JOIN countries c ON a.country_id = c.country_id
     LEFT JOIN locations l ON a.location_id = l.location_id

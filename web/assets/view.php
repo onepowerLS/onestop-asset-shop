@@ -230,14 +230,58 @@ include __DIR__ . '/../includes/header.php';
                 <div class="card-body">
                     <?php if ($asset['manufacturer']): ?>
                     <p class="mb-2">
-                        <strong>Manufacturer:</strong><br>
+                        <strong>Make:</strong><br>
                         <?php echo htmlspecialchars($asset['manufacturer']); ?>
                     </p>
                     <?php endif; ?>
                     <?php if ($asset['model']): ?>
-                    <p class="mb-0">
+                    <p class="mb-2">
                         <strong>Model:</strong><br>
                         <?php echo htmlspecialchars($asset['model']); ?>
+                    </p>
+                    <?php endif; ?>
+                    <?php if (!empty($asset['vehicle_year'])): ?>
+                    <p class="mb-0">
+                        <strong>Year:</strong><br>
+                        <?php echo htmlspecialchars($asset['vehicle_year']); ?>
+                    </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Vehicle Details (if applicable) -->
+            <?php 
+            $hasVehicleDetails = !empty($asset['engine_number']) || !empty($asset['transmission_type']) || !empty($asset['fuel_type']) || !empty($asset['drive_type']);
+            if ($hasVehicleDetails): 
+            ?>
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-car me-2"></i>Vehicle Details</h5>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($asset['engine_number'])): ?>
+                    <p class="mb-2">
+                        <strong>Engine Number:</strong><br>
+                        <?php echo htmlspecialchars($asset['engine_number']); ?>
+                    </p>
+                    <?php endif; ?>
+                    <?php if (!empty($asset['transmission_type'])): ?>
+                    <p class="mb-2">
+                        <strong>Transmission:</strong><br>
+                        <?php echo $asset['transmission_type'] === 'MT' ? 'Manual' : 'Automatic'; ?>
+                    </p>
+                    <?php endif; ?>
+                    <?php if (!empty($asset['fuel_type'])): ?>
+                    <p class="mb-2">
+                        <strong>Fuel Type:</strong><br>
+                        <?php echo htmlspecialchars($asset['fuel_type']); ?>
+                    </p>
+                    <?php endif; ?>
+                    <?php if (!empty($asset['drive_type'])): ?>
+                    <p class="mb-0">
+                        <strong>Drive:</strong><br>
+                        <?php echo htmlspecialchars($asset['drive_type']); ?>
                     </p>
                     <?php endif; ?>
                 </div>
@@ -301,6 +345,71 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
     </div>
+
+    <!-- Odometer Readings (for vehicles) -->
+    <?php 
+    $isVehicle = ($asset['category_name'] ?? '') === 'Vehicles';
+    if ($isVehicle): 
+    ?>
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Odometer History</h5>
+                    <a href="<?php echo base_url('assets/edit.php?id=' . $asset_id); ?>" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i> Add Reading
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="odometerTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reading (km)</th>
+                                    <th>Distance Since Last</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="odometerReadings">
+                                <tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    const assetId = <?php echo $asset_id; ?>;
+    fetch('<?php echo base_url('api/odometer/'); ?>?asset_id=' + assetId)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('odometerReadings');
+            if (data.readings && data.readings.length > 0) {
+                let html = '';
+                data.readings.forEach((reading, index) => {
+                    const nextReading = data.readings[index + 1];
+                    const distance = nextReading ? (reading.reading_km - nextReading.reading_km).toLocaleString() + ' km' : '-';
+                    html += `
+                        <tr>
+                            <td>${new Date(reading.reading_date).toLocaleDateString()}</td>
+                            <td><strong>${parseInt(reading.reading_km).toLocaleString()}</strong> km</td>
+                            <td>${distance}</td>
+                            <td>${reading.notes || '<span class="text-muted">-</span>'}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No odometer readings recorded yet.</td></tr>';
+            }
+        })
+        .catch(error => {
+            document.getElementById('odometerReadings').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading readings</td></tr>';
+        });
+    </script>
+    <?php endif; ?>
 
     <?php else: ?>
     <div class="alert alert-warning" role="alert">
