@@ -64,11 +64,11 @@ jobs:
           username: ${{ env.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /var/www/onestop-asset-shop
+            cd /var/www/html
             git pull origin main
-            composer install --no-dev --optimize-autoloader
-            php artisan migrate --force || true
-            sudo systemctl reload php-fpm || sudo systemctl reload apache2 || true
+            sudo chown -R apache:apache /var/www/html
+            sudo chmod -R 755 /var/www/html
+            sudo systemctl reload httpd || sudo systemctl reload apache2 || true
             echo "Deployment completed successfully"
       
       - name: Health check
