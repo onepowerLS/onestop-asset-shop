@@ -34,11 +34,19 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /var/www/onestop-asset-shop
-            git pull origin main
+            sudo git config --global --add safe.directory /var/www/onestop-asset-shop
+            sudo git fetch origin
+            sudo git reset --hard origin/main
             sudo chown -R apache:apache /var/www/onestop-asset-shop
             sudo chmod -R 755 /var/www/onestop-asset-shop
             sudo systemctl reload httpd || true
             echo "Deployment completed successfully"
+            # Run vehicle import if CSV exists
+            if [ -f /var/www/onestop-asset-shop/database/vehicles_unique.csv ]; then
+              echo "Running vehicle import..."
+              cd /var/www/onestop-asset-shop/database
+              sudo php update_vehicles_from_csv.php
+            fi
       
       - name: Health check
         run: |
