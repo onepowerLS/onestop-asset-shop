@@ -28,6 +28,4 @@ Options -Indexes
     Deny from all
 </FilesMatch>
 
-# Enable PHP error reporting (disable in production)
-php_flag display_errors On
-php_value error_reporting E_ALL
+# PHP error reporting is configured in php.ini or php-fpm.conf
