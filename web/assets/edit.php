@@ -44,16 +44,18 @@ if ($asset_id) {
     $error = "No asset ID specified.";
 }
 
-// Get countries, locations, and categories for dropdowns
+// Get countries, locations, categories, and organizations for dropdowns
 try {
     $countries = $pdo->query("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")->fetchAll();
     $locations = $pdo->query("SELECT location_id, location_name, country_id FROM locations ORDER BY location_name")->fetchAll();
     $categories = $pdo->query("SELECT category_id, category_name, category_type FROM categories ORDER BY category_type, category_name")->fetchAll();
+    $organizations = $pdo->query("SELECT organization_id, organization_code, organization_name, country_id FROM organizations WHERE active = 1 ORDER BY organization_name")->fetchAll();
 } catch (PDOException $e) {
     error_log("Error loading dropdowns: " . $e->getMessage());
     $countries = [];
     $locations = [];
     $categories = [];
+    $organizations = [];
 }
 
 // Handle form submission
@@ -72,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asset) {
     $status = $_POST['status'] ?? 'Available';
     $location_id = !empty($_POST['location_id']) ? intval($_POST['location_id']) : null;
     $country_id = !empty($_POST['country_id']) ? intval($_POST['country_id']) : null;
+    $organization_id = !empty($_POST['organization_id']) ? intval($_POST['organization_id']) : null;
     $asset_tag = trim($_POST['asset_tag'] ?? '');
     $quantity = !empty($_POST['quantity']) ? intval($_POST['quantity']) : 1;
     $unit_of_measure = trim($_POST['unit_of_measure'] ?? 'EA');
@@ -116,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asset) {
                     UPDATE assets SET
                         name = ?, description = ?, category_id = ?, serial_number = ?, manufacturer = ?, model = ?,
                         purchase_date = ?, purchase_price = ?, current_value = ?, warranty_expiry = ?,
-                        condition_status = ?, status = ?, location_id = ?, country_id = ?, asset_tag = ?,
+                        condition_status = ?, status = ?, location_id = ?, country_id = ?, organization_id = ?, asset_tag = ?,
                         quantity = ?, unit_of_measure = ?, notes = ?, asset_type = ?,
                         vehicle_year = ?, engine_number = ?, transmission_type = ?, fuel_type = ?, drive_type = ?,
                         updated_at = NOW()
@@ -126,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asset) {
                 $stmt->execute([
                     $name, $description, $category_id, $serial_number, $manufacturer, $model,
                     $purchase_date, $purchase_price, $current_value, $warranty_expiry,
-                    $condition_status, $status, $location_id, $country_id, $asset_tag,
+                    $condition_status, $status, $location_id, $country_id, $organization_id, $asset_tag,
                     $quantity, $unit_of_measure, $notes, $asset_type,
                     $vehicle_year, $engine_number ?: null, $transmission_type, $fuel_type, $drive_type,
                     $asset_id
@@ -329,10 +332,10 @@ include __DIR__ . '/../includes/header.php';
                             </div>
                         </div>
 
-                        <!-- Location & Status -->
-                        <h5 class="mb-3 mt-4"><i class="fas fa-map-marker-alt me-2"></i>Location & Status</h5>
+                        <!-- Location, Organization & Status -->
+                        <h5 class="mb-3 mt-4"><i class="fas fa-map-marker-alt me-2"></i>Location, Organization & Status</h5>
                         <div class="row mb-4">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label for="country_id" class="form-label">Country <span class="text-danger">*</span></label>
                                 <select class="form-select" id="country_id" name="country_id" required>
                                     <option value="">Select Country</option>
@@ -343,7 +346,18 @@ include __DIR__ . '/../includes/header.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <label for="organization_id" class="form-label">Organization <span class="text-danger">*</span></label>
+                                <select class="form-select" id="organization_id" name="organization_id" required>
+                                    <option value="">Select Organization</option>
+                                    <?php foreach ($organizations as $org): ?>
+                                    <option value="<?php echo $org['organization_id']; ?>" data-country="<?php echo $org['country_id']; ?>" <?php echo (($asset['organization_id'] ?? '') == $org['organization_id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($org['organization_name']); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label for="location_id" class="form-label">Location</label>
                                 <select class="form-select" id="location_id" name="location_id">
                                     <option value="">Select Location</option>
@@ -354,7 +368,7 @@ include __DIR__ . '/../includes/header.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label for="status" class="form-label">Status</label>
                                 <select class="form-select" id="status" name="status">
                                     <option value="Available" <?php echo ($asset['status'] === 'Available') ? 'selected' : ''; ?>>Available</option>
@@ -489,13 +503,13 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 
     <script>
-    // Filter locations based on selected country
+    // Filter locations and organizations based on selected country
     document.getElementById('country_id').addEventListener('change', function() {
         const countryId = this.value;
-        const locationSelect = document.getElementById('location_id');
-        const options = locationSelect.querySelectorAll('option');
         
-        options.forEach(option => {
+        // Filter locations
+        const locationSelect = document.getElementById('location_id');
+        locationSelect.querySelectorAll('option').forEach(option => {
             if (option.value === '') {
                 option.style.display = 'block';
             } else {
@@ -507,6 +521,25 @@ include __DIR__ . '/../includes/header.php';
                     if (option.selected) {
                         option.selected = false;
                         locationSelect.value = '';
+                    }
+                }
+            }
+        });
+        
+        // Filter organizations
+        const orgSelect = document.getElementById('organization_id');
+        orgSelect.querySelectorAll('option').forEach(option => {
+            if (option.value === '') {
+                option.style.display = 'block';
+            } else {
+                const optionCountryId = option.getAttribute('data-country');
+                if (optionCountryId === countryId) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                    if (option.selected) {
+                        option.selected = false;
+                        orgSelect.value = '';
                     }
                 }
             }
