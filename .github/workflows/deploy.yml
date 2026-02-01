@@ -30,14 +30,14 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /var/www/onestop-asset-shop
             git pull origin main
-            sudo chown -R www-data:www-data /var/www/onestop-asset-shop
+            sudo chown -R apache:apache /var/www/onestop-asset-shop
             sudo chmod -R 755 /var/www/onestop-asset-shop
-            sudo systemctl reload apache2 || true
+            sudo systemctl reload httpd || true
             echo "Deployment completed successfully"
       
       - name: Health check
