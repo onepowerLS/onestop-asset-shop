@@ -1,0 +1,35 @@
+# Secrets and credentials
+.secrets/
+*.pem
+*.key
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Google credentials
+google-credentials.json
+database/google-credentials.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+migration_log.txt
+
+# Dependencies
+vendor/
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
