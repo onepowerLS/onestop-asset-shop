@@ -35,7 +35,10 @@ $patterns = [
     '/\b(transformer|inverter|converter|charger|battery|power.?supply|ups|voltage|capacitor|relay|contactor|breaker|fuse|switch|plug|cable|wire|conductor|busbar|housewire|airdac|adaptor|adapter|ldnio)\b/i' => 'Electrical Equipment',
     
     // Equipment - Test
-    '/\b(oscilloscope|multimeter|tester|analyzer|meter|probe|signal|scope|dmm|bms)\b/i' => 'Test Equipment',
+    '/\b(oscilloscope|multimeter|tester|analyzer|meter|probe|signal|scope|dmm)\b/i' => 'Test Equipment',
+    
+    // BESS - Battery Energy Storage
+    '/\b(bms|battery.?management|battery.?bank|battery.?storage|energy.?storage)\b/i' => 'Battery Energy Storage',
     
     // Communications/IT
     '/\b(computer|laptop|tablet|monitor|keyboard|mouse|printer|scanner|router|modem|server|camera|cctv|surveillance|radio|walkie|antenna|phone|telephone|notebook|vivobook|asus|samsung|hisense|mobicel|azumi|kicka|nexus|wifi|hotspot|speaker|jabra|bluetooth|dell|hp|elitebook|latitude|galaxy|drone|logitech|microsoft|meetion|wireless.?mouse|wireless.?keyboard)\b/i' => 'IT Equipment',
