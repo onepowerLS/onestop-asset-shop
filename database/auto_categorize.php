@@ -20,7 +20,7 @@ $patterns = [
     '/\b(drill|grinder|saw|sander|jigsaw|router|planer|polisher|angle.?grinder|cut.?off|reciprocating|circular|miter|chop|jackhammer|rivet.?gun)\b/i' => 'Power Tools',
     
     // Tools - Hand Tools
-    '/\b(hammer|hummer|screwdriver|plier|wrench|spanner|socket|chisel|punch|file|clamp|vise|vice|ratchet|allen|hex.?key|torque|crowbar|pry.?bar|mallet|axe|hacksaw|hand.?saw|bolt.?cutter|cutter|nose.?lock|long.?nose|lug|chuck.?key)\b/i' => 'Hand Tools',
+    '/\b(hammer|hummer|screwdriver|plier|wrench|spanner|socket|chisel|punch|file|clamp|vise|vice|ratchet|allen|hex.?key|torque|crowbar|pry.?bar|mallet|axe|hacksaw|hand.?saw|bolt.?cutter|cutter|nose.?lock|long.?nose|lug|chuck.?key|grease.?gun|thread)\b/i' => 'Hand Tools',
     
     // Tools - Measuring Tools
     '/\b(tape.?measure|measuring|caliper|vernier|micrometer|level|ruler|square|protractor|gauge|multimeter|clamp.?meter|thermometer|hygrometer|indicator|thermal.?imager)\b/i' => 'Measuring Tools',
@@ -38,10 +38,10 @@ $patterns = [
     '/\b(oscilloscope|multimeter|tester|analyzer|meter|probe|signal|scope|dmm|bms)\b/i' => 'Test Equipment',
     
     // Communications/IT
-    '/\b(computer|laptop|tablet|monitor|keyboard|mouse|printer|scanner|router|modem|server|camera|cctv|surveillance|radio|walkie|antenna|phone|telephone|notebook|vivobook|asus|samsung|hisense|mobicel|azumi|kicka|nexus|wifi|hotspot|speaker|jabra|bluetooth)\b/i' => 'IT Equipment',
+    '/\b(computer|laptop|tablet|monitor|keyboard|mouse|printer|scanner|router|modem|server|camera|cctv|surveillance|radio|walkie|antenna|phone|telephone|notebook|vivobook|asus|samsung|hisense|mobicel|azumi|kicka|nexus|wifi|hotspot|speaker|jabra|bluetooth|dell|hp|elitebook|latitude|galaxy|drone|logitech|microsoft|meetion|wireless.?mouse|wireless.?keyboard)\b/i' => 'IT Equipment',
     
     // Plant - Compressors/Generators
-    '/\b(compressor|generator|genset|pump|motor|engine|blower|fan|vacuum|tractor|augar|rig)\b/i' => 'Plant and Machinery',
+    '/\b(compressor|generator|genset|pump|motor|engine|blower|fan|vacuum|tractor|augar|rig|hydraulic|tricycle|weigh.?scale)\b/i' => 'Plant and Machinery',
     
     // Plant - Construction
     '/\b(concrete|mixer|vibrator|scaffolding|ladder|wheelbarrow|shovel|pickaxe|rake|hoe|spade|trowel|float|screed|base.?plate)\b/i' => 'Construction Equipment',
@@ -53,10 +53,10 @@ $patterns = [
     '/\b(desk|chair|table|cabinet|shelf|shelv|drawer|cupboard|locker|bench|stool|couch|sofa|bookcase|filing|padded)\b/i' => 'Furniture',
     
     // Kitchen/Appliances
-    '/\b(fridge|refrigerator|freezer|microwave|kettle|toaster|coffee|stove|oven|cooker|dishwasher|blender)\b/i' => 'Kitchen Equipment',
+    '/\b(fridge|refrigerator|freezer|microwave|kettle|toaster|coffee|stove|oven|cooker|dishwasher|blender|ottimo)\b/i' => 'Kitchen Equipment',
     
     // Cleaning
-    '/\b(vacuum.?cleaner|mop|broom|bucket|cleaning|washer|pressure.?wash|steam.?clean|smoke.?absor)\b/i' => 'Cleaning Equipment',
+    '/\b(vacuum.?cleaner|mop|broom|bucket|cleaning|washer|pressure.?wash|steam.?clean|smoke.?absor|rubbish|trash|garbage)\b/i' => 'Cleaning Equipment',
     
     // Storage
     '/\b(container|bin|box|crate|pallet|rack|tank|jojo|drum|barrel|storage)\b/i' => 'Storage Equipment',
@@ -68,7 +68,7 @@ $patterns = [
     '/\b(light|lamp|bulb|flood.?light|spotlight|led|fluorescent|extension.?cord|power.?strip|surge|television|tv|solar.?panel|solar.?charger)\b/i' => 'Electrical Appliances',
     
     // Office Equipment
-    '/\b(stapler|punch|paper|binder|laminator|shredder|whiteboard|projector|calculator|copier|binding.?machine)\b/i' => 'Office Equipment',
+    '/\b(stapler|punch|paper|binder|laminator|shredder|whiteboard|white.?board|projector|calculator|copier|binding.?machine)\b/i' => 'Office Equipment',
     
     // Vehicles
     '/\b(atv|vehicle|car|truck|bakkie|trailer)\b/i' => 'Vehicles',
