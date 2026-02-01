@@ -196,7 +196,9 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <td>
                                 <?php if ($asset['qr_code_id']): ?>
-                                    <code class="text-primary"><?php echo htmlspecialchars($asset['qr_code_id']); ?></code>
+                                    <a href="#" class="text-primary" onclick="showQRCode('<?php echo htmlspecialchars($asset['qr_code_id']); ?>', '<?php echo htmlspecialchars(addslashes($asset['name'])); ?>'); return false;" title="Click to view QR code">
+                                        <i class="fas fa-qrcode me-1"></i><code><?php echo htmlspecialchars($asset['qr_code_id']); ?></code>
+                                    </a>
                                 <?php else: ?>
                                     <button class="btn btn-sm btn-outline-primary" onclick="generateQR(<?php echo $asset['asset_id']; ?>)">
                                         <i class="fas fa-qrcode me-1"></i>Generate
@@ -396,6 +398,75 @@ async function deleteAsset(assetId, assetName) {
         alert('Error deleting asset: ' + error.message);
     }
 }
+
+// Show QR code in modal
+function showQRCode(qrCodeId, assetName) {
+    document.getElementById('qrModalLabel').textContent = assetName;
+    document.getElementById('qrCodeId').textContent = qrCodeId;
+    
+    // Generate QR code using QR Code API
+    const qrImg = document.getElementById('qrCodeImage');
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(qrCodeId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
+    modal.show();
+}
+
+// Download QR code
+function downloadQRCode() {
+    const qrCodeId = document.getElementById('qrCodeId').textContent;
+    const link = document.createElement('a');
+    link.href = 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&format=png&data=' + encodeURIComponent(qrCodeId);
+    link.download = qrCodeId + '.png';
+    link.click();
+}
+
+// Print QR code
+function printQRCode() {
+    const qrCodeId = document.getElementById('qrCodeId').textContent;
+    const assetName = document.getElementById('qrModalLabel').textContent;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head><title>QR Code - ${assetName}</title></head>
+        <body style="text-align: center; padding: 40px; font-family: Arial, sans-serif;">
+            <h2>${assetName}</h2>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCodeId)}" />
+            <p style="font-size: 18px; font-weight: bold; margin-top: 20px;">${qrCodeId}</p>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function() {
+        printWindow.print();
+    };
+}
 </script>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrModalLabel">Asset QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid mb-3" style="max-width: 250px;">
+                <p class="mb-0"><strong>QR Code ID:</strong></p>
+                <p><code id="qrCodeId" class="fs-5"></code></p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-outline-primary" onclick="downloadQRCode()">
+                    <i class="fas fa-download me-1"></i> Download
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="printQRCode()">
+                    <i class="fas fa-print me-1"></i> Print
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
