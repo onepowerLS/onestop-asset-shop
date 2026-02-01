@@ -1,15 +1,10 @@
-name: Deploy to AWS EC2
+name: Deploy to EC2
 
 on:
   push:
     branches:
-      - main  # Deploy to production on main branch
-  workflow_dispatch:  # Allow manual triggers
-
-env:
-  AWS_REGION: us-east-1  # Change to your preferred region
-  EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
-  EC2_USER: ec2-user  # or 'ubuntu' for Ubuntu instances
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -26,49 +21,23 @@ jobs:
           php-version: '8.1'
           extensions: pdo, pdo_mysql, mbstring, json, curl
       
-      - name: Run tests
+      - name: Run syntax checks
         run: |
-          echo "Running basic syntax checks..."
+          echo "Running PHP syntax checks..."
           find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \;
-      
-      - name: Create deployment package
-        run: |
-          mkdir -p deploy
-          cp -r web deploy/
-          cp -r database deploy/
-          cp -r qr deploy/
-          cp -r deployment deploy/
-          cp .env.example deploy/.env
-          tar -czf deploy.tar.gz deploy/
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Copy deployment package to EC2
-        run: |
-          aws s3 cp deploy.tar.gz s3://onestop-asset-deploy/deploy.tar.gz
-          aws ec2-instance-connect send-ssh-public-key \
-            --instance-id ${{ env.EC2_INSTANCE_ID }} \
-            --availability-zone $(aws ec2 describe-instances --instance-ids ${{ env.EC2_INSTANCE_ID }} --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text) \
-            --instance-os-user ${{ env.EC2_USER }} \
-            --ssh-public-key file://$HOME/.ssh/id_rsa.pub || true
       
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ env.EC2_USER }}
+          username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /var/www/html
+            cd /var/www/onestop-asset-shop
             git pull origin main
-            sudo chown -R apache:apache /var/www/html
-            sudo chmod -R 755 /var/www/html
-            sudo systemctl reload httpd || sudo systemctl reload apache2 || true
+            sudo chown -R www-data:www-data /var/www/onestop-asset-shop
+            sudo chmod -R 755 /var/www/onestop-asset-shop
+            sudo systemctl reload apache2 || true
             echo "Deployment completed successfully"
       
       - name: Health check
