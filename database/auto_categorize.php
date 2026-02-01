@@ -17,46 +17,46 @@ foreach ($categories as $cat) {
 // Define patterns -> category mappings
 $patterns = [
     // Tools - Power Tools
-    '/\b(drill|grinder|saw|sander|jigsaw|router|planer|polisher|angle.?grinder|cut.?off|reciprocating|circular|miter|chop)\b/i' => 'Power Tools',
+    '/\b(drill|grinder|saw|sander|jigsaw|router|planer|polisher|angle.?grinder|cut.?off|reciprocating|circular|miter|chop|jackhammer|rivet.?gun)\b/i' => 'Power Tools',
     
     // Tools - Hand Tools
-    '/\b(hammer|screwdriver|plier|wrench|spanner|socket|chisel|punch|file|clamp|vise|vice|ratchet|allen|hex.?key|torque|crowbar|pry.?bar|mallet|axe|hacksaw|hand.?saw)\b/i' => 'Hand Tools',
+    '/\b(hammer|hummer|screwdriver|plier|wrench|spanner|socket|chisel|punch|file|clamp|vise|vice|ratchet|allen|hex.?key|torque|crowbar|pry.?bar|mallet|axe|hacksaw|hand.?saw|bolt.?cutter|cutter|nose.?lock|long.?nose|lug|chuck.?key)\b/i' => 'Hand Tools',
     
     // Tools - Measuring Tools
-    '/\b(tape.?measure|measuring|caliper|vernier|micrometer|level|ruler|square|protractor|gauge|multimeter|clamp.?meter|thermometer|hygrometer)\b/i' => 'Measuring Tools',
+    '/\b(tape.?measure|measuring|caliper|vernier|micrometer|level|ruler|square|protractor|gauge|multimeter|clamp.?meter|thermometer|hygrometer|indicator|thermal.?imager)\b/i' => 'Measuring Tools',
     
     // Tools - Welding
     '/\b(weld|soldering|brazing|electrode|flux|welding)\b/i' => 'Welding Tools',
     
     // Tools - Lifting
-    '/\b(jack|pulley|hoist|crane|winch|chain.?block|come.?along|lever|lifting)\b/i' => 'Lifting Tools',
+    '/\b(jack|pulley|hoist|crane|winch|chain.?block|come.?along|lever|lifting|ton\b)\b/i' => 'Lifting Tools',
     
     // Equipment - Electrical
-    '/\b(transformer|inverter|converter|charger|battery|power.?supply|ups|voltage|capacitor|relay|contactor|breaker|fuse|switch|socket|plug|cable|wire|conductor|busbar)\b/i' => 'Electrical Equipment',
+    '/\b(transformer|inverter|converter|charger|battery|power.?supply|ups|voltage|capacitor|relay|contactor|breaker|fuse|switch|plug|cable|wire|conductor|busbar|housewire|airdac|adaptor|adapter|ldnio)\b/i' => 'Electrical Equipment',
     
     // Equipment - Test
-    '/\b(oscilloscope|multimeter|tester|analyzer|meter|probe|signal|generator|scope|dmm)\b/i' => 'Test Equipment',
+    '/\b(oscilloscope|multimeter|tester|analyzer|meter|probe|signal|scope|dmm|bms)\b/i' => 'Test Equipment',
     
     // Communications/IT
-    '/\b(computer|laptop|tablet|monitor|keyboard|mouse|printer|scanner|router|switch|modem|server|camera|cctv|surveillance|radio|walkie|antenna|phone|telephone)\b/i' => 'IT Equipment',
+    '/\b(computer|laptop|tablet|monitor|keyboard|mouse|printer|scanner|router|modem|server|camera|cctv|surveillance|radio|walkie|antenna|phone|telephone|notebook|vivobook|asus|samsung|hisense|mobicel|azumi|kicka|nexus|wifi|hotspot|speaker|jabra|bluetooth)\b/i' => 'IT Equipment',
     
     // Plant - Compressors/Generators
-    '/\b(compressor|generator|genset|pump|motor|engine|blower|fan|vacuum)\b/i' => 'Plant and Machinery',
+    '/\b(compressor|generator|genset|pump|motor|engine|blower|fan|vacuum|tractor|augar|rig)\b/i' => 'Plant and Machinery',
     
     // Plant - Construction
-    '/\b(concrete|mixer|vibrator|scaffolding|ladder|wheelbarrow|shovel|pickaxe|rake|hoe|spade|trowel|float|screed)\b/i' => 'Construction Equipment',
+    '/\b(concrete|mixer|vibrator|scaffolding|ladder|wheelbarrow|shovel|pickaxe|rake|hoe|spade|trowel|float|screed|base.?plate)\b/i' => 'Construction Equipment',
     
     // Safety
-    '/\b(helmet|harness|safety|glove|goggle|mask|respirator|vest|boot|ear.?plug|ear.?muff|fire.?extinguisher|first.?aid|ppe|hard.?hat|hi.?vis)\b/i' => 'Safety Equipment',
+    '/\b(helmet|harness|safety|glove|goggle|mask|respirator|vest|boot|ear.?plug|ear.?muff|fire.?extinguisher|first.?aid|ppe|hard.?hat|hi.?vis|dry.?powder|co2|stp)\b/i' => 'Safety Equipment',
     
     // Furniture
-    '/\b(desk|chair|table|cabinet|shelf|shelv|drawer|cupboard|locker|bench|stool|couch|sofa|bookcase|filing)\b/i' => 'Furniture',
+    '/\b(desk|chair|table|cabinet|shelf|shelv|drawer|cupboard|locker|bench|stool|couch|sofa|bookcase|filing|padded)\b/i' => 'Furniture',
     
     // Kitchen/Appliances
-    '/\b(fridge|refrigerator|freezer|microwave|kettle|toaster|coffee|stove|oven|cooker|dishwasher|blender|mixer)\b/i' => 'Kitchen Equipment',
+    '/\b(fridge|refrigerator|freezer|microwave|kettle|toaster|coffee|stove|oven|cooker|dishwasher|blender)\b/i' => 'Kitchen Equipment',
     
     // Cleaning
-    '/\b(vacuum.?cleaner|mop|broom|bucket|cleaning|washer|pressure.?wash|steam.?clean)\b/i' => 'Cleaning Equipment',
+    '/\b(vacuum.?cleaner|mop|broom|bucket|cleaning|washer|pressure.?wash|steam.?clean|smoke.?absor)\b/i' => 'Cleaning Equipment',
     
     // Storage
     '/\b(container|bin|box|crate|pallet|rack|tank|jojo|drum|barrel|storage)\b/i' => 'Storage Equipment',
@@ -65,13 +65,16 @@ $patterns = [
     '/\b(hvac|air.?condition|ac.?unit|heater|heating|cooling|ventilat|aircon)\b/i' => 'Heating Equipment',
     
     // Electrical Appliances
-    '/\b(light|lamp|bulb|flood.?light|spotlight|led|fluorescent|extension.?cord|power.?strip|surge)\b/i' => 'Electrical Appliances',
+    '/\b(light|lamp|bulb|flood.?light|spotlight|led|fluorescent|extension.?cord|power.?strip|surge|television|tv|solar.?panel|solar.?charger)\b/i' => 'Electrical Appliances',
     
     // Office Equipment
-    '/\b(stapler|punch|paper|binder|laminator|shredder|whiteboard|projector|calculator|copier)\b/i' => 'Office Equipment',
+    '/\b(stapler|punch|paper|binder|laminator|shredder|whiteboard|projector|calculator|copier|binding.?machine)\b/i' => 'Office Equipment',
+    
+    // Vehicles
+    '/\b(atv|vehicle|car|truck|bakkie|trailer)\b/i' => 'Vehicles',
     
     // General Tools (catch-all for tool-like items)
-    '/\b(tool|kit|set|bit|blade|accessory|attachment)\b/i' => 'General Tools',
+    '/\b(tool|kit|set|bit|blade|accessory|attachment|strap)\b/i' => 'General Tools',
 ];
 
 // Get uncategorized assets
