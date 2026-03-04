@@ -20,7 +20,8 @@ if (file_exists(__DIR__ . '/../../.env')) {
     $db_pass = getenv('DB_PASS') ?: '';
 }
 
-// Create PDO connection
+// Create PDO connection (allow running without DB so login page can be viewed locally)
+$pdo = null;
 try {
     $pdo = new PDO(
         "mysql:host={$db_host};dbname={$db_name};charset=utf8mb4",
@@ -32,8 +33,11 @@ try {
             PDO::ATTR_EMULATE_PREPARES => false
         ]
     );
+    define('DB_AVAILABLE', true);
 } catch (PDOException $e) {
     // Log error securely (don't expose credentials)
     error_log("Database connection failed: " . $e->getMessage());
-    die("Database connection failed. Please contact the administrator.");
+    $pdo = null;
+    define('DB_AVAILABLE', false);
+    // Don't die - allow login page to render so UI can be viewed locally
 }

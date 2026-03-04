@@ -24,8 +24,9 @@ ini_set('display_errors', 1); // Set to 0 in production
 function base_url($path = '') {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'];
-    $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-    return $protocol . '://' . $host . $base . '/' . ltrim($path, '/');
+    $base = trim(BASE_URL, '/');
+    $prefix = $base === '' ? '' : '/' . $base;
+    return $protocol . '://' . $host . $prefix . '/' . ltrim($path, '/');
 }
 
 // Helper function to redirect

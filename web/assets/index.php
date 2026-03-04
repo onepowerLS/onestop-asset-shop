@@ -5,7 +5,7 @@
  * Displays all assets with filtering, search, and QR code integration
  */
 require_once __DIR__ . '/../config/app.php';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/firestore.php';
 require_login();
 
 $page_title = 'Assets';
@@ -16,56 +16,103 @@ $statusFilter = $_GET['status'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
 $searchTerm = $_GET['search'] ?? '';
 
-// Build query
-$query = "
-    SELECT 
-        a.*,
-        c.country_name,
-        c.country_code,
-        cat.category_name,
-        cat.category_type,
-        l.location_name,
-        l.location_code,
-        (SELECT COUNT(*) FROM allocations al WHERE al.asset_id = a.asset_id AND al.status = 'Active') as allocation_count
-    FROM assets a
-    LEFT JOIN countries c ON a.country_id = c.country_id
-    LEFT JOIN categories cat ON a.category_id = cat.category_id
-    LEFT JOIN locations l ON a.location_id = l.location_id
-    WHERE 1=1
-";
+// Firestore collections (split sources of truth)
+$assetsRaw = am_firestore_get_collection('am_core_assets', 2000);
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$categories = am_firestore_get_collection('pr_master_categories', 1000);
+$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$allocations = am_firestore_get_collection('am_core_allocations', 2000);
 
-$params = [];
-
-if ($countryFilter) {
-    $query .= " AND a.country_id = ?";
-    $params[] = $countryFilter;
+// Index lookups for joins
+$countryById = [];
+foreach ($countries as $c) {
+    $cid = (string)($c['country_id'] ?? $c['id'] ?? '');
+    if ($cid !== '') {
+        $countryById[$cid] = $c;
+    }
+}
+$categoryById = [];
+foreach ($categories as $c) {
+    $cid = (string)($c['category_id'] ?? $c['id'] ?? '');
+    if ($cid !== '') {
+        $categoryById[$cid] = $c;
+    }
+}
+$locationById = [];
+foreach ($locations as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+}
+$allocationCounts = [];
+foreach ($allocations as $al) {
+    $aid = (string)($al['asset_id'] ?? '');
+    if ($aid === '') {
+        continue;
+    }
+    if ((string)($al['status'] ?? '') === 'Active') {
+        $allocationCounts[$aid] = ($allocationCounts[$aid] ?? 0) + 1;
+    }
 }
 
-if ($statusFilter) {
-    $query .= " AND a.status = ?";
-    $params[] = $statusFilter;
+// Join and filter in memory
+$assets = [];
+$needle = strtolower(trim($searchTerm));
+foreach ($assetsRaw as $asset) {
+    $countryId = (string)($asset['country_id'] ?? '');
+    $categoryId = (string)($asset['category_id'] ?? '');
+    $locationId = (string)($asset['location_id'] ?? '');
+    $assetId = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
+    $status = (string)($asset['status'] ?? '');
+
+    if ($countryFilter !== '' && $countryFilter !== $countryId) {
+        continue;
+    }
+    if ($statusFilter !== '' && $statusFilter !== $status) {
+        continue;
+    }
+    if ($categoryFilter !== '' && $categoryFilter !== $categoryId) {
+        continue;
+    }
+    if ($needle !== '') {
+        $searchBlob = strtolower(implode(' ', [
+            (string)($asset['name'] ?? ''),
+            (string)($asset['description'] ?? ''),
+            (string)($asset['serial_number'] ?? ''),
+            (string)($asset['qr_code_id'] ?? ''),
+            (string)($asset['asset_tag'] ?? ''),
+        ]));
+        if (!str_contains($searchBlob, $needle)) {
+            continue;
+        }
+    }
+
+    $country = $countryById[$countryId] ?? [];
+    $category = $categoryById[$categoryId] ?? [];
+    $location = $locationById[$locationId] ?? [];
+
+    $asset['asset_id'] = $assetId;
+    $asset['country_name'] = (string)($country['country_name'] ?? '');
+    $asset['country_code'] = (string)($country['country_code'] ?? '');
+    $asset['category_name'] = (string)($category['category_name'] ?? '');
+    $asset['category_type'] = (string)($category['category_type'] ?? '');
+    $asset['location_name'] = (string)($location['location_name'] ?? '');
+    $asset['location_code'] = (string)($location['location_code'] ?? '');
+    $asset['allocation_count'] = (int)($allocationCounts[$assetId] ?? 0);
+
+    $assets[] = $asset;
 }
 
-if ($categoryFilter) {
-    $query .= " AND a.category_id = ?";
-    $params[] = $categoryFilter;
-}
+usort($assets, function ($a, $b) {
+    $ai = (int)($a['asset_id'] ?? 0);
+    $bi = (int)($b['asset_id'] ?? 0);
+    return $bi <=> $ai;
+});
 
-if ($searchTerm) {
-    $query .= " AND (a.name LIKE ? OR a.description LIKE ? OR a.serial_number LIKE ? OR a.qr_code_id LIKE ? OR a.asset_tag LIKE ?)";
-    $searchParam = "%{$searchTerm}%";
-    $params = array_merge($params, [$searchParam, $searchParam, $searchParam, $searchParam, $searchParam]);
-}
-
-$query .= " ORDER BY a.asset_id DESC";
-
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
-$assets = $stmt->fetchAll();
-
-// Get filter options
-$countries = $pdo->query("SELECT country_id, country_name, country_code FROM countries WHERE active = 1 ORDER BY country_name")->fetchAll();
-$categories = $pdo->query("SELECT category_id, category_name, category_type FROM categories WHERE active = 1 ORDER BY category_name")->fetchAll();
+// Filter options
+$countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
+$categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
 $statuses = ['Available', 'Allocated', 'CheckedOut', 'Missing', 'WrittenOff', 'Retired'];
 
 include __DIR__ . '/../includes/header.php';

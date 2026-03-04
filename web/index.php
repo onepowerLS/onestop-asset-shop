@@ -3,56 +3,91 @@
  * Dashboard / Home Page
  */
 require_once __DIR__ . '/config/app.php';
-require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/config/firestore.php';
 require_login();
 
 $page_title = 'Dashboard';
 
-// Get dashboard statistics
-try {
-    // Total assets
-    $totalAssets = $pdo->query("SELECT COUNT(*) as count FROM assets")->fetch()['count'];
-    
-    // Assets by country
-    $assetsByCountry = $pdo->query("
-        SELECT c.country_name, c.country_code, COUNT(a.asset_id) as count
-        FROM countries c
-        LEFT JOIN assets a ON c.country_id = a.country_id
-        GROUP BY c.country_id, c.country_name, c.country_code
-        ORDER BY c.country_name
-    ")->fetchAll();
-    
-    // Assets by status
-    $assetsByStatus = $pdo->query("
-        SELECT status, COUNT(*) as count
-        FROM assets
-        GROUP BY status
-        ORDER BY count DESC
-    ")->fetchAll();
-    
-    // Recent transactions
-    $recentTransactions = $pdo->query("
-        SELECT t.*, a.name as asset_name, a.qr_code_id
-        FROM transactions t
-        JOIN assets a ON t.asset_id = a.asset_id
-        ORDER BY t.transaction_date DESC
-        LIMIT 10
-    ")->fetchAll();
-    
-    // Pending requests
-    $pendingRequests = $pdo->query("
-        SELECT COUNT(*) as count
-        FROM requests
-        WHERE status IN ('Draft', 'Submitted')
-    ")->fetch()['count'];
-    
-} catch (PDOException $e) {
-    error_log("Dashboard query error: " . $e->getMessage());
-    $totalAssets = 0;
-    $assetsByCountry = [];
-    $assetsByStatus = [];
-    $recentTransactions = [];
-    $pendingRequests = 0;
+// Firestore-backed dashboard statistics
+$assets = am_firestore_get_collection('am_core_assets', 1000);
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$transactions = am_firestore_get_collection('am_core_transactions', 1000);
+$requests = am_firestore_get_collection('pr_master_requests', 1000);
+
+$totalAssets = count($assets);
+
+// Country counts
+$countryMap = [];
+foreach ($countries as $country) {
+    $countryId = (string)($country['country_id'] ?? $country['id'] ?? '');
+    $countryMap[$countryId] = [
+        'country_name' => (string)($country['country_name'] ?? 'Unknown'),
+        'country_code' => (string)($country['country_code'] ?? 'N/A'),
+        'count' => 0,
+    ];
+}
+foreach ($assets as $asset) {
+    $countryId = (string)($asset['country_id'] ?? '');
+    if ($countryId === '') {
+        continue;
+    }
+    if (!isset($countryMap[$countryId])) {
+        $countryMap[$countryId] = [
+            'country_name' => 'Unknown',
+            'country_code' => 'N/A',
+            'count' => 0,
+        ];
+    }
+    $countryMap[$countryId]['count']++;
+}
+$assetsByCountry = array_values($countryMap);
+usort($assetsByCountry, fn($a, $b) => strcmp((string)$a['country_name'], (string)$b['country_name']));
+
+// Status counts
+$statusCounts = [];
+foreach ($assets as $asset) {
+    $status = (string)($asset['status'] ?? 'Unknown');
+    $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
+}
+$assetsByStatus = [];
+foreach ($statusCounts as $status => $count) {
+    $assetsByStatus[] = ['status' => $status, 'count' => $count];
+}
+usort($assetsByStatus, fn($a, $b) => (int)$b['count'] <=> (int)$a['count']);
+
+// Recent transactions (joined with asset details)
+$assetById = [];
+foreach ($assets as $asset) {
+    $assetId = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
+    if ($assetId !== '') {
+        $assetById[$assetId] = $asset;
+    }
+}
+usort($transactions, function ($a, $b) {
+    $ad = strtotime((string)($a['transaction_date'] ?? $a['created_at'] ?? '1970-01-01'));
+    $bd = strtotime((string)($b['transaction_date'] ?? $b['created_at'] ?? '1970-01-01'));
+    return $bd <=> $ad;
+});
+$recentTransactions = [];
+foreach (array_slice($transactions, 0, 10) as $txn) {
+    $assetId = (string)($txn['asset_id'] ?? '');
+    $asset = $assetById[$assetId] ?? [];
+    $recentTransactions[] = [
+        'transaction_date' => (string)($txn['transaction_date'] ?? $txn['created_at'] ?? date('c')),
+        'transaction_type' => (string)($txn['transaction_type'] ?? 'Unknown'),
+        'asset_name' => (string)($asset['name'] ?? $txn['asset_name'] ?? 'Unknown asset'),
+        'qr_code_id' => (string)($asset['qr_code_id'] ?? $txn['qr_code_id'] ?? ''),
+        'device_type' => (string)($txn['device_type'] ?? 'Desktop'),
+    ];
+}
+
+// Pending requests
+$pendingRequests = 0;
+foreach ($requests as $req) {
+    $status = (string)($req['status'] ?? '');
+    if ($status === 'Draft' || $status === 'Submitted') {
+        $pendingRequests++;
+    }
 }
 
 include __DIR__ . '/includes/header.php';
