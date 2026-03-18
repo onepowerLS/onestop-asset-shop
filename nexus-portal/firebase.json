@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "1pwr-nexus",
+    "site": "nexus-1pwrafrica",
     "public": "dist",
     "ignore": [
       "firebase.json",

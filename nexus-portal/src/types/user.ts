@@ -108,7 +108,7 @@ export const SYSTEMS: SystemInfo[] = [
     key: 'hr',
     name: 'HR Portal',
     description: 'Human Resources & Employee Management',
-    url: 'https://nexus.1pwrafrica.com',
+    url: 'https://hr.1pwrafrica.com',
     icon: 'users',
     color: '#6366f1',
   },

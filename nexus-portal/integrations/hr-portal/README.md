@@ -62,9 +62,9 @@ protected $casts = [
 
 ## Testing
 
-1. Log into Nexus at hub.1pwrafrica.com
+1. Log into Nexus at nexus.1pwrafrica.com
 2. Click on "HR Portal" tile
-3. You should be redirected to nexus.1pwrafrica.com and logged in automatically
+3. You should be redirected to hr.1pwrafrica.com and logged in automatically
 4. Check Laravel logs for SSO debug messages
 
 ## Troubleshooting

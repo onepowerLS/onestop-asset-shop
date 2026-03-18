@@ -144,11 +144,19 @@ See [SCHEMA.md](SCHEMA.md) for the `nexus_users` collection schema.
 
 | Domain | Purpose |
 |--------|---------|
-| hub.1pwrafrica.com | Nexus Portal (production) |
-| nexus.1pwrafrica.com | HR Portal (current) |
+| nexus.1pwrafrica.com | Nexus Portal (unified entry point) |
+| hr.1pwrafrica.com | HR Portal (moved from nexus) |
 | pr.1pwrafrica.com | PR System |
 | prod.1pwrafrica.com | Job Cards |
 | om.1pwrafrica.com | O&M Portal |
+
+### Migration Plan for nexus.1pwrafrica.com
+
+The current HR Portal at nexus.1pwrafrica.com will be migrated:
+1. Deploy HR Portal to hr.1pwrafrica.com (same AWS server, new domain)
+2. Update HR Portal config to use new domain
+3. Deploy Nexus Portal to nexus.1pwrafrica.com (Firebase Hosting)
+4. Set up redirect from old URLs if needed
 
 ## License
 

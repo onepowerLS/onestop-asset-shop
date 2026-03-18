@@ -76,7 +76,7 @@ CREATE INDEX idx_users_firebase_uid ON users(firebase_uid);
 
 ## Testing
 
-1. Log into Nexus at hub.1pwrafrica.com
+1. Log into Nexus at nexus.1pwrafrica.com
 2. Click on "O&M Portal" tile
 3. You should be redirected to om.1pwrafrica.com
 4. The SSO handler exchanges the token and logs you in
