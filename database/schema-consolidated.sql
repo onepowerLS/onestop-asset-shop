@@ -54,23 +54,77 @@ CREATE TABLE `locations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- CATEGORIES (Consolidated from RET, FAC, O&M, General Materials)
+-- ITEM CLASSIFICATION (Industry-standard 4-tier model)
+-- ============================================================
+-- item_class: top-level classification per IAS 16 / IAS 2
+--   FixedAsset  = PP&E, useful life >1yr, capitalized & depreciated
+--   Material    = consumed in construction/installation projects
+--   Consumable  = operational supplies, low value, expensed on use
+--   Inventory   = finished goods, spare parts, held for deployment
+-- ============================================================
+
+-- ============================================================
+-- CATEGORIES (Hierarchical: item_class > category > subcategory)
 -- ============================================================
 
 CREATE TABLE `categories` (
   `category_id` int(11) NOT NULL AUTO_INCREMENT,
   `parent_category_id` int(11) DEFAULT NULL COMMENT 'For hierarchical categories',
-  `category_code` varchar(50) NOT NULL UNIQUE COMMENT 'Like RET-001, FAC-002, etc.',
+  `category_code` varchar(50) NOT NULL UNIQUE COMMENT 'Like FA-VEH-001, MAT-ELE-002',
   `category_name` varchar(255) NOT NULL,
-  `category_type` enum('RET','FAC','O&M','General','Meters','ReadyBoards','Tools','Other') NOT NULL,
+  `item_class` enum('FixedAsset','Material','Consumable','Inventory') NOT NULL,
+  `department_scope` enum('RET','FAC','O&M','General','All') DEFAULT 'All' COMMENT 'Originating department for legacy mapping',
+  `capitalization_threshold` decimal(10,2) DEFAULT NULL COMMENT 'Min value to capitalize as FixedAsset (currency-neutral)',
+  `useful_life_years` int(11) DEFAULT NULL COMMENT 'Expected useful life for depreciation (FixedAsset only)',
+  `depreciation_method` enum('StraightLine','DecliningBalance','UnitsOfProduction','None') DEFAULT 'None',
+  `reorder_enabled` tinyint(1) DEFAULT 0 COMMENT 'Whether reorder-point tracking applies',
   `description` text DEFAULT NULL,
   `active` tinyint(1) DEFAULT 1,
   `created_at` timestamp DEFAULT current_timestamp(),
   PRIMARY KEY (`category_id`),
   FOREIGN KEY (`parent_category_id`) REFERENCES `categories`(`category_id`) ON DELETE SET NULL,
   INDEX `idx_category_code` (`category_code`),
-  INDEX `idx_category_type` (`category_type`)
+  INDEX `idx_item_class` (`item_class`),
+  INDEX `idx_department_scope` (`department_scope`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- SEED CATEGORIES (Standard hierarchy for 1PWR)
+-- ============================================================
+
+-- Fixed Assets
+INSERT INTO `categories` (`category_code`, `category_name`, `item_class`, `department_scope`, `useful_life_years`, `depreciation_method`, `description`) VALUES
+('FA-VEH', 'Vehicles', 'FixedAsset', 'All', 10, 'StraightLine', 'Cars, trucks, motorbikes'),
+('FA-HVY', 'Heavy Equipment', 'FixedAsset', 'All', 15, 'StraightLine', 'Generators, compressors, cranes'),
+('FA-TLM', 'Tools & Machinery', 'FixedAsset', 'All', 7, 'StraightLine', 'Welding machines, power tools above capitalization threshold'),
+('FA-ITE', 'IT Equipment', 'FixedAsset', 'All', 4, 'StraightLine', 'Laptops, servers, networking, tablets'),
+('FA-FNF', 'Furniture & Fixtures', 'FixedAsset', 'All', 10, 'StraightLine', 'Desks, chairs, shelving, signage'),
+('FA-INF', 'Installed Infrastructure', 'FixedAsset', 'All', 25, 'StraightLine', 'Commissioned mini-grid components, installed meters, distribution equipment');
+
+-- Materials (construction/installation inputs)
+INSERT INTO `categories` (`category_code`, `category_name`, `item_class`, `department_scope`, `description`) VALUES
+('MAT-ELE', 'Electrical', 'Material', 'RET', 'Wire, conduit, connectors, breakers, junction boxes'),
+('MAT-STR', 'Structural', 'Material', 'RET', 'Utility poles, brackets, foundations, mounting hardware'),
+('MAT-SOL', 'Solar', 'Material', 'RET', 'Panels, inverters, charge controllers, combiners'),
+('MAT-BAT', 'Battery Storage', 'Material', 'RET', 'Battery cells, racks, BMS components'),
+('MAT-FAC', 'Facilities', 'Material', 'FAC', 'Building materials, plumbing, fencing, painting'),
+('MAT-ONM', 'O&M Components', 'Material', 'O&M', 'Pre-assembled replacement modules for field maintenance');
+
+-- Consumables (operational supplies)
+INSERT INTO `categories` (`category_code`, `category_name`, `item_class`, `department_scope`, `reorder_enabled`, `description`) VALUES
+('CON-SAF', 'Safety & PPE', 'Consumable', 'All', 1, 'Hard hats, gloves, vests, goggles, harnesses'),
+('CON-OFC', 'Office Supplies', 'Consumable', 'All', 1, 'Paper, toner, pens, labels'),
+('CON-MNT', 'Maintenance Supplies', 'Consumable', 'O&M', 1, 'Lubricants, fasteners, tape, cable ties, sealant'),
+('CON-CLN', 'Cleaning Supplies', 'Consumable', 'FAC', 1, 'Detergent, brooms, waste bags'),
+('CON-HND', 'Hand Tools', 'Consumable', 'All', 0, 'Screwdrivers, pliers, wrenches below capitalization threshold');
+
+-- Inventory (finished goods & spare parts)
+INSERT INTO `categories` (`category_code`, `category_name`, `item_class`, `department_scope`, `reorder_enabled`, `description`) VALUES
+('INV-MTR', 'Meters', 'Inventory', 'General', 1, 'Produced/procured meters for customer deployment'),
+('INV-RDB', 'Ready Boards', 'Inventory', 'General', 1, 'Pre-assembled customer connection boards'),
+('INV-SPR', 'Spare Parts', 'Inventory', 'O&M', 1, 'Replacement components for installed infrastructure'),
+('INV-WIP', 'Work-in-Progress', 'Inventory', 'General', 0, 'Partially assembled items awaiting completion'),
+('INV-KIT', 'Kits & Assemblies', 'Inventory', 'RET', 1, 'Pre-packaged installation kits for field deployment');
 
 -- ============================================================
 -- ASSETS (Consolidated master table)
@@ -79,24 +133,25 @@ CREATE TABLE `categories` (
 CREATE TABLE `assets` (
   `asset_id` int(11) NOT NULL AUTO_INCREMENT,
   `qr_code_id` varchar(100) UNIQUE COMMENT 'Unique QR identifier for scanning',
-  `asset_tag` varchar(100) UNIQUE COMMENT 'Human-readable tag like 1PWR-001234',
+  `asset_tag` varchar(100) UNIQUE COMMENT 'Human-readable tag like 1PWR-FA-001234',
   `name` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
+  `item_class` enum('FixedAsset','Material','Consumable','Inventory') NOT NULL COMMENT 'Denormalized from category for fast filtering',
   `category_id` int(11) DEFAULT NULL,
   `serial_number` varchar(250) DEFAULT NULL,
   `manufacturer` varchar(255) DEFAULT NULL,
   `model` varchar(255) DEFAULT NULL,
   `purchase_date` date DEFAULT NULL,
   `purchase_price` decimal(10,2) DEFAULT NULL,
-  `current_value` decimal(10,2) DEFAULT NULL,
+  `current_value` decimal(10,2) DEFAULT NULL COMMENT 'Net book value for FixedAssets, unit cost for others',
+  `salvage_value` decimal(10,2) DEFAULT NULL COMMENT 'Residual value at end of useful life (FixedAsset only)',
   `warranty_expiry` date DEFAULT NULL,
   `condition_status` enum('New','Good','Fair','Poor','Damaged','Retired') DEFAULT 'Good',
-  `status` enum('Available','Allocated','CheckedOut','Missing','WrittenOff','Retired') DEFAULT 'Available',
+  `status` enum('Available','Allocated','CheckedOut','InProject','Consumed','Deployed','Missing','WrittenOff','Retired') DEFAULT 'Available',
   `location_id` int(11) DEFAULT NULL COMMENT 'Current physical location',
-  `country_id` int(11) NOT NULL COMMENT 'Which country this asset belongs to',
-  `asset_type` enum('Current','Non-Current') DEFAULT 'Non-Current',
-  `quantity` int(11) DEFAULT 1 COMMENT 'For bulk items (e.g., 10 meters)',
-  `unit_of_measure` varchar(50) DEFAULT 'EA' COMMENT 'EA, KG, M, etc.',
+  `country_id` int(11) NOT NULL COMMENT 'Which country this item belongs to',
+  `quantity` int(11) DEFAULT 1 COMMENT 'For bulk/countable items (Materials, Consumables, Inventory)',
+  `unit_of_measure` varchar(50) DEFAULT 'EA' COMMENT 'EA, KG, M, L, etc.',
   `notes` text DEFAULT NULL,
   `created_at` timestamp DEFAULT current_timestamp(),
   `updated_at` timestamp DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -106,6 +161,7 @@ CREATE TABLE `assets` (
   FOREIGN KEY (`country_id`) REFERENCES `countries`(`country_id`) ON DELETE RESTRICT,
   INDEX `idx_qr_code` (`qr_code_id`),
   INDEX `idx_asset_tag` (`asset_tag`),
+  INDEX `idx_item_class` (`item_class`),
   INDEX `idx_status` (`status`),
   INDEX `idx_country` (`country_id`),
   INDEX `idx_location` (`location_id`)
@@ -174,7 +230,7 @@ CREATE TABLE `departments` (
 
 CREATE TABLE `transactions` (
   `transaction_id` int(11) NOT NULL AUTO_INCREMENT,
-  `transaction_type` enum('CheckOut','CheckIn','StockIngestion','StockTake','Transfer','Allocation','Return','WriteOff','QRScan') NOT NULL,
+  `transaction_type` enum('CheckOut','CheckIn','StockIngestion','StockTake','Transfer','Allocation','Return','WriteOff','QRScan','Consume','Deploy') NOT NULL,
   `asset_id` int(11) NOT NULL,
   `quantity` int(11) DEFAULT 1,
   `from_location_id` int(11) DEFAULT NULL,
@@ -227,7 +283,8 @@ CREATE TABLE `allocations` (
 CREATE TABLE `requests` (
   `request_id` int(11) NOT NULL AUTO_INCREMENT,
   `request_number` varchar(50) UNIQUE NOT NULL COMMENT 'Auto-generated like REQ-2026-001',
-  `request_type` enum('RET','FAC','O&M','Meters','ReadyBoards','General','Other') NOT NULL,
+  `item_class` enum('FixedAsset','Material','Consumable','Inventory') NOT NULL COMMENT 'What class of item is being requested',
+  `department_scope` enum('RET','FAC','O&M','General','All') DEFAULT 'General' COMMENT 'Requesting department context',
   `requested_by` int(11) NOT NULL COMMENT 'Employee ID',
   `requested_for_country` int(11) NOT NULL,
   `requested_for_location` int(11) DEFAULT NULL,
@@ -243,6 +300,7 @@ CREATE TABLE `requests` (
   FOREIGN KEY (`requested_for_country`) REFERENCES `countries`(`country_id`) ON DELETE RESTRICT,
   FOREIGN KEY (`requested_for_location`) REFERENCES `locations`(`location_id`) ON DELETE SET NULL,
   INDEX `idx_request_number` (`request_number`),
+  INDEX `idx_item_class` (`item_class`),
   INDEX `idx_status` (`status`),
   INDEX `idx_country` (`requested_for_country`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -343,6 +401,29 @@ CREATE TABLE `users` (
   INDEX `idx_username` (`username`),
   INDEX `idx_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- LEGACY MAPPING (category_type -> item_class + department_scope)
+-- ============================================================
+-- Use this reference when migrating existing Firestore data:
+--
+--   OLD category_type  ->  NEW item_class    department_scope
+--   ─────────────────      ──────────────    ────────────────
+--   RET                    Material          RET
+--   FAC                    Material          FAC
+--   O&M                    Consumable/       O&M
+--                          Material (check)
+--   General                (varies)          General
+--   Meters                 Inventory         General
+--   ReadyBoards            Inventory         General
+--   Tools                  FixedAsset or     All
+--                          Consumable (by value)
+--   Other                  (manual review)   General
+--
+-- Decision rule for Tools:
+--   IF purchase_price >= capitalization_threshold THEN FixedAsset
+--   ELSE Consumable
+-- ============================================================
 
 -- ============================================================
 -- END OF SCHEMA

@@ -16,6 +16,15 @@ $requests = am_firestore_get_collection('pr_master_requests', 1000);
 
 $totalAssets = count($assets);
 
+// Item class counts
+$classCounts = ['FixedAsset' => 0, 'Material' => 0, 'Consumable' => 0, 'Inventory' => 0];
+foreach ($assets as $asset) {
+    $cls = (string)($asset['item_class'] ?? '');
+    if (isset($classCounts[$cls])) {
+        $classCounts[$cls]++;
+    }
+}
+
 // Country counts
 $countryMap = [];
 foreach ($countries as $country) {
@@ -107,7 +116,7 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- Summary Row -->
     <div class="row mb-4">
         <div class="col-12 col-sm-6 col-xl-3 mb-4">
             <div class="card border-0 shadow">
@@ -120,7 +129,7 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Total Assets</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0">Total Items</h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo number_format($totalAssets); ?></h3>
                             </div>
                         </div>
@@ -195,6 +204,34 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Item Classification Breakdown -->
+    <?php
+    $classConfig = [
+        'FixedAsset'  => ['label' => 'Fixed Assets',  'icon' => 'fa-building',       'color' => 'primary',   'desc' => 'PP&E: vehicles, equipment, infrastructure'],
+        'Material'    => ['label' => 'Materials',      'icon' => 'fa-cubes',          'color' => 'warning',   'desc' => 'Construction & installation inputs'],
+        'Consumable'  => ['label' => 'Consumables',    'icon' => 'fa-recycle',        'color' => 'info',      'desc' => 'Operational supplies, PPE, office'],
+        'Inventory'   => ['label' => 'Inventory',      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => 'Meters, ready boards, spare parts'],
+    ];
+    ?>
+    <div class="row mb-4">
+        <?php foreach ($classConfig as $classKey => $cfg): ?>
+        <div class="col-12 col-sm-6 col-xl-3 mb-4">
+            <a href="<?php echo base_url('assets/index.php?item_class=' . $classKey); ?>" class="text-decoration-none">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-body text-center py-4">
+                        <div class="icon-shape icon-shape-<?php echo $cfg['color']; ?> rounded-circle mx-auto mb-3" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas <?php echo $cfg['icon']; ?> fa-lg text-white"></i>
+                        </div>
+                        <h3 class="fw-extrabold mb-1"><?php echo number_format($classCounts[$classKey]); ?></h3>
+                        <h2 class="h5 fw-normal text-gray-600 mb-1"><?php echo $cfg['label']; ?></h2>
+                        <small class="text-gray-500"><?php echo $cfg['desc']; ?></small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
     <!-- Assets by Country -->
     <div class="row mb-4">
         <div class="col-12 col-lg-6 mb-4">
@@ -262,6 +299,9 @@ include __DIR__ . '/includes/header.php';
                                                 'Available' => 'success',
                                                 'Allocated' => 'warning',
                                                 'CheckedOut' => 'info',
+                                                'InProject' => 'primary',
+                                                'Consumed' => 'secondary',
+                                                'Deployed' => 'dark',
                                                 'Missing' => 'danger',
                                                 default => 'secondary'
                                             };

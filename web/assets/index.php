@@ -14,7 +14,18 @@ $page_title = 'Assets';
 $countryFilter = $_GET['country'] ?? '';
 $statusFilter = $_GET['status'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
+$itemClassFilter = $_GET['item_class'] ?? '';
 $searchTerm = $_GET['search'] ?? '';
+
+$itemClassLabels = [
+    'FixedAsset'  => 'Fixed Assets',
+    'Material'    => 'Materials',
+    'Consumable'  => 'Consumables',
+    'Inventory'   => 'Inventory',
+];
+$page_title = $itemClassFilter && isset($itemClassLabels[$itemClassFilter])
+    ? $itemClassLabels[$itemClassFilter]
+    : 'All Items';
 
 // Firestore collections (split sources of truth)
 $assetsRaw = am_firestore_get_collection('am_core_assets', 2000);
@@ -66,6 +77,11 @@ foreach ($assetsRaw as $asset) {
     $assetId = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
     $status = (string)($asset['status'] ?? '');
 
+    $itemClass = (string)($asset['item_class'] ?? '');
+
+    if ($itemClassFilter !== '' && $itemClassFilter !== $itemClass) {
+        continue;
+    }
     if ($countryFilter !== '' && $countryFilter !== $countryId) {
         continue;
     }
@@ -96,6 +112,7 @@ foreach ($assetsRaw as $asset) {
     $asset['country_name'] = (string)($country['country_name'] ?? '');
     $asset['country_code'] = (string)($country['country_code'] ?? '');
     $asset['category_name'] = (string)($category['category_name'] ?? '');
+    $asset['item_class'] = $itemClass;
     $asset['category_type'] = (string)($category['category_type'] ?? '');
     $asset['location_name'] = (string)($location['location_name'] ?? '');
     $asset['location_code'] = (string)($location['location_code'] ?? '');
@@ -113,7 +130,8 @@ usort($assets, function ($a, $b) {
 // Filter options
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
 $categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
-$statuses = ['Available', 'Allocated', 'CheckedOut', 'Missing', 'WrittenOff', 'Retired'];
+$statuses = ['Available', 'Allocated', 'CheckedOut', 'InProject', 'Consumed', 'Deployed', 'Missing', 'WrittenOff', 'Retired'];
+$itemClasses = ['FixedAsset' => 'Fixed Assets', 'Material' => 'Materials', 'Consumable' => 'Consumables', 'Inventory' => 'Inventory'];
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -121,13 +139,13 @@ include __DIR__ . '/../includes/header.php';
 <div class="py-4">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
         <div class="d-block mb-4 mb-md-0">
-            <h1 class="h2">Assets</h1>
-            <p class="mb-0">Manage and track all assets across Lesotho, Zambia, and Benin</p>
+            <h1 class="h2"><?php echo htmlspecialchars($page_title); ?></h1>
+            <p class="mb-0">Manage and track all items across Lesotho, Zambia, and Benin</p>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="<?php echo base_url('assets/add.php'); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
+            <a href="<?php echo base_url('assets/add.php' . ($itemClassFilter ? '?item_class=' . urlencode($itemClassFilter) : '')); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
                 <i class="fas fa-plus me-2"></i>
-                Add New Asset
+                Add New Item
             </a>
             <button class="btn btn-sm btn-primary d-inline-flex align-items-center" onclick="labelPrinter.generateLabel(prompt('Enter Asset ID:'))">
                 <i class="fas fa-print me-2"></i>
@@ -145,34 +163,45 @@ include __DIR__ . '/../includes/header.php';
                     <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="Name, Serial, QR Code...">
                 </div>
                 <div class="col-12 col-md-2">
-                    <label class="form-label">Country</label>
-                    <select class="form-select" name="country">
-                        <option value="">All Countries</option>
-                        <?php foreach ($countries as $country): ?>
-                        <option value="<?php echo $country['country_id']; ?>" <?php echo $countryFilter == $country['country_id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($country['country_name']); ?>
+                    <label class="form-label">Classification</label>
+                    <select class="form-select" name="item_class">
+                        <option value="">All Classes</option>
+                        <?php foreach ($itemClasses as $classKey => $classLabel): ?>
+                        <option value="<?php echo $classKey; ?>" <?php echo $itemClassFilter === $classKey ? 'selected' : ''; ?>>
+                            <?php echo $classLabel; ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-12 col-md-2">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" name="status">
-                        <option value="">All Statuses</option>
-                        <?php foreach ($statuses as $status): ?>
-                        <option value="<?php echo $status; ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>>
-                            <?php echo $status; ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-12 col-md-3">
                     <label class="form-label">Category</label>
                     <select class="form-select" name="category">
                         <option value="">All Categories</option>
                         <?php foreach ($categories as $category): ?>
                         <option value="<?php echo $category['category_id']; ?>" <?php echo $categoryFilter == $category['category_id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($category['category_name']); ?> (<?php echo $category['category_type']; ?>)
+                            <?php echo htmlspecialchars($category['category_name']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-1">
+                    <label class="form-label">Country</label>
+                    <select class="form-select" name="country">
+                        <option value="">All</option>
+                        <?php foreach ($countries as $country): ?>
+                        <option value="<?php echo $country['country_id']; ?>" <?php echo $countryFilter == $country['country_id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($country['country_code'] ?? $country['country_name']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="status">
+                        <option value="">All</option>
+                        <?php foreach ($statuses as $status): ?>
+                        <option value="<?php echo $status; ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>>
+                            <?php echo $status; ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
@@ -196,6 +225,7 @@ include __DIR__ . '/../includes/header.php';
                             <th>QR Code</th>
                             <th>Asset Tag</th>
                             <th>Name</th>
+                            <th>Class</th>
                             <th>Category</th>
                             <th>Country</th>
                             <th>Location</th>
@@ -206,8 +236,8 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                         <?php if (empty($assets)): ?>
                         <tr>
-                            <td colspan="8" class="text-center text-gray-500 py-4">
-                                No assets found. <a href="<?php echo base_url('assets/add.php'); ?>">Add your first asset</a>
+                            <td colspan="9" class="text-center text-gray-500 py-4">
+                                No items found. <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a>
                             </td>
                         </tr>
                         <?php else: ?>
@@ -234,13 +264,20 @@ include __DIR__ . '/../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td>
+                                <?php
+                                $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
+                                $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+                                $cls = $asset['item_class'] ?? '';
+                                ?>
+                                <span class="badge bg-<?php echo $classColors[$cls] ?? 'secondary'; ?>">
+                                    <?php echo htmlspecialchars($classLabels[$cls] ?? $cls ?: '—'); ?>
+                                </span>
+                            </td>
+                            <td>
                                 <?php if ($asset['category_name']): ?>
                                     <span class="badge bg-gray-200 text-gray-800">
                                         <?php echo htmlspecialchars($asset['category_name']); ?>
                                     </span>
-                                    <?php if ($asset['category_type']): ?>
-                                        <br><small class="text-gray-500"><?php echo $asset['category_type']; ?></small>
-                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-gray-400">—</span>
                                 <?php endif; ?>
@@ -267,6 +304,9 @@ include __DIR__ . '/../includes/header.php';
                                         'Available' => 'success',
                                         'Allocated' => 'warning',
                                         'CheckedOut' => 'info',
+                                        'InProject' => 'primary',
+                                        'Consumed' => 'secondary',
+                                        'Deployed' => 'dark',
                                         'Missing' => 'danger',
                                         'WrittenOff' => 'secondary',
                                         'Retired' => 'dark',
