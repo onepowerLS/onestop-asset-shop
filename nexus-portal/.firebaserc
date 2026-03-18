@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "pr-system-4ea55"
+  },
+  "targets": {
+    "pr-system-4ea55": {
+      "hosting": {
+        "nexus": [
+          "1pwr-nexus"
+        ]
+      }
+    }
+  }
+}

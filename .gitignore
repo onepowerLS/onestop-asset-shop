@@ -50,3 +50,10 @@ deploy/
 # Sensitive data
 config/local.php
 secrets/
+.secrets/
+*.pem
+*.key
+
+# Build output
+dist/
+build/

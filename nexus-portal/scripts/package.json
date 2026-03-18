@@ -1,0 +1,14 @@
+{
+  "name": "nexus-user-reconciliation",
+  "version": "1.0.0",
+  "description": "User reconciliation scripts for 1PWR Nexus unified auth",
+  "scripts": {
+    "export:pr": "node export-pr-users.js",
+    "reconcile": "node reconcile-users.js",
+    "import:dry-run": "node import-to-firestore.js --dry-run",
+    "import:live": "node import-to-firestore.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

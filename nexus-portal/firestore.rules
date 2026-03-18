@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/nexus_users/$(request.auth.uid)).data.systemAccess.pr.permissionLevel == 1;
+    }
+    
+    function isOwnDocument(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Nexus Users Collection
+    // Central user profile store for all 1PWR systems
+    match /nexus_users/{userId} {
+      // Users can read their own profile
+      // Admins can read all profiles
+      allow read: if isOwnDocument(userId) || isAdmin();
+      
+      // Only admins can create/update/delete users
+      allow create, update, delete: if isAdmin();
+      
+      // Allow users to update their own lastLoginAt
+      allow update: if isOwnDocument(userId) && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']);
+    }
+    
+    // System Access Requests
+    // Users can request access to systems they don't have
+    match /access_requests/{requestId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    
+    // Existing PR System collections - maintain current access
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isOwnDocument(userId);
+    }
+    
+    // AM Core collections
+    match /am_core_assets/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        get(/databases/$(database)/documents/nexus_users/$(request.auth.uid)).data.systemAccess.am.enabled == true;
+    }
+    
+    match /am_core_transactions/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        get(/databases/$(database)/documents/nexus_users/$(request.auth.uid)).data.systemAccess.am.enabled == true;
+    }
+    
+    match /am_core_allocations/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        get(/databases/$(database)/documents/nexus_users/$(request.auth.uid)).data.systemAccess.am.enabled == true;
+    }
+    
+    // PR Master data collections
+    match /pr_master_{collection}/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
