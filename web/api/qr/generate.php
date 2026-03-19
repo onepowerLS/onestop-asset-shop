@@ -1,10 +1,6 @@
 <?php
-/**
- * QR Code Generation API Endpoint
- */
 require_once __DIR__ . '/../../config/app.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../../qr/generator.php';
+require_once __DIR__ . '/../../config/firestore.php';
 
 header('Content-Type: application/json');
 
@@ -14,27 +10,61 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-$assetId = intval($_GET['asset_id'] ?? 0);
+$assetDocId = trim($_GET['asset_id'] ?? '');
 
-if (!$assetId) {
+if ($assetDocId === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Asset ID required']);
     exit;
 }
 
-try {
-    $generator = new QRGenerator($pdo);
-    $qrCodeId = $generator->assignQRCodeToAsset($assetId);
-    
-    echo json_encode([
-        'success' => true,
-        'qr_code_id' => $qrCodeId,
-        'asset_id' => $assetId
-    ]);
-} catch (Exception $e) {
+$asset = am_firestore_get_document('am_core_assets', $assetDocId);
+if (!$asset) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Asset not found']);
+    exit;
+}
+
+if (!empty($asset['qr_code_id'])) {
+    echo json_encode(['success' => true, 'qr_code_id' => $asset['qr_code_id'], 'asset_id' => $assetDocId]);
+    exit;
+}
+
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countryCode = 'UNK';
+$countryId = (string)($asset['country_id'] ?? '');
+foreach ($countries as $c) {
+    if ((string)($c['country_id'] ?? $c['id'] ?? '') === $countryId) {
+        $countryCode = (string)($c['country_code'] ?? 'UNK');
+        break;
+    }
+}
+
+$itemClass = (string)($asset['item_class'] ?? 'ITM');
+$prefixes = ['FixedAsset' => 'FA', 'Material' => 'MAT', 'Consumable' => 'CON', 'Inventory' => 'INV'];
+$classPrefix = $prefixes[$itemClass] ?? 'ITM';
+
+$allAssets = am_firestore_get_collection('am_core_assets', 2000);
+$qrPrefix = "1PWR-{$countryCode}-{$classPrefix}-";
+$maxNum = 0;
+foreach ($allAssets as $a) {
+    $qr = (string)($a['qr_code_id'] ?? '');
+    if (str_starts_with($qr, $qrPrefix)) {
+        $numPart = (int)substr($qr, strlen($qrPrefix));
+        if ($numPart > $maxNum) $maxNum = $numPart;
+    }
+}
+
+$qrCodeId = $qrPrefix . str_pad((string)($maxNum + 1), 6, '0', STR_PAD_LEFT);
+
+$result = am_firestore_update_document('am_core_assets', $assetDocId, [
+    'qr_code_id' => $qrCodeId,
+    'updated_at' => date('c'),
+]);
+
+if ($result['ok']) {
+    echo json_encode(['success' => true, 'qr_code_id' => $qrCodeId, 'asset_id' => $assetDocId]);
+} else {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'error' => $result['error'] ?? 'Failed to assign QR code']);
 }
