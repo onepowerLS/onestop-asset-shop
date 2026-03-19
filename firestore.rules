@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helper: resolve user role from /users/{uid} ─────────────
+    // ── Helper functions ────────────────────────────────────────
     // permissionLevel in users collection:
     //   6 = SuperAdmin, 5 = Admin → AM Admin
     //   3-4 = Approver/Manager   → AM Manager
@@ -52,7 +52,6 @@ service cloud.firestore {
     match /am_core_transactions/{docId} {
       allow read:   if isViewer();
       allow create: if isManager();
-      // Transactions are immutable — no update/delete
       allow update: if false;
       allow delete: if false;
     }
@@ -64,7 +63,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ── PR master / shared collections ──────────────────────────
+    // ── AM PR master / shared collections ───────────────────────
 
     match /pr_master_categories/{docId} {
       allow read:   if isViewer();
@@ -83,8 +82,8 @@ service cloud.firestore {
 
     match /pr_master_requests/{docId} {
       allow read:   if isViewer();
-      allow create: if isViewer();   // Any authenticated user can submit
-      allow update: if isManager();  // Only managers+ can approve/reject
+      allow create: if isViewer();
+      allow update: if isManager();
       allow delete: if isAdmin();
     }
 
@@ -97,17 +96,74 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      // Users can update only their own profile
       allow update: if request.auth.uid == userId;
-      // Only admins can create/delete user docs
       allow create: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── Deny everything else by default ─────────────────────────
+    // ── PR System reference data collections ────────────────────
+
+    match /departments/{docId} {
+      allow read, write: if true;
+    }
+
+    match /projectCategories/{docId} {
+      allow read, write: if true;
+    }
+
+    match /sites/{docId} {
+      allow read, write: if true;
+    }
+
+    match /expenseTypes/{docId} {
+      allow read, write: if true;
+    }
+
+    match /vehicles/{docId} {
+      allow read, write: if true;
+    }
+
+    match /vendors/{docId} {
+      allow read, write: if true;
+    }
+
+    match /currencies/{docId} {
+      allow read, write: if true;
+    }
+
+    // ── PR System purchase requests ─────────────────────────────
+
+    match /purchaseRequests/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        (resource.data.requestorId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.permissionLevel <= 4);
+      allow delete: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.permissionLevel <= 2;
+    }
+
+    // ── PR System archive ───────────────────────────────────────
+
+    match /archivePRs/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Job Cards ───────────────────────────────────────────────
+
+    match /jobCards/{jobCardId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // ── Catch-all: allow authenticated access to any other
+    //    collection (referenceData_*, etc.) ───────────────────────
 
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }

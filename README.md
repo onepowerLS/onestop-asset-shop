@@ -29,6 +29,16 @@ See [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) for the
 | [`TESTING.md`](TESTING.md) | Testing checklists and UAT scenarios |
 | [`qr/README.md`](qr/README.md) | QR code format, generation API, scanning |
 
+## SHARED FIREBASE PROJECT -- READ BEFORE MAKING CHANGES
+
+> **This project shares Firebase project `pr-system-4ea55` with the PR System and other 1PWR tools.** Deploying Firestore security rules, authentication config, or any Firebase-level settings from this repo will overwrite the configuration for ALL dependent systems -- including the production PR system used daily by staff across Lesotho, Zambia, and Benin.
+>
+> **Before deploying any Firebase changes:**
+> 1. Check `firestore.rules` -- it must include rules for ALL systems (AM, PR, Job Cards), not just AM collections. The catch-all rule MUST be `allow read, write: if request.auth != null;` -- never `if false`.
+> 2. Do NOT run `firebase deploy --only firestore:rules` unless you have verified the rules file covers every dependent system's collections.
+> 3. Coordinate with the PR System repo (`PR 25 NOV`) to keep rules files in sync.
+> 4. If you need to test rules changes, use the Firebase Emulator Suite -- never deploy experimental rules to production.
+
 ## Features
 
 - **4-Tier Item Classification**: Industry-standard asset/material/consumable/inventory model with 22 seed categories

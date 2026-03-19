@@ -142,6 +142,15 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <li class="nav-item <?php echo $current_page === 'help' ? 'active' : ''; ?>">
+                <a href="<?php echo base_url('help.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-question-circle"></i>
+                    </span>
+                    <span class="sidebar-text">Help</span>
+                </a>
+            </li>
+
             <?php if (is_logged_in() && ($_SESSION['role'] ?? '') === 'Admin'): ?>
             <li class="nav-item">
                 <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-admin">
