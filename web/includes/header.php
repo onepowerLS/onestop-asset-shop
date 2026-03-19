@@ -15,7 +15,7 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
     <title><?php echo htmlspecialchars($page_title); ?> - <?php echo APP_NAME; ?></title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo base_url('assets/img/favicon/favicon-32x32.png'); ?>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24' font-weight='bold' fill='%231976d2'>1P</text></svg>">
     
     <!-- Volt Dashboard CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -63,7 +63,7 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
 
     <nav class="navbar navbar-dark navbar-theme-primary px-4 col-12 d-lg-none">
         <a class="navbar-brand me-lg-5" href="<?php echo base_url(); ?>">
-            <img src="<?php echo base_url('assets/img/brand/1pwr-logo.png'); ?>" class="navbar-brand-light" alt="1PWR Logo" style="height: 30px;">
+            <span style="font-weight:700;font-size:1.1rem;color:#fff;">1PWR</span> <span style="font-weight:400;color:rgba(255,255,255,0.8);">AM</span>
         </a>
         <div class="d-flex align-items-center">
             <button class="navbar-toggler d-lg-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
