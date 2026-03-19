@@ -177,9 +177,11 @@ include __DIR__ . '/../includes/header.php';
                     <label class="form-label">Category</label>
                     <select class="form-select" name="category">
                         <option value="">All Categories</option>
-                        <?php foreach ($categories as $category): ?>
-                        <option value="<?php echo $category['category_id']; ?>" <?php echo $categoryFilter == $category['category_id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($category['category_name']); ?>
+                        <?php foreach ($categories as $category):
+                            $catId = (string)($category['category_id'] ?? $category['id'] ?? '');
+                        ?>
+                        <option value="<?php echo $catId; ?>" <?php echo $categoryFilter == $catId ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($category['category_name'] ?? ''); ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
@@ -188,9 +190,11 @@ include __DIR__ . '/../includes/header.php';
                     <label class="form-label">Country</label>
                     <select class="form-select" name="country">
                         <option value="">All</option>
-                        <?php foreach ($countries as $country): ?>
-                        <option value="<?php echo $country['country_id']; ?>" <?php echo $countryFilter == $country['country_id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($country['country_code'] ?? $country['country_name']); ?>
+                        <?php foreach ($countries as $country):
+                            $cntId = (string)($country['country_id'] ?? $country['id'] ?? '');
+                        ?>
+                        <option value="<?php echo $cntId; ?>" <?php echo $countryFilter == $cntId ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($country['country_code'] ?? $country['country_name'] ?? ''); ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
