@@ -71,7 +71,7 @@ function am_http_post_json(string $url, array $payload, array $headers = []): ar
         $response = curl_exec($ch);
         $error = curl_error($ch);
         $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         // If cURL fails (common on local SSL/cert issues), fall back to streams.
         if ($response === false || !empty($error) || $statusCode === 0) {
@@ -153,7 +153,7 @@ function am_http_get_json(string $url, array $headers = []): array {
         $response = curl_exec($ch);
         $error = curl_error($ch);
         $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         if ($response === false || !empty($error) || $statusCode === 0) {
             $stream = am_http_get_json_stream($url, $headers);

@@ -54,7 +54,7 @@ function am_http_request_json(string $method, string $url, ?array $payload = nul
         $response = curl_exec($ch);
         $error = curl_error($ch);
         $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         if ($response === false || !empty($error) || $statusCode === 0) {
             $stream = am_http_request_json_stream($method, $url, $body, $requestHeaders);
