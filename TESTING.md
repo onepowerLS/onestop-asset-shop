@@ -4,93 +4,139 @@
 
 OneStop Asset Shop uses a multi-level testing approach:
 
-1. **Unit Tests** - Individual functions/components
-2. **Integration Tests** - Database and API interactions
-3. **Manual Testing** - User workflows and UI
-4. **Production Testing** - Pre-deployment verification
+1. **PHP Syntax Validation** - All `.php` files must parse without errors
+2. **Firestore Connectivity** - Firebase Auth + Firestore REST API must be reachable
+3. **Manual Testing** - User workflows across all 16 pages
+4. **Production Smoke Test** - Post-deployment verification
 
 ## Automated Tests
 
 ### Running Tests Locally
 
 ```bash
-# PHP syntax check
-find . -name "*.php" -exec php -l {} \;
+# PHP syntax check (all files)
+find web/ -name "*.php" -exec php -l {} \;
 
-# Database connectivity test
-php -r "require 'web/config/database.php'; echo 'Connected!';"
-
-# Run GitHub Actions tests locally (using act)
-act -j test
+# Health check (requires running web server)
+curl http://localhost/health.php
 ```
 
 ### CI/CD Tests (GitHub Actions)
 
-Tests run automatically on:
-- Push to `develop` or `main`
-- Pull requests
-- Manual workflow dispatch
-
-**Test Suite Includes**:
-- PHP syntax validation
-- Database schema validation
-- Security checks (basic)
-- Connectivity tests
+Tests run automatically on push to `develop` or `main`:
+- PHP syntax validation across all files
+- Health check endpoint verification
 
 ## Manual Testing Checklist
 
 ### Pre-Deployment Testing
 
 #### Authentication & Authorization
-- [ ] Login with valid credentials
-- [ ] Login with invalid credentials (error handling)
-- [ ] Logout functionality
-- [ ] Session timeout
-- [ ] Access control (admin vs user)
+- [ ] Login with Firebase email/password
+- [ ] Login with username (MySQL lookup -> Firebase)
+- [ ] Login with invalid credentials shows friendly error
+- [ ] Logout clears session and redirects to login
+- [ ] Session `firebase_id_token` is present after login
+- [ ] Admin-only pages (categories, locations, employees, QR labels) blocked for non-Admin
+- [ ] Role mapping: PR Admin -> AM Admin, PR Approver -> AM Manager, PR Requester -> AM Viewer
 
-#### Asset Management
-- [ ] View assets list
-- [ ] Filter by country (Lesotho, Zambia, Benin)
-- [ ] Filter by status
-- [ ] Filter by category
-- [ ] Search by name/serial/QR code
-- [ ] Add new asset
-- [ ] Edit existing asset
-- [ ] View asset details
-- [ ] Delete asset (if implemented)
+#### Item Catalog (web/assets/)
+- [ ] **Listing** -- all items load from `am_core_assets`
+- [ ] Filter by item_class (FixedAsset, Material, Consumable, Inventory)
+- [ ] Filter by category, country, status
+- [ ] Search by name, serial number, QR code, asset tag
+- [ ] Class column shows correct color-coded badge
+- [ ] Sidebar Catalog menu links filter correctly
+- [ ] **Add** -- classification radio buttons toggle field sections
+  - [ ] FixedAsset shows serial, manufacturer, model, purchase price, salvage, warranty
+  - [ ] Material/Consumable/Inventory shows quantity, unit of measure, unit cost
+  - [ ] Category dropdown filters by selected item_class
+  - [ ] Asset tag auto-generated on save (1PWR-{CLASS}-{COUNTRY}-{PADDED})
+  - [ ] Saved item appears in listing
+- [ ] **View** -- detail page loads by doc ID and by QR code
+  - [ ] All fields displayed correctly
+  - [ ] Allocation history shows active allocations
+  - [ ] Transaction history shows item-specific transactions
+  - [ ] Breadcrumb navigation works
+- [ ] **Edit** -- form pre-populated with existing data
+  - [ ] Classification change updates visible fields
+  - [ ] Status dropdown includes all 9 statuses
+  - [ ] Save updates Firestore document
+  - [ ] Flash message confirms update
 
-#### QR Code Functionality
-- [ ] Generate QR code for asset
-- [ ] Print QR label (Brother PT-P710BT)
-- [ ] Scan QR code with Symcode scanner
-- [ ] QR code redirects to correct asset page
-- [ ] QR code format validation
+#### Dashboard (web/index.php)
+- [ ] Total item count correct
+- [ ] Item class breakdown cards show correct counts
+- [ ] Class cards link to filtered catalog view
+- [ ] Assets by Country table accurate
+- [ ] Assets by Status table accurate
+- [ ] Recent Transactions list shows latest 10
 
-#### Check-In/Check-Out
-- [ ] Check out asset to employee
-- [ ] Check in asset
-- [ ] View allocation history
-- [ ] Bulk checkout (if implemented)
+#### Admin Pages (web/admin/)
+- [ ] **Categories** -- grouped by item_class with correct counts
+  - [ ] Create new category with all fields
+  - [ ] Edit existing category
+  - [ ] Delete category
+  - [ ] Depreciation fields (useful life, method) saved correctly
+  - [ ] Reorder toggle works
+- [ ] **Locations** -- grouped by country
+  - [ ] Create with code, name, type, country, parent
+  - [ ] Edit and delete
+  - [ ] Hierarchical parent selection dropdown
+- [ ] **Employees** -- directory loads
+  - [ ] Search by name/email/phone
+  - [ ] Filter by country
+  - [ ] DataTables pagination and sorting
 
-#### Requests
-- [ ] Create new request (RET, FAC, O&M, etc.)
-- [ ] View request list
-- [ ] Filter requests by type
-- [ ] Approve/reject requests (if implemented)
-- [ ] Fulfill request
+#### Stock Levels (web/inventory/)
+- [ ] Displays Material, Consumable, Inventory items
+- [ ] On-hand, allocated, available columns correct
+- [ ] Reorder alert banner when items at/below threshold
+- [ ] Low-stock filter checkbox
+- [ ] Filter by item_class and country
 
-#### Inventory
-- [ ] View inventory levels by country
-- [ ] View inventory by location
-- [ ] Stock taking workflow
-- [ ] Stock ingestion workflow
+#### Transactions (web/transactions/)
+- [ ] Full history loads sorted by date descending
+- [ ] Filter by transaction type
+- [ ] Search by asset name/tag/notes
+- [ ] Color-coded type badges
 
-#### Multi-Country Features
-- [ ] Filter assets by Lesotho
-- [ ] Filter assets by Zambia
-- [ ] Filter assets by Benin
-- [ ] Country-specific reporting
-- [ ] Country-specific permissions
+#### Check-Out/In (web/checkout/)
+- [ ] Check-out form: select item, employee, expected return, notes
+  - [ ] Creates allocation record in `am_core_allocations`
+  - [ ] Creates transaction record in `am_core_transactions`
+  - [ ] Updates asset status to `CheckedOut`
+- [ ] Check-in form: select active allocation, return location
+  - [ ] Updates allocation status to `Returned`
+  - [ ] Creates CheckIn transaction
+  - [ ] Restores asset status to `Available`
+- [ ] Active allocations table accurate
+
+#### Requests (web/requests/)
+- [ ] Status summary cards show correct counts
+- [ ] New request form: item_class, department, country, priority, description
+  - [ ] Request number auto-generated (REQ-YYYY-NNNN)
+  - [ ] Status set to `Submitted`
+- [ ] Admin approve/reject buttons work
+- [ ] Fulfilled status records fulfilled_date
+
+#### QR Labels (web/admin/qr-labels.php)
+- [ ] Coverage stats (assigned, pending, percentage)
+- [ ] Items without QR listed with Generate button
+- [ ] Single QR generation via API works
+- [ ] Batch generation selects all and generates
+- [ ] QR code format: `1PWR-{COUNTRY}-{CLASS}-{PADDED}`
+- [ ] QR preview images render
+
+#### QR Scanner
+- [ ] Hidden input captures HID scanner output
+- [ ] Scanning redirects to `assets/view.php?qr=` with correct code
+- [ ] Asset found by QR code displays correctly
+
+#### Multi-Country
+- [ ] All filters respect country selection
+- [ ] Items created with correct country_id
+- [ ] Location dropdown shows locations for all countries
 
 ### Browser Testing
 
@@ -108,163 +154,117 @@ Test on:
 - [ ] Tablet (768x1024) - for future tablet features
 - [ ] Mobile (375x667)
 
-## Performance Testing
+## Performance Considerations
 
-### Load Testing
+All data lives in Firestore via REST API. Every page-load fetches entire collections client-side. Expected performance characteristics:
 
-```bash
-# Using Apache Bench
-ab -n 1000 -c 10 https://assets.1pwrafrica.com/
+- **< 500 items** -- fast, no issues
+- **500-2000 items** -- noticeable latency on listing pages
+- **> 2000 items** -- pagination or server-side filtering via Firestore structured queries needed
 
-# Using curl for response time
-time curl https://assets.1pwrafrica.com/health.php
-```
-
-### Database Performance
-
-- [ ] Test with 1000+ assets
-- [ ] Test with 100+ concurrent users
-- [ ] Check query execution time
-- [ ] Verify indexes are used
-
-## Security Testing
-
-### Checklist
-
-- [ ] SQL injection prevention (use prepared statements)
-- [ ] XSS prevention (escape output)
-- [ ] CSRF protection (if forms implemented)
-- [ ] Authentication bypass attempts
-- [ ] File upload security (if implemented)
-- [ ] Sensitive data exposure
-- [ ] Password strength requirements
-- [ ] Session security
-
-### Tools
-
-- OWASP ZAP (basic scan)
-- Manual security review
-- Check for hardcoded credentials
-
-## Database Testing
-
-### Schema Validation
-
-```sql
--- Verify all tables exist
-SHOW TABLES;
-
--- Check table structures
-DESCRIBE assets;
-DESCRIBE countries;
-DESCRIBE transactions;
-
--- Verify foreign keys
-SELECT * FROM information_schema.KEY_COLUMN_USAGE 
-WHERE TABLE_SCHEMA = 'onestop_asset_shop' 
-AND REFERENCED_TABLE_NAME IS NOT NULL;
-```
-
-### Data Integrity
-
-- [ ] Foreign key constraints work
-- [ ] Unique constraints enforced
-- [ ] Required fields validated
-- [ ] Data types correct
-
-## API Testing
-
-### Endpoints to Test
+### Quick Smoke Test
 
 ```bash
 # Health check
 curl https://assets.1pwrafrica.com/health.php
 
-# QR generation
-curl "https://assets.1pwrafrica.com/api/qr/generate.php?asset_id=1"
-
-# Asset lookup by QR
-curl "https://assets.1pwrafrica.com/api/assets/by-qr.php?qr_code=1PWR-LSO-000001"
+# QR generation (requires auth session -- test via browser)
+# /api/qr/generate.php?asset_id=DOC_ID&country_code=LSO
 ```
+
+## Security Testing
+
+### Checklist
+
+- [ ] All Firestore calls include valid `firebase_id_token` in Authorization header
+- [ ] `firebase_id_token` refreshed/validated on each request
+- [ ] XSS prevention: all user input HTML-escaped with `htmlspecialchars()`
+- [ ] CSRF: forms use POST + session validation
+- [ ] No hardcoded Firebase API keys beyond the public web API key (which is safe to expose)
+- [ ] `.env` file excluded from git (check `.gitignore`)
+- [ ] Admin pages check `$_SESSION['am_role'] === 'Admin'` before rendering
+- [ ] No raw Firestore error details exposed to end users
 
 ## User Acceptance Testing (UAT)
 
-### Test Scenarios
+### End-to-End Scenarios
 
-1. **New Asset Registration**
-   - User adds new asset
-   - Generates QR code
-   - Prints label
-   - Scans label to verify
+**Scenario 1: Register a Fixed Asset**
+1. Navigate to Catalog > Add New Item
+2. Select classification: Fixed Asset
+3. Fill serial number, manufacturer, model, purchase price, warranty
+4. Save -- verify asset_tag generated
+5. Navigate to Admin > QR Labels
+6. Find the new item, generate QR code
+7. Verify QR code image renders
+8. Click asset link -- verify view page loads
 
-2. **Asset Checkout**
-   - User scans QR code
-   - Selects employee
-   - Completes checkout
-   - Verifies in allocation list
+**Scenario 2: Register Consumables (Bulk)**
+1. Add New Item, select Consumable
+2. Enter name, quantity = 100, UOM = EA, unit cost
+3. Save
+4. Navigate to Stock Levels -- verify item appears with qty 100
 
-3. **Stock Taking**
-   - User starts stock take
-   - Scans multiple assets
-   - Completes stock take
-   - Reviews variance report
+**Scenario 3: Check Out and Return**
+1. Navigate to Check-Out/In
+2. Select an Available item and an employee
+3. Set expected return date, submit
+4. Verify item status changes to `CheckedOut`
+5. Verify allocation appears in Active Allocations
+6. Select the allocation, set return location, check in
+7. Verify item status reverts to `Available`
+8. Verify Transaction History shows both CheckOut and CheckIn
 
-4. **Multi-Country Workflow**
-   - User filters by Lesotho
-   - Adds asset in Zambia
-   - Views Benin inventory
-   - Generates country report
+**Scenario 4: Submit and Fulfill a Request**
+1. Navigate to Requests > New Request
+2. Select item_class = Material, department = O&M, priority = High
+3. Submit
+4. As Admin, approve the request
+5. Fulfill the request
+6. Verify fulfilled_date is set
+
+**Scenario 5: Multi-Country Operation**
+1. Switch country filter to Zambia on dashboard
+2. Add item in Zambia
+3. Switch to Lesotho -- item should not appear
+4. Switch to All Countries -- item appears
 
 ## Production Readiness Checklist
 
 Before deploying to production:
 
-- [ ] All automated tests pass
-- [ ] Manual testing completed
-- [ ] Performance acceptable
-- [ ] Security review completed
-- [ ] Database backup created
-- [ ] Rollback plan documented
-- [ ] Monitoring configured
-- [ ] Error logging configured
-- [ ] SSL certificate installed
-- [ ] Environment variables set
-- [ ] Documentation updated
+- [ ] `php -l` passes on all PHP files
+- [ ] `.env` configured with correct Firebase project ID and API key
+- [ ] Firebase Auth: email/password sign-in enabled in Firebase Console
+- [ ] Firestore: `pr_master_countries` seeded with LSO, ZMB, BEN
+- [ ] Firestore: `pr_master_categories` seeded (see `database/schema-consolidated.sql` for seed data)
+- [ ] Firestore: at least one user in `users` collection with Admin role
+- [ ] SSL certificate installed and valid
+- [ ] Apache DocumentRoot points to `/var/www/onestop-asset-shop/web`
+- [ ] Apache `AllowOverride All` for URL rewriting
+- [ ] Health check returns `{"status":"healthy"}`
+- [ ] Manual walkthrough of all 5 UAT scenarios above
+- [ ] Rollback plan: `git checkout <previous-tag>` documented
+
+## Test Data Seeding
+
+Minimum data required to exercise all features:
+
+| Collection | Minimum Records | Key Fields |
+|---|---|---|
+| `pr_master_countries` | 3 | LSO, ZMB, BEN |
+| `pr_master_locations` | 6 | 2 per country |
+| `pr_master_categories` | 8 | 2 per item_class |
+| `am_core_assets` | 12 | 3 per item_class |
+| `users` | 3 | 1 Admin, 1 Manager, 1 Viewer |
 
 ## Bug Reporting
 
 When reporting bugs, include:
 
-1. **Description**: What happened vs what was expected
-2. **Steps to Reproduce**: Detailed steps
-3. **Environment**: Browser, OS, user role
-4. **Screenshots**: If applicable
-5. **Error Messages**: Full error text
-6. **Logs**: Relevant log entries
-
-## Test Data
-
-### Sample Data for Testing
-
-Create test data for:
-- 3 countries (Lesotho, Zambia, Benin)
-- 10+ locations per country
-- 50+ assets across categories
-- 5+ employees
-- 20+ transactions
-- Various asset statuses
-
-### Test User Accounts
-
-- Admin user (full access)
-- Manager user (limited admin)
-- Operator user (standard access)
-- Viewer user (read-only)
-
-## Continuous Improvement
-
-- Review test coverage regularly
-- Add tests for new features
-- Update test data as needed
-- Refine testing procedures
-- Document edge cases
+1. **Page URL and action** -- which page, what button/form
+2. **Expected vs actual result**
+3. **Browser console errors** (F12 > Console)
+4. **PHP error log** -- `sudo tail -50 /var/log/apache2/error.log`
+5. **Network tab** -- screenshot of failed Firestore API call if applicable
+6. **User role** -- Admin, Manager, or Viewer

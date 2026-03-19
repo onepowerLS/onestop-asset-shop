@@ -125,6 +125,24 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </span>
+                    <span class="sidebar-text">Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="<?php echo base_url('tablet/index.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-tablet-screen-button"></i>
+                    </span>
+                    <span class="sidebar-text">Tablet Mode</span>
+                </a>
+            </li>
+
             <?php if (is_logged_in() && ($_SESSION['role'] ?? '') === 'Admin'): ?>
             <li class="nav-item">
                 <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-admin">
@@ -158,6 +176,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/qr-labels.php'); ?>">
                                 <span class="sidebar-text">QR Labels</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/migrate.php'); ?>">
+                                <span class="sidebar-text">Data Migration</span>
                             </a>
                         </li>
                     </ul>

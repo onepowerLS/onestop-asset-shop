@@ -17,6 +17,18 @@ All physical items are classified into four tiers aligned with IAS 16 / IAS 2 ac
 
 See [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) for the full classification SOP with decision tree and edge cases.
 
+## Documentation
+
+| Document | Description |
+|---|---|
+| [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) | End-user guide for all application features |
+| [`docs/FIRESTORE_SCHEMA.md`](docs/FIRESTORE_SCHEMA.md) | Collection schemas, field reference, PHP API usage |
+| [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) | Item classification SOP with decision tree |
+| [`database/MIGRATION_GUIDE.md`](database/MIGRATION_GUIDE.md) | Data migration procedures and legacy mapping |
+| [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md) | AWS EC2 deployment and CI/CD |
+| [`TESTING.md`](TESTING.md) | Testing checklists and UAT scenarios |
+| [`qr/README.md`](qr/README.md) | QR code format, generation API, scanning |
+
 ## Features
 
 - **4-Tier Item Classification**: Industry-standard asset/material/consumable/inventory model with 22 seed categories
@@ -47,10 +59,22 @@ See [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) for the
 - [x] 4-tier item classification model implemented (IAS 16/IAS 2)
 - [x] 22 seed categories defined across all classes
 - [x] Classification SOP with decision tree created
-- [ ] Data migration from identified sources
-- [ ] Legacy category_type -> item_class migration
-- [ ] QR code integration
-- [ ] Tablet UI development
+- [x] Firestore write/update/delete layer (`web/config/firestore.php`)
+- [x] Asset CRUD: add, view, edit with item_class-driven forms
+- [x] Admin pages: categories, locations, employees
+- [x] Stock levels dashboard with reorder alerts
+- [x] Transaction history with filtering
+- [x] Check-out/check-in workflow
+- [x] Request management with approval flow
+- [x] QR code generation via Firestore (API + batch admin)
+- [x] Data migration ETL (Python) -- 2,874 items from 9 sources, classified and deduplicated
+- [x] Legacy category_type → item_class mapping (built into ETL)
+- [x] Firestore security rules (role-based via permissionLevel, deployed)
+- [x] Tablet mode (scan-centric check-out/in, stock count, quick lookup)
+- [x] Reports & export (6 report types, CSV and PDF)
+- [x] Admin migration page (batch import from ETL JSON to Firestore)
+- [ ] Initial data load (run ETL → import via admin page)
+- [ ] UAT walkthrough on staging server
 
 ## Project Structure
 
@@ -69,9 +93,15 @@ onestop-asset-shop/
 │   ├── inventory/                # Stock level tracking
 │   ├── requests/                 # Material/item requests
 │   ├── checkout/                 # Check-out/in workflows
-│   ├── admin/                    # Categories, locations, employees
+│   ├── admin/                    # Categories, locations, employees, QR, migration
+│   ├── tablet/                   # Tablet-optimized scan-centric UI
+│   ├── reports/                  # Report generation and CSV/PDF export
 │   └── api/                      # QR generation and other APIs
+├── migration/
+│   ├── etl.py                    # Python ETL: Excel sources → classified JSON
+│   └── output/                   # ETL output (JSON files for import)
 ├── qr/                           # QR generation & scanning utilities
+├── firestore.rules               # Firestore security rules
 └── deployment/                   # AWS deployment configs
 ```
 

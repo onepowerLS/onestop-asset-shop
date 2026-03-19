@@ -2,7 +2,7 @@
 
 ## Overview
 
-OneStop Asset Shop uses **GitHub Actions** for CI/CD and deploys to **AWS EC2**.
+OneStop Asset Shop uses **GitHub Actions** for CI/CD and deploys to **AWS EC2**. The application uses **Firebase/Firestore** as the primary data store and **Firebase Authentication** for user login.
 
 ## Branch Strategy
 
@@ -93,8 +93,21 @@ Create an IAM user with these permissions:
 3. **Configure environment**
    ```bash
    cd /var/www/onestop-asset-shop
+   cp .env.example .env
    nano .env
-   # Update database credentials and other settings
+   ```
+
+   Required `.env` values:
+   ```
+   FIREBASE_WEB_API_KEY=AIzaSy...your-key
+   FIREBASE_PROJECT_ID=pr-system-4ea55
+   ALLOW_INSECURE_SSL_LOCAL=false
+   
+   # MySQL only needed for legacy username lookup during auth
+   DB_HOST=localhost
+   DB_NAME=onestop_asset_shop
+   DB_USER=onestop_user
+   DB_PASS=your-password
    ```
 
 4. **Set up SSL (Let's Encrypt)**
@@ -125,14 +138,19 @@ cd /var/www/onestop-asset-shop
 # Pull latest changes
 git pull origin main
 
-# Run database migrations (if any)
-mysql -u onestop_user -p onestop_asset_shop < database/migrations/new-migration.sql
+# Verify .env has correct Firebase credentials
+cat .env | grep FIREBASE
 
 # Restart web server
 sudo systemctl restart httpd  # Amazon Linux
 # or
 sudo systemctl restart apache2  # Ubuntu
+
+# Verify health
+curl http://localhost/health.php
 ```
+
+No database migration is needed for Firestore changes -- collection schemas are implicit. MySQL migrations are only needed if the legacy `users` table for username lookup changes.
 
 ## Testing Before Production
 

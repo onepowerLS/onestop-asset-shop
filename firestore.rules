@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: resolve user role from /users/{uid} ─────────────
+    // permissionLevel in users collection:
+    //   6 = SuperAdmin, 5 = Admin → AM Admin
+    //   3-4 = Approver/Manager   → AM Manager
+    //   1-2 = Requester/Viewer   → AM Viewer
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function permLevel() {
+      return userDoc().permissionLevel;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && permLevel() >= 5;
+    }
+
+    function isManager() {
+      return isAuthenticated() && permLevel() >= 3;
+    }
+
+    function isViewer() {
+      return isAuthenticated();
+    }
+
+    // ── AM core collections ─────────────────────────────────────
+
+    match /am_core_assets/{docId} {
+      allow read:   if isViewer();
+      allow create: if isManager();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    match /am_core_allocations/{docId} {
+      allow read:   if isViewer();
+      allow create: if isManager();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    match /am_core_transactions/{docId} {
+      allow read:   if isViewer();
+      allow create: if isManager();
+      // Transactions are immutable — no update/delete
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /am_core_inventory_levels/{docId} {
+      allow read:   if isViewer();
+      allow create: if isManager();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    // ── PR master / shared collections ──────────────────────────
+
+    match /pr_master_categories/{docId} {
+      allow read:   if isViewer();
+      allow write:  if isAdmin();
+    }
+
+    match /pr_master_countries/{docId} {
+      allow read:   if isViewer();
+      allow write:  if isAdmin();
+    }
+
+    match /pr_master_locations/{docId} {
+      allow read:   if isViewer();
+      allow write:  if isAdmin();
+    }
+
+    match /pr_master_requests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();   // Any authenticated user can submit
+      allow update: if isManager();  // Only managers+ can approve/reject
+      allow delete: if isAdmin();
+    }
+
+    match /pr_master_employees/{docId} {
+      allow read:  if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // ── User profiles ───────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // Users can update only their own profile
+      allow update: if request.auth.uid == userId;
+      // Only admins can create/delete user docs
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Deny everything else by default ─────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
