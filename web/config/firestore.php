@@ -105,8 +105,11 @@ function am_http_request_json_stream(string $method, string $url, ?string $body,
     if ($response === false) {
         $error = 'HTTP request failed.';
     }
-    if (isset($http_response_header) && is_array($http_response_header) && isset($http_response_header[0])) {
-        if (preg_match('/\s(\d{3})\s/', $http_response_header[0], $m)) {
+    $respHeaders = function_exists('http_get_last_response_headers')
+        ? http_get_last_response_headers()
+        : ($http_response_header ?? []);
+    if (is_array($respHeaders) && isset($respHeaders[0])) {
+        if (preg_match('/\s(\d{3})\s/', $respHeaders[0], $m)) {
             $statusCode = (int)$m[1];
         }
     }
