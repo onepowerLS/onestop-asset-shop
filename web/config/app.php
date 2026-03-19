@@ -16,9 +16,18 @@ if (session_status() === PHP_SESSION_NONE) {
 // Timezone
 date_default_timezone_set('Africa/Maseru'); // Default to Lesotho, can be changed per user
 
-// Error reporting (disable in production)
-error_reporting(E_ALL);
-ini_set('display_errors', 1); // Set to 0 in production
+// Error reporting: suppress deprecation/notices, log everything
+$envFile = __DIR__ . '/../../.env';
+$isProduction = true;
+if (file_exists($envFile)) {
+    $parsed = @parse_ini_file($envFile);
+    if (is_array($parsed) && ($parsed['APP_DEBUG'] ?? '') === 'true') {
+        $isProduction = false;
+    }
+}
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+ini_set('display_errors', $isProduction ? '0' : '1');
+ini_set('log_errors', '1');
 
 // Helper function to get base URL
 function base_url($path = '') {

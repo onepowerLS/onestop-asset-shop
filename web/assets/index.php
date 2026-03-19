@@ -122,14 +122,12 @@ foreach ($assetsRaw as $asset) {
 }
 
 usort($assets, function ($a, $b) {
-    $ai = (int)($a['asset_id'] ?? 0);
-    $bi = (int)($b['asset_id'] ?? 0);
-    return $bi <=> $ai;
+    return strcmp((string)($b['id'] ?? ''), (string)($a['id'] ?? ''));
 });
 
 // Filter options
-$countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
-$categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
+$countries = array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
+$categories = array_values(array_filter($categories, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $statuses = ['Available', 'Allocated', 'CheckedOut', 'InProject', 'Consumed', 'Deployed', 'Missing', 'WrittenOff', 'Retired'];
 $itemClasses = ['FixedAsset' => 'Fixed Assets', 'Material' => 'Materials', 'Consumable' => 'Consumables', 'Inventory' => 'Inventory'];
 
