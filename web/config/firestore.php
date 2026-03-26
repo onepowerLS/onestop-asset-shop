@@ -363,3 +363,77 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
     }
     return $out;
 }
+
+// ── PR-portal site sync ─────────────────────────────────────────────
+// Reads from the PR portal's canonical `sites` collection (Lesotho)
+// and `referenceData_sites` (Benin, Zambia, multi-org) so that AM
+// location dropdowns always reflect the single source of truth
+// maintained by the PR / Ops team.
+
+function am_get_pr_sites(): array {
+    $orgToCountry = [
+        '1pwr_lesotho' => 'LSO',
+        '1pwr_benin'   => 'BEN',
+        '1pwr_zambia'  => 'ZMB',
+    ];
+
+    $seen = [];
+    $locations = [];
+
+    // 1. `sites` collection — Lesotho field sites (canonical)
+    $sites = am_firestore_get_collection('sites', 500);
+    foreach ($sites as $s) {
+        $code = (string)($s['locationCode'] ?? $s['code'] ?? '');
+        $name = (string)($s['name'] ?? '');
+        if ($code === '' || $name === '') continue;
+        $orgId = strtolower((string)($s['organizationId'] ?? ''));
+        $countryCode = $orgToCountry[$orgId] ?? 'LSO';
+        $key = strtoupper($code) . '|' . $countryCode;
+        if (isset($seen[$key])) continue;
+        $seen[$key] = true;
+        $locations[] = [
+            'id'                   => $s['id'] ?? $code,
+            'location_code'        => strtoupper($countryCode) . '-' . strtoupper($code),
+            'location_name'        => $name,
+            'location_type'        => $s['type'] ?? 'Site',
+            'country_code'         => $countryCode,
+            'region'               => $s['region'] ?? '',
+            'parent_location_code' => '',
+            'active'               => ($s['active'] ?? true) ? 1 : 0,
+        ];
+    }
+
+    // 2. `referenceData_sites` — multi-org (Benin, Zambia, etc.)
+    //    Only pull sites from primary 1PWR orgs to avoid duplicates
+    //    from sub-orgs (pueco_benin, mgb, smp, neo1, etc.)
+    $refSites = am_firestore_get_collection('referenceData_sites', 500);
+    foreach ($refSites as $s) {
+        $orgId = strtolower((string)($s['organizationId'] ?? ''));
+        if (!isset($orgToCountry[$orgId])) continue;
+        $countryCode = $orgToCountry[$orgId];
+
+        $code = (string)($s['code'] ?? '');
+        $name = (string)($s['name'] ?? '');
+        if ($code === '' || $name === '') continue;
+
+        $key = strtoupper($code) . '|' . $countryCode;
+        if (isset($seen[$key])) continue;
+        $seen[$key] = true;
+        $locations[] = [
+            'id'                   => $s['id'] ?? $code,
+            'location_code'        => strtoupper($countryCode) . '-' . strtoupper($code),
+            'location_name'        => $name,
+            'location_type'        => 'Site',
+            'country_code'         => $countryCode,
+            'region'               => '',
+            'parent_location_code' => '',
+            'active'               => ($s['active'] ?? true) ? 1 : 0,
+        ];
+    }
+
+    usort($locations, fn($a, $b) =>
+        strcmp($a['country_code'], $b['country_code']) ?: strcmp($a['location_name'], $b['location_name'])
+    );
+
+    return $locations;
+}

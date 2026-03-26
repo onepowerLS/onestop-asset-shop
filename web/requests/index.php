@@ -9,7 +9,7 @@ $showForm = isset($_GET['new']) || !empty($errors);
 
 $requests = am_firestore_get_collection('pr_master_requests', 2000);
 $countries = am_firestore_get_collection('pr_master_countries', 500);
-$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$locations = am_get_pr_sites();
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
 if (empty($employees)) $employees = am_firestore_get_collection('am_core_employees', 2000);
 

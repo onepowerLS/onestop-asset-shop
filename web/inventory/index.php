@@ -8,7 +8,7 @@ $page_title = 'Stock Levels';
 $assets = am_firestore_get_collection('am_core_assets', 2000);
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
-$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$locations = am_get_pr_sites();
 $inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 2000);
 
 $countryById = [];

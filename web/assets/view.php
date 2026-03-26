@@ -8,7 +8,7 @@ $qrCode = $_GET['qr'] ?? '';
 
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
-$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$locations = am_get_pr_sites();
 
 $countryById = [];
 foreach ($countries as $c) {

@@ -9,7 +9,7 @@ $success = false;
 
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
-$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$locations = am_get_pr_sites();
 
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
 $categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));

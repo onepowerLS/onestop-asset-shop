@@ -7,7 +7,7 @@ $page_title = 'Transaction History';
 
 $transactions = am_firestore_get_collection('am_core_transactions', 2000);
 $assets = am_firestore_get_collection('am_core_assets', 2000);
-$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$locations = am_get_pr_sites();
 
 $assetById = [];
 foreach ($assets as $a) {

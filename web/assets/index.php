@@ -31,7 +31,7 @@ $page_title = $itemClassFilter && isset($itemClassLabels[$itemClassFilter])
 $assetsRaw = am_firestore_get_collection('am_core_assets', 2000);
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
-$locations = am_firestore_get_collection('pr_master_locations', 2000);
+$locations = am_get_pr_sites();
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 
 // Index lookups for joins
