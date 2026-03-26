@@ -98,6 +98,7 @@ foreach ($assetsRaw as $asset) {
             (string)($asset['serial_number'] ?? ''),
             (string)($asset['qr_code_id'] ?? ''),
             (string)($asset['asset_tag'] ?? ''),
+            (string)($asset['legacy_tag'] ?? ''),
         ]));
         if (!str_contains($searchBlob, $needle)) {
             continue;
@@ -226,6 +227,7 @@ include __DIR__ . '/../includes/header.php';
                         <tr>
                             <th>QR Code</th>
                             <th>Asset Tag</th>
+                            <th>Legacy ID</th>
                             <th>Name</th>
                             <th>Class</th>
                             <th>Category</th>
@@ -238,7 +240,7 @@ include __DIR__ . '/../includes/header.php';
                     <tbody>
                         <?php if (empty($assets)): ?>
                         <tr>
-                            <td colspan="9" class="text-center text-gray-500 py-4">
+                            <td colspan="10" class="text-center text-gray-500 py-4">
                                 No items found. <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a>
                             </td>
                         </tr>
@@ -256,6 +258,13 @@ include __DIR__ . '/../includes/header.php';
                             </td>
                             <td>
                                 <strong><?php echo htmlspecialchars($asset['asset_tag'] ?? 'N/A'); ?></strong>
+                            </td>
+                            <td>
+                                <?php if (($asset['legacy_tag'] ?? '') !== ''): ?>
+                                    <code class="text-muted"><?php echo htmlspecialchars($asset['legacy_tag']); ?></code>
+                                <?php else: ?>
+                                    <span class="text-gray-400">&mdash;</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <a href="<?php echo base_url('assets/view.php?id=' . $asset['asset_id']); ?>" class="text-primary">

@@ -32,6 +32,8 @@ Primary item catalog. Every physical item in the system lives here regardless of
 | `status` | string | yes | See status enum below |
 | `quantity` | integer | yes | Default 1; bulk tracking for Material/Consumable/Inventory |
 | `unit_of_measure` | string | yes | `EA`, `M`, `KG`, `L`, `BOX`, `ROLL`, `SET` |
+| `legacy_tag` | string | no | Original item UID/tag from pre-migration system (read-only after import) |
+| `source` | string | no | Migration origin (e.g. `AssetSpreadsheetDB`) |
 | `notes` | string | no | Free-text notes |
 | `created_at` | string | auto | ISO timestamp |
 | `updated_at` | string | auto | ISO timestamp |

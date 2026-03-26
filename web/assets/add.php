@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conditionStatus = trim($_POST['condition_status'] ?? 'New');
     $quantity = (int)($_POST['quantity'] ?? 1);
     $unitOfMeasure = trim($_POST['unit_of_measure'] ?? 'EA');
+    $legacyTag = trim($_POST['legacy_tag'] ?? '');
     $notes = trim($_POST['notes'] ?? '');
 
     if ($itemClass === '' || !in_array($itemClass, ['FixedAsset', 'Material', 'Consumable', 'Inventory'])) {
@@ -75,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'status' => 'Available',
             'quantity' => max(1, $quantity),
             'unit_of_measure' => $unitOfMeasure,
+            'legacy_tag' => $legacyTag,
             'notes' => $notes,
             'asset_tag' => $assetTag,
             'qr_code_id' => '',
@@ -158,9 +160,13 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-header"><h2 class="fs-5 fw-bold mb-0">2. Item Details</h2></div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                         <label class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="name" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>" required>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Legacy ID</label>
+                        <input type="text" class="form-control" name="legacy_tag" value="<?php echo htmlspecialchars($_POST['legacy_tag'] ?? ''); ?>" placeholder="Old system UID">
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="form-label">Category</label>

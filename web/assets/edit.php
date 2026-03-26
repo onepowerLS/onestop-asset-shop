@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'status' => trim($_POST['status'] ?? ($asset['status'] ?? 'Available')),
             'quantity' => max(1, (int)($_POST['quantity'] ?? 1)),
             'unit_of_measure' => trim($_POST['unit_of_measure'] ?? 'EA'),
+            'legacy_tag' => trim($_POST['legacy_tag'] ?? ($asset['legacy_tag'] ?? '')),
             'notes' => trim($_POST['notes'] ?? ''),
             'updated_at' => date('c'),
         ];
@@ -153,9 +154,13 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Item Details</h2></div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                         <label class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="name" value="<?php echo htmlspecialchars($vals['name'] ?? ''); ?>" required>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Legacy ID</label>
+                        <input type="text" class="form-control" name="legacy_tag" value="<?php echo htmlspecialchars($vals['legacy_tag'] ?? ''); ?>" placeholder="Old system UID">
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="form-label">Category</label>
