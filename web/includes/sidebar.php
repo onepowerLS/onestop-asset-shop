@@ -142,6 +142,36 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <li class="nav-item mt-2">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-tools">
+                    <span>
+                        <span class="sidebar-icon">
+                            <i class="fas fa-arrow-up-right-from-square"></i>
+                        </span>
+                        <span class="sidebar-text">Other Tools</span>
+                    </span>
+                    <span class="link-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </span>
+                </span>
+                <div class="multi-level collapse" id="submenu-tools">
+                    <ul class="flex-column nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://pr.1pwrafrica.com/" target="_blank" rel="noopener">
+                                <i class="fas fa-file-invoice me-1 text-warning"></i>
+                                <span class="sidebar-text">Procurement</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="http://prod.1pwrafrica.com/" target="_blank" rel="noopener">
+                                <i class="fas fa-clipboard-check me-1 text-info"></i>
+                                <span class="sidebar-text">Job Cards</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
             <li class="nav-item <?php echo $current_page === 'help' ? 'active' : ''; ?>">
                 <a href="<?php echo base_url('help.php'); ?>" class="nav-link">
                     <span class="sidebar-icon">

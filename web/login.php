@@ -137,7 +137,8 @@ $firebaseConfigured = !empty($firebaseCfg['api_key']) && !empty($firebaseCfg['pr
 </head>
 <body>
     <div class="login-card">
-        <h1 class="login-title">Sign In to the Systems</h1>
+        <h1 class="login-title">Asset Management</h1>
+        <p style="margin:-16px 0 24px;font-size:0.875rem;color:rgba(0,0,0,0.54);">Sign in with your 1PWR account</p>
 
         <?php if (!$firebaseConfigured): ?>
         <div class="alert alert-info">
@@ -161,15 +162,9 @@ $firebaseConfigured = !empty($firebaseCfg['api_key']) && !empty($firebaseCfg['pr
             </div>
 
             <div class="button-row">
-                <button type="submit" class="btn btn-primary" <?php echo $firebaseConfigured ? '' : 'disabled'; ?>>
-                    Asset Management
+                <button type="submit" class="btn btn-primary" style="flex:1;" <?php echo $firebaseConfigured ? '' : 'disabled'; ?>>
+                    Sign In
                 </button>
-                <a href="https://pr.1pwrafrica.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                    Procurement
-                </a>
-                <a href="http://prod.1pwrafrica.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                    Job Cards
-                </a>
             </div>
         </form>
 

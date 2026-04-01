@@ -55,6 +55,39 @@ Built out the entire missing functionality of the AM web app:
 - Key corrections: Matsieng→Matsoaing, Sehong→Sehonghong, Sebelekoane→Sebapala, etc.
 - Result: 20 Benin sites, 28 Lesotho sites, 1 Zambia site — always in sync
 
+## Session: Mar 26, 2026
+
+### 9. Location Data — PR Portal Sync (continued)
+- Queried all Firestore collections in `pr-system-4ea55` to find the canonical location source
+- Found `sites` (27 Lesotho field sites) and `referenceData_sites` (50+ multi-org sites for Benin, Zambia, Lesotho)
+- Created `am_get_pr_sites()` function in `web/config/firestore.php`:
+  - Reads `sites` collection (Lesotho canonical) + `referenceData_sites` (Benin/Zambia from primary 1PWR orgs)
+  - Maps `organizationId` → country code, deduplicates by code+country
+- Replaced `am_firestore_get_collection('pr_master_locations', ...)` across 9 PHP files with `am_get_pr_sites()`
+- Converted admin Locations page to read-only view pointing users to PR portal for management
+- Key name corrections: Matsieng→Matsoaing, SEH→Sehlabathebe, SEB→Sebapala, SHG→Sehonghong, MAK→Ha Makebe
+- Result: 20 Benin sites, 28 Lesotho sites, 1 Zambia site — always in sync with PR portal
+
+### 10. Legacy Item UID Field
+- `legacy_tag` field already existed in Firestore from the ETL migration but was invisible in the UI
+- Surfaced it across all relevant pages:
+  - **Catalog** (`index.php`): new "Legacy ID" column between Asset Tag and Name
+  - **Search**: `legacy_tag` added to search blob so old UIDs are findable
+  - **Item view** (`view.php`): Legacy ID shown alongside Asset Tag and QR Code (when populated)
+  - **Add form** (`add.php`): Legacy ID input field for manually entering old UIDs
+  - **Edit form** (`edit.php`): Legacy ID input field, persisted on save
+- Documented `legacy_tag` and `source` fields in `docs/FIRESTORE_SCHEMA.md`
+
+### 11. Project Documentation
+- Created `context.md` — project overview for future sessions (architecture, key files, deployment, test credentials, known quirks)
+- Created `session-log.md` — chronological record of all work across sessions
+
+### Firebase Test Account
+- Previous test user was deleted/expired; recreated:
+  - Email: testadmin@1pwrafrica.com / Password: TestAdmin123!
+  - Firebase UID: RXviBLQtHBeoqby4o6zxo3L6Ia12
+  - Firestore `users` doc: role=admin, permissionLevel=3, organizationId=1pwr_lesotho
+
 ### Commits (chronological)
 ```
 f5271c5 Initial commit: Project setup and README
@@ -77,9 +110,10 @@ affd828 Fix Firestore document ID fallback in catalog filter dropdowns
 f6db277 Fix sort on UUID asset IDs and suppress warnings in production
 34da144 Add in-app Help & User Guide page
 a5b6fc9 Wire AM locations to PR portal's canonical sites collection
+0a1ea08 Surface legacy_tag field across AM UI
 ```
 
 ### Open Items
-- `qr_code_id` warnings in asset catalog (field missing on some older assets)
+- `qr_code_id` field missing on some older assets (causes PHP warnings in catalog)
 - Legacy `pr_master_locations` collection still exists in Firestore (now unused, can be cleaned up)
 - Country filter dropdown uses `pr_master_countries` IDs (1, 2, 3) — could be mapped to org names

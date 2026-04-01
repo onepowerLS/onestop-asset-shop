@@ -21,10 +21,12 @@
 
 ### Firestore Collections
 
-- **`am_core_assets`** — primary item catalog (owned by AM)
+- **`am_core_assets`** — primary item catalog (owned by AM); includes `legacy_tag` field preserving original item UIDs from pre-migration systems
+- **`am_core_allocations`** — check-out/in tracking
+- **`am_core_transactions`** — immutable audit trail
 - **`pr_master_categories`** — item categories (shared, from PR portal)
 - **`pr_master_countries`** — country reference data (shared, from PR portal)
-- **`sites`** + **`referenceData_sites`** — canonical location/site data (owned by PR portal, read by AM)
+- **`sites`** + **`referenceData_sites`** — canonical location/site data (owned by PR portal, read live by AM)
 - **`users`** — user profiles with roles/permissions (shared across all 1PWR tools)
 
 ### Shared Firebase Project
@@ -99,6 +101,16 @@ sudo chown -R apache:apache .
 - **Firebase UID:** RXviBLQtHBeoqby4o6zxo3L6Ia12
 - **Role:** admin (permissionLevel 3)
 
+## Legacy Data
+
+Migrated items carry a `legacy_tag` field with their original UID from the pre-migration system (e.g. `AD-3`, `FIRE001`, `JKH002`). This field is:
+- Displayed in the catalog table, item detail view, and edit/add forms
+- Searchable via the catalog search box
+- Documented in `docs/FIRESTORE_SCHEMA.md`
+- Populated by the ETL migration (`migration/etl.py`); can also be entered manually on new items
+
+The `source` field records migration origin (e.g. `AssetSpreadsheetDB`).
+
 ## Known Quirks
 
 - PHP 8.5 deprecated `$http_response_header` and `curl_close()` — already fixed with fallbacks
@@ -106,3 +118,4 @@ sudo chown -R apache:apache .
 - PHP error log: `/var/log/php-fpm/www-error.log`
 - `qr_code_id` field may be missing on older assets (causes PHP warnings in catalog)
 - Firestore security rules require a `users/{uid}` document with `permissionLevel` for write access
+- Legacy `pr_master_locations` collection still exists in Firestore (now unused — AM reads from `sites`/`referenceData_sites` instead)
