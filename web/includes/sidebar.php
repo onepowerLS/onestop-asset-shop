@@ -142,34 +142,24 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
-            <li class="nav-item mt-2">
-                <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-tools">
-                    <span>
-                        <span class="sidebar-icon">
-                            <i class="fas fa-arrow-up-right-from-square"></i>
-                        </span>
-                        <span class="sidebar-text">Other Tools</span>
+            <li class="nav-item mt-4 mb-1">
+                <small class="nav-link text-gray-500 text-uppercase fw-bold py-1" style="font-size:0.7rem;letter-spacing:0.05em;">Switch Tool</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="https://pr.1pwrafrica.com/" target="_blank" rel="noopener">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-file-invoice text-warning"></i>
                     </span>
-                    <span class="link-arrow">
-                        <i class="fas fa-chevron-right"></i>
+                    <span class="sidebar-text">Procurement</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="http://prod.1pwrafrica.com/" target="_blank" rel="noopener">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-clipboard-check text-info"></i>
                     </span>
-                </span>
-                <div class="multi-level collapse" id="submenu-tools">
-                    <ul class="flex-column nav">
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://pr.1pwrafrica.com/" target="_blank" rel="noopener">
-                                <i class="fas fa-file-invoice me-1 text-warning"></i>
-                                <span class="sidebar-text">Procurement</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="http://prod.1pwrafrica.com/" target="_blank" rel="noopener">
-                                <i class="fas fa-clipboard-check me-1 text-info"></i>
-                                <span class="sidebar-text">Job Cards</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+                    <span class="sidebar-text">Job Cards</span>
+                </a>
             </li>
 
             <li class="nav-item <?php echo $current_page === 'help' ? 'active' : ''; ?>">
