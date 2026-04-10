@@ -214,6 +214,5 @@ include __DIR__ . '/../includes/sidebar.php';
             </div>
         </div>
     </div>
-</main>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

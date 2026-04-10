@@ -11,9 +11,6 @@ $page_title = 'Help & User Guide';
 include __DIR__ . '/includes/header.php';
 ?>
 
-<main class="content">
-<?php include __DIR__ . '/includes/topbar.php'; ?>
-
 <div class="container-fluid px-4 py-4" style="max-width: 960px;">
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -301,6 +298,5 @@ include __DIR__ . '/includes/header.php';
 </div>
 
 </div>
-</main>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>

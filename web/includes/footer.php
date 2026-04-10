@@ -5,10 +5,8 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firebase.php';
 ?>
-        </main>
-
-        <!-- Footer -->
-        <footer class="bg-white rounded shadow p-5 mb-4 mt-4">
+        <!-- Footer stays inside <main> so body flex is only sidebar | main (not a third column) -->
+        <footer class="bg-white rounded shadow p-4 mt-auto mb-4 mx-3">
             <div class="row">
                 <div class="col-12 col-md-4 col-xl-6 mb-4 mb-md-0">
                     <p class="mb-0 text-center text-md-start">
@@ -23,6 +21,7 @@ require_once __DIR__ . '/../config/firebase.php';
                 </div>
             </div>
         </footer>
+        </main>
 
     <!-- jQuery must be first — DataTables and inline scripts expect window.$ / jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>

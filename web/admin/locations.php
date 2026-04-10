@@ -87,6 +87,4 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 </div>
 
-</main>
-
 <?php include __DIR__ . '/../includes/footer.php'; ?>
