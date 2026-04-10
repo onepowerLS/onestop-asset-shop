@@ -334,6 +334,53 @@ function am_firestore_document_to_array(array $doc): array {
     return $data;
 }
 
+/**
+ * Resolve pr_master_countries document id for dashboard/joins.
+ * Migration rows often set country_code (e.g. LSO) without country_id; AM forms set country_id.
+ */
+function am_infer_country_code_from_tags(string $assetTag, string $qrCodeId): string {
+    foreach ([$assetTag, $qrCodeId] as $s) {
+        if ($s === '') {
+            continue;
+        }
+        // asset_tag: 1PWR-FA-LSO-000001 → middle segment is class, next is 3-letter country
+        if (preg_match('/^1PWR-[A-Z]+-([A-Z]{3})-\d+/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+        // qr_code_id: 1PWR-LSO-FA-000001 → country first after prefix
+        if (preg_match('/^1PWR-([A-Z]{3})-[A-Z]+-\d+/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+    }
+    return '';
+}
+
+function am_resolve_asset_country_id(array $asset, array $countries): string {
+    $cid = trim((string)($asset['country_id'] ?? ''));
+    if ($cid !== '') {
+        return $cid;
+    }
+
+    $code = strtoupper(trim((string)($asset['country_code'] ?? '')));
+    if ($code === '') {
+        $code = am_infer_country_code_from_tags(
+            (string)($asset['asset_tag'] ?? ''),
+            (string)($asset['qr_code_id'] ?? '')
+        );
+    }
+    if ($code === '') {
+        return '';
+    }
+
+    foreach ($countries as $c) {
+        $cc = strtoupper(trim((string)($c['country_code'] ?? '')));
+        if ($cc !== '' && $cc === $code) {
+            return (string)($c['country_id'] ?? $c['id'] ?? '');
+        }
+    }
+    return '';
+}
+
 function am_firestore_get_collection(string $collectionName, int $pageSize = 1000): array {
     $token = am_firestore_id_token();
     if ($token === '') {
@@ -341,26 +388,41 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
     }
 
     $project = am_firestore_project_id();
-    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
-        '/databases/(default)/documents/' . rawurlencode($collectionName) .
-        '?pageSize=' . max(1, min(1000, $pageSize));
+    $baseUrl = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
+        '/databases/(default)/documents/' . rawurlencode($collectionName);
 
-    $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
-    if (!$result['ok']) {
-        return [];
-    }
-
-    $docs = $result['json']['documents'] ?? [];
-    if (!is_array($docs)) {
-        return [];
-    }
-
+    $ps = max(1, min(1000, $pageSize));
     $out = [];
-    foreach ($docs as $doc) {
-        if (is_array($doc)) {
-            $out[] = am_firestore_document_to_array($doc);
+    $pageToken = '';
+    $guard = 0;
+
+    do {
+        $url = $baseUrl . '?pageSize=' . $ps;
+        if ($pageToken !== '') {
+            $url .= '&pageToken=' . rawurlencode($pageToken);
         }
-    }
+
+        $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
+        if (!$result['ok']) {
+            break;
+        }
+
+        $docs = $result['json']['documents'] ?? [];
+        if (is_array($docs)) {
+            foreach ($docs as $doc) {
+                if (is_array($doc)) {
+                    $out[] = am_firestore_document_to_array($doc);
+                }
+            }
+        }
+
+        $pageToken = (string)($result['json']['nextPageToken'] ?? '');
+        $guard++;
+        if ($guard > 10000) {
+            break;
+        }
+    } while ($pageToken !== '');
+
     return $out;
 }
 

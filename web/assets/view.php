@@ -64,7 +64,8 @@ $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable'
 $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
 $cls = (string)($asset['item_class'] ?? '');
 
-$country = $countryById[(string)($asset['country_id'] ?? '')] ?? [];
+$resolvedCountryId = am_resolve_asset_country_id($asset, $countries);
+$country = $countryById[$resolvedCountryId] ?? [];
 $category = $categoryById[(string)($asset['category_id'] ?? '')] ?? [];
 $location = $locationById[(string)($asset['location_id'] ?? '')] ?? [];
 

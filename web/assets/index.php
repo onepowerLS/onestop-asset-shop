@@ -72,7 +72,8 @@ foreach ($allocations as $al) {
 $assets = [];
 $needle = strtolower(trim($searchTerm));
 foreach ($assetsRaw as $asset) {
-    $countryId = (string)($asset['country_id'] ?? '');
+    $rawCountryCode = strtoupper(trim((string)($asset['country_code'] ?? '')));
+    $countryId = am_resolve_asset_country_id($asset, $countries);
     $categoryId = (string)($asset['category_id'] ?? '');
     $locationId = (string)($asset['location_id'] ?? '');
     $assetId = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
@@ -113,6 +114,9 @@ foreach ($assetsRaw as $asset) {
     $asset['asset_id'] = $assetId;
     $asset['country_name'] = (string)($country['country_name'] ?? '');
     $asset['country_code'] = (string)($country['country_code'] ?? '');
+    if ($asset['country_code'] === '' && $asset['country_name'] === '' && $rawCountryCode !== '') {
+        $asset['country_code'] = $rawCountryCode;
+    }
     $asset['category_name'] = (string)($category['category_name'] ?? '');
     $asset['item_class'] = $itemClass;
     $asset['category_type'] = (string)($category['category_type'] ?? '');

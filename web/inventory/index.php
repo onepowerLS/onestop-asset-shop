@@ -44,7 +44,10 @@ if (!empty($inventoryLevels)) {
         $aid = (string)($inv['asset_id'] ?? '');
         $asset = $assetById[$aid] ?? [];
         $cls = (string)($asset['item_class'] ?? '');
-        $cid = (string)($inv['country_id'] ?? $asset['country_id'] ?? '');
+        $cid = (string)($inv['country_id'] ?? '');
+        if ($cid === '' && $asset) {
+            $cid = am_resolve_asset_country_id($asset, $countries);
+        }
 
         if ($classFilter && $cls !== $classFilter) continue;
         if ($countryFilter && $cid !== $countryFilter) continue;
@@ -68,7 +71,7 @@ if (!empty($inventoryLevels)) {
     $trackable = array_filter($assets, fn($a) => in_array($a['item_class'] ?? '', ['Material', 'Consumable', 'Inventory']));
     foreach ($trackable as $asset) {
         $cls = (string)($asset['item_class'] ?? '');
-        $cid = (string)($asset['country_id'] ?? '');
+        $cid = am_resolve_asset_country_id($asset, $countries);
         if ($classFilter && $cls !== $classFilter) continue;
         if ($countryFilter && $cid !== $countryFilter) continue;
 

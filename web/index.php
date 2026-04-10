@@ -37,7 +37,7 @@ foreach ($countries as $country) {
     ];
 }
 foreach ($assets as $asset) {
-    $countryId = (string)($asset['country_id'] ?? '');
+    $countryId = am_resolve_asset_country_id($asset, $countries);
     if ($countryId === '') {
         continue;
     }
