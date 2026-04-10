@@ -1,0 +1,91 @@
+/**
+ * AM layout + Volt-like utilities (Volt CDN CSS was unavailable; Bootstrap alone
+ * does not style .sidebar + .content as a side-by-side shell.)
+ */
+:root {
+    --am-sidebar-width: 260px;
+    --am-gray-50: #f9fafb;
+    --am-gray-200: #e5e7eb;
+    --am-gray-300: #d1d5db;
+    --am-gray-400: #9ca3af;
+    --am-gray-500: #6b7280;
+    --am-gray-600: #4b5563;
+    --am-gray-800: #1f2937;
+    --am-gray-900: #111827;
+    --am-primary-nav: #262b40;
+}
+
+/* ----- Shell: sidebar + main (lg+) ----- */
+@media (min-width: 992px) {
+    body {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        min-height: 100vh;
+        margin: 0;
+        background: var(--am-gray-50);
+    }
+
+    #sidebarMenu.sidebar {
+        flex: 0 0 var(--am-sidebar-width);
+        width: var(--am-sidebar-width);
+        max-width: var(--am-sidebar-width);
+        min-height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    main.content {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+}
+
+/* Mobile: stacked (default block flow) */
+@media (max-width: 991.98px) {
+    main.content {
+        width: 100%;
+    }
+}
+
+/* Top bar + content area */
+main.content {
+    background: var(--am-gray-50);
+}
+
+/* ----- Volt-like color utilities used in templates ----- */
+.bg-gray-800 { background-color: var(--am-gray-800) !important; }
+.bg-gray-200 { background-color: var(--am-gray-200) !important; }
+.text-gray-300 { color: var(--am-gray-300) !important; }
+.text-gray-400 { color: var(--am-gray-400) !important; }
+.text-gray-500 { color: var(--am-gray-500) !important; }
+.text-gray-600 { color: var(--am-gray-600) !important; }
+.text-gray-800 { color: var(--am-gray-900) !important; }
+.text-gray-900 { color: var(--am-gray-900) !important; }
+
+.navbar-theme-primary {
+    background-color: var(--am-primary-nav) !important;
+}
+
+.fw-extrabold { font-weight: 800 !important; }
+
+/* Icon circles on dashboard cards */
+.icon-shape {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.5rem;
+}
+.icon-shape-primary { background-color: #262b40; color: #fff; }
+.icon-shape-secondary { background-color: #f0bc74; color: #1f2937; }
+.icon-shape-tertiary { background-color: #2e5aae; color: #fff; }
+.icon-shape-success { background-color: #05a677; color: #fff; }
+.icon-shape-warning { background-color: #f0bc74; color: #1f2937; }
+.icon-shape-info { background-color: #2361ce; color: #fff; }

@@ -2,6 +2,8 @@
 /**
  * Footer Template
  */
+require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/firebase.php';
 ?>
         </main>
 
@@ -21,7 +23,6 @@
                 </div>
             </div>
         </footer>
-    </div>
 
     <!-- jQuery must be first — DataTables and inline scripts expect window.$ / jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
@@ -56,5 +57,40 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@themesberg/volt-bootstrap-5-dashboard@1.4.1/src/assets/js/volt.js"></script>
+
+<?php if (is_logged_in()) :
+    $amFb = am_firebase_config();
+?>
+    <!-- Refresh Firebase ID token for PHP → Firestore (token expires ~1h; session alone goes stale) -->
+    <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.3.0/firebase-auth.js';
+
+    const firebaseConfig = {
+        apiKey: <?php echo json_encode($amFb['api_key'], JSON_UNESCAPED_SLASHES); ?>,
+        authDomain: 'pr-system-4ea55.firebaseapp.com',
+        projectId: <?php echo json_encode($amFb['project_id'], JSON_UNESCAPED_SLASHES); ?>,
+        appId: '1:562987209098:web:2f788d189f1c0867cb3873'
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    onAuthStateChanged(auth, async function (user) {
+        if (!user) return;
+        try {
+            var idToken = await user.getIdToken(true);
+            await fetch(<?php echo json_encode(base_url('auth/refresh-session.php')); ?>, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken }),
+                credentials: 'same-origin'
+            });
+        } catch (e) {
+            console.warn('AM: could not refresh session token for Firestore', e);
+        }
+    });
+    </script>
+<?php endif; ?>
 </body>
 </html>
