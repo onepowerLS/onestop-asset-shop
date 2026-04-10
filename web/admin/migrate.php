@@ -11,7 +11,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['firebase_id_token'])) {
     header('Location: /login.php'); exit;
 }
-$amRole = $_SESSION['am_role'] ?? 'Viewer';
+// Same key as firebase-login.php / other admin pages (not am_role — that is never set).
+$amRole = $_SESSION['role'] ?? $_SESSION['am_role'] ?? 'Viewer';
 if ($amRole !== 'Admin') {
     echo 'Admin access required.'; exit;
 }

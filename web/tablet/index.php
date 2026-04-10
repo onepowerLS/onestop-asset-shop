@@ -17,7 +17,7 @@ if (empty($_SESSION['firebase_id_token'])) {
 require_once __DIR__ . '/../config/firestore.php';
 
 $userName = htmlspecialchars($_SESSION['username'] ?? 'User');
-$amRole   = $_SESSION['am_role'] ?? 'Viewer';
+$amRole   = $_SESSION['role'] ?? $_SESSION['am_role'] ?? 'Viewer';
 ?>
 <!DOCTYPE html>
 <html lang="en">
