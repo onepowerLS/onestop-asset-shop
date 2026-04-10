@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
+am_require_can_mutate();
 
 $page_title = 'Add New Item';
 $errors = [];

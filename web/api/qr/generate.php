@@ -1,8 +1,16 @@
 <?php
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../config/authz.php';
 require_once __DIR__ . '/../../config/firestore.php';
 
 header('Content-Type: application/json');
+
+if (empty($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+    exit;
+}
+am_require_can_mutate_json();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);

@@ -8,6 +8,7 @@
  *   3. Quick Lookup           (scan → view item detail)
  */
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/authz.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['firebase_id_token'])) {
@@ -15,6 +16,7 @@ if (empty($_SESSION['firebase_id_token'])) {
 }
 
 require_once __DIR__ . '/../config/firestore.php';
+am_require_can_mutate();
 
 $userName = htmlspecialchars($_SESSION['username'] ?? 'User');
 $amRole   = $_SESSION['role'] ?? $_SESSION['am_role'] ?? 'Viewer';

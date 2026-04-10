@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
 
 $assetId = $_GET['id'] ?? '';
@@ -91,9 +92,11 @@ include __DIR__ . '/../includes/header.php';
             </h1>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
+            <?php if (!am_is_auditor_readonly()): ?>
             <a href="<?php echo base_url('assets/edit.php?id=' . urlencode($assetId)); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
                 <i class="fas fa-edit me-2"></i>Edit
             </a>
+            <?php endif; ?>
             <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-sm btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to List
             </a>

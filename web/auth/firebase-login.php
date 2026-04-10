@@ -46,6 +46,7 @@ if ($idToken !== '' && $uid !== '') {
     $displayName = trim($firstName . ' ' . $lastName) ?: $email;
 
     $_SESSION['user_id']               = $uid;
+    $_SESSION['firebase_uid']          = $uid;
     $_SESSION['username']              = $displayName;
     $_SESSION['email']                 = $email;
     $_SESSION['role']                  = am_map_pr_role_to_am(
@@ -107,6 +108,7 @@ if ($identifier !== '' && $password !== '') {
     $displayName = trim($firstName . ' ' . $lastName) ?: (string)$identifier;
 
     $_SESSION['user_id']               = (string)($signIn['uid'] ?? '');
+    $_SESSION['firebase_uid']          = (string)($signIn['uid'] ?? '');
     $_SESSION['username']              = $displayName;
     $_SESSION['email']                 = (string)($signIn['email'] ?? $signInEmail);
     $_SESSION['role']                  = am_map_pr_role_to_am(

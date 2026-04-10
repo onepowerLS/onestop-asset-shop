@@ -247,6 +247,52 @@ function am_firebase_sign_in(string $email, string $password): array {
     ];
 }
 
+function am_firebase_sign_up(string $email, string $password): array {
+    $cfg = am_firebase_config();
+    if (empty($cfg['api_key'])) {
+        return ['ok' => false, 'message' => 'Firebase API key is not configured.'];
+    }
+
+    $url = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' . rawurlencode($cfg['api_key']);
+    $result = am_http_post_json($url, [
+        'email' => $email,
+        'password' => $password,
+        'returnSecureToken' => true,
+    ]);
+
+    if (!$result['ok']) {
+        $errCode = $result['json']['error']['message'] ?? '';
+        $friendly = match ($errCode) {
+            'EMAIL_EXISTS' => 'That email is already registered.',
+            'INVALID_EMAIL' => 'Invalid email address.',
+            'WEAK_PASSWORD' => 'Password is too weak. Try a longer password.',
+            default => 'Could not create account. Please try again.'
+        };
+        if ($errCode === '' && !empty($result['error'])) {
+            $friendly = 'Network/auth error: ' . $result['error'];
+        }
+        return ['ok' => false, 'message' => $friendly, 'raw_error' => $errCode ?: ($result['error'] ?? '')];
+    }
+
+    return [
+        'ok' => true,
+        'uid' => $result['json']['localId'] ?? '',
+        'email' => $result['json']['email'] ?? $email,
+        'id_token' => $result['json']['idToken'] ?? '',
+        'refresh_token' => $result['json']['refreshToken'] ?? '',
+    ];
+}
+
+function am_firebase_generate_random_password(int $length = 20): string {
+    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    $out = '';
+    $max = strlen($chars) - 1;
+    for ($i = 0; $i < $length; $i++) {
+        $out .= $chars[random_int(0, $max)];
+    }
+    return $out;
+}
+
 function am_firestore_value(array $fields, string $field, mixed $default = null): mixed {
     if (!isset($fields[$field]) || !is_array($fields[$field])) {
         return $default;
@@ -303,6 +349,10 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
 function am_map_pr_role_to_am(string $prRole = '', mixed $permissionLevel = null): string {
     $normalizedRole = strtoupper(trim($prRole));
     $perm = is_numeric($permissionLevel) ? (int)$permissionLevel : null;
+
+    if ($normalizedRole === 'AUDITOR') {
+        return 'Auditor';
+    }
 
     if ($perm === 1 || in_array($normalizedRole, ['ADMIN', 'SUPERADMIN'], true)) {
         return 'Admin';

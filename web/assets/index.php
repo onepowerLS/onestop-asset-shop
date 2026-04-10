@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
 
 $page_title = 'Assets';
@@ -142,6 +143,7 @@ include __DIR__ . '/../includes/header.php';
             <p class="mb-0">Manage and track all items across Lesotho, Zambia, and Benin</p>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
+            <?php if (!am_is_auditor_readonly()): ?>
             <a href="<?php echo base_url('assets/add.php' . ($itemClassFilter ? '?item_class=' . urlencode($itemClassFilter) : '')); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
                 <i class="fas fa-plus me-2"></i>
                 Add New Item
@@ -150,6 +152,7 @@ include __DIR__ . '/../includes/header.php';
                 <i class="fas fa-print me-2"></i>
                 Print QR Label
             </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -241,7 +244,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php if (empty($assets)): ?>
                         <tr>
                             <td colspan="10" class="text-center text-gray-500 py-4">
-                                No items found. <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a>
+                                No items found.<?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a><?php endif; ?>
                             </td>
                         </tr>
                         <?php else: ?>
@@ -250,10 +253,12 @@ include __DIR__ . '/../includes/header.php';
                             <td>
                                 <?php if ($asset['qr_code_id']): ?>
                                     <code class="text-primary"><?php echo htmlspecialchars($asset['qr_code_id']); ?></code>
-                                <?php else: ?>
+                                <?php elseif (!am_is_auditor_readonly()): ?>
                                     <button class="btn btn-sm btn-outline-primary" onclick="generateQR(<?php echo $asset['asset_id']; ?>)">
                                         <i class="fas fa-qrcode me-1"></i>Generate
                                     </button>
+                                <?php else: ?>
+                                    <span class="text-gray-400">—</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -335,6 +340,7 @@ include __DIR__ . '/../includes/header.php';
                                     <a href="<?php echo base_url('assets/view.php?id=' . $asset['asset_id']); ?>" class="btn btn-sm btn-outline-primary" title="View">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <?php if (!am_is_auditor_readonly()): ?>
                                     <a href="<?php echo base_url('assets/edit.php?id=' . $asset['asset_id']); ?>" class="btn btn-sm btn-outline-secondary" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
@@ -342,6 +348,7 @@ include __DIR__ . '/../includes/header.php';
                                     <button class="btn btn-sm btn-outline-success" onclick="labelPrinter.generateLabel(<?php echo $asset['asset_id']; ?>)" title="Print Label">
                                         <i class="fas fa-print"></i>
                                     </button>
+                                    <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>

@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/firestore.php';
+require_once __DIR__ . '/config/authz.php';
 require_login();
 
 $page_title = 'Dashboard';
@@ -108,12 +109,14 @@ include __DIR__ . '/includes/header.php';
             <h1 class="h2">Dashboard</h1>
             <p class="mb-0">Welcome to OneStop Asset Shop - Consolidated Asset Management</p>
         </div>
+        <?php if (!am_is_auditor_readonly()): ?>
         <div class="btn-toolbar mb-2 mb-md-0">
             <a href="<?php echo base_url('assets/add.php'); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center">
                 <i class="fas fa-plus me-2"></i>
                 Add New Asset
             </a>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Summary Row -->

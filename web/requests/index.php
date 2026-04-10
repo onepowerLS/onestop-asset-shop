@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
 
 $page_title = 'Requests';
@@ -20,6 +21,7 @@ foreach ($countries as $c) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    am_require_can_mutate();
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create') {
@@ -78,6 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+if (am_is_auditor_readonly()) {
+    $showForm = false;
+}
+
 $statusFilter = $_GET['status'] ?? '';
 $filtered = [];
 foreach ($requests as $req) {
@@ -112,9 +118,11 @@ include __DIR__ . '/../includes/header.php';
             <h1 class="h2">Requests</h1>
             <p class="mb-0"><?php echo count($filtered); ?> requests</p>
         </div>
+        <?php if (!am_is_auditor_readonly()): ?>
         <a href="<?php echo base_url('requests/index.php?new=1'); ?>" class="btn btn-sm btn-gray-800">
             <i class="fas fa-plus me-2"></i>New Request
         </a>
+        <?php endif; ?>
     </div>
 
     <?php if ($flash): ?>

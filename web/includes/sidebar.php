@@ -2,6 +2,7 @@
 /**
  * Sidebar Navigation
  */
+require_once __DIR__ . '/../config/authz.php';
 $current_page = basename($_SERVER['PHP_SELF'], '.php');
 ?>
 <nav id="sidebarMenu" class="sidebar d-lg-block bg-gray-800 text-white collapse" data-simplebar>
@@ -115,6 +116,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <?php if (!am_is_auditor_readonly()): ?>
             <li class="nav-item <?php echo $current_page === 'checkout' ? 'active' : ''; ?>">
                 <a href="<?php echo base_url('checkout/index.php'); ?>" class="nav-link">
                     <span class="sidebar-icon">
@@ -123,6 +125,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-text">Check-Out/In</span>
                 </a>
             </li>
+            <?php endif; ?>
 
             <li class="nav-item">
                 <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link">
@@ -133,6 +136,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <?php if (!am_is_auditor_readonly()): ?>
             <li class="nav-item">
                 <a href="<?php echo base_url('tablet/index.php'); ?>" class="nav-link">
                     <span class="sidebar-icon">
@@ -141,6 +145,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-text">Tablet Mode</span>
                 </a>
             </li>
+            <?php endif; ?>
 
             <li class="nav-item mt-4 mb-1">
                 <small class="nav-link text-gray-500 text-uppercase fw-bold py-1" style="font-size:0.7rem;letter-spacing:0.05em;">Switch Tool</small>
@@ -209,6 +214,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/migrate.php'); ?>">
                                 <span class="sidebar-text">Data Migration</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/provision-auditor.php'); ?>">
+                                <span class="sidebar-text">Provision auditor</span>
                             </a>
                         </li>
                     </ul>
