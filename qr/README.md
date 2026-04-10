@@ -12,49 +12,69 @@
 
 ## QR Code Format
 
-**Structure**: `1PWR-{COUNTRY}-{ASSET_ID}`
+**Structure**: `1PWR-{COUNTRY}-{CLASS_PREFIX}-{PADDED_SEQUENCE}`
+
+The class prefix encodes the item classification:
+
+| Item Class | Prefix |
+|---|---|
+| FixedAsset | `FA` |
+| Material | `MT` |
+| Consumable | `CO` |
+| Inventory | `IN` |
 
 **Examples:**
-- `1PWR-LSO-000123` (Lesotho, Asset ID 123)
-- `1PWR-ZMB-000456` (Zambia, Asset ID 456)
-- `1PWR-BEN-000789` (Benin, Asset ID 789)
+- `1PWR-LSO-FA-000012` -- Fixed Asset #12, Lesotho
+- `1PWR-ZMB-MT-000045` -- Material #45, Zambia
+- `1PWR-BEN-CO-000003` -- Consumable #3, Benin
+- `1PWR-LSO-IN-000100` -- Inventory item #100, Lesotho
 
-**Alternative (for shorter codes)**: `{COUNTRY}{ASSET_ID}` → `LSO123`, `ZMB456`
+The sequence number is padded to 6 digits and is unique per country+class combination.
 
-## Implementation
+## Data Store
 
-### 1. QR Code Generation (Backend)
+QR code IDs are stored in the `qr_code_id` field of the `am_core_assets` Firestore collection. Generation and assignment happen via the REST API endpoint.
 
-- Generate unique QR code ID when asset is created
-- Store in `assets.qr_code_id` field
-- Create entry in `qr_labels` table when label is printed
+## Generation API
 
-### 2. QR Code Printing (Frontend)
+**Endpoint**: `web/api/qr/generate.php`
 
-- "Print Label" button on asset detail page
-- Generate QR code image using library (e.g., `qrcode.js`)
-- Send to Brother printer via:
-  - **Option A**: Browser Print API (if printer supports)
-  - **Option B**: Backend API that generates PDF/Image for download
-  - **Option C**: Bluetooth Web API (experimental, may require app wrapper)
+**Method**: GET (requires authenticated session)
 
-### 3. QR Code Scanning (Frontend)
+**Parameters**:
+- `asset_id` (required) -- Firestore document ID of the asset
+- `country_code` (optional) -- 3-letter ISO code; auto-detected from `pr_master_countries` if omitted
 
-- **Global Scan Listener**: Listen for keyboard input in a hidden input field
-- When scanner reads QR code, it types the code + Enter
-- JavaScript detects the input and triggers asset lookup
-- Open asset detail page or perform action (check-in/out)
+**Flow**:
+1. Reads asset from `am_core_assets`
+2. Resolves country code from `pr_master_countries`
+3. Maps `item_class` to class prefix
+4. Scans existing assets for highest sequence in that country+class
+5. Assigns next sequence number
+6. Writes `qr_code_id` back to the asset document
+7. Returns JSON with `qr_code_id` and image URL from `api.qrserver.com`
 
-### 4. Tablet Workflow
+## Admin Interface
 
-- **Stock Ingestion**: Scan QR → Auto-fill asset details → Enter quantity
-- **Check-out**: Scan QR → Select employee → Confirm
-- **Check-in**: Scan QR → Auto-return → Confirm
-- **Stock Taking**: Scan QR → Enter counted quantity → Next item
+**Page**: `web/admin/qr-labels.php`
 
-## Files
+Provides batch QR management:
+- Coverage statistics (assigned vs pending)
+- List of items without QR codes with one-click generation
+- List of assigned QR codes with image previews
+- Batch generation for all unassigned items
 
-- `qr/generator.php` - Backend QR code generation
-- `qr/scanner.js` - Frontend scanning logic
-- `qr/printer.js` - Label printing interface
-- `qr/tablet-mode.js` - Tablet-optimized scanning UI
+## Scanning
+
+The hidden scan listener in the page footer captures HID scanner output:
+1. Scanner reads QR code and types it as keyboard input
+2. JavaScript detects the input pattern (`1PWR-...`) followed by Enter
+3. Redirects to `assets/view.php?qr={scanned_code}`
+4. Asset detail page loads by matching `qr_code_id` across `am_core_assets`
+
+## Legacy Files
+
+- `qr/generator.php` -- Original MySQL-based generator (superseded by `web/api/qr/generate.php`)
+- `qr/scanner.js` -- Frontend scanning logic
+- `qr/printer.js` -- Label printing interface (Brother PT-P710BT)
+- `qr/tablet-mode.js` -- Tablet-optimized scanning UI

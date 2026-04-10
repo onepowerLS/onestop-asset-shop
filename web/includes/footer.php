@@ -30,44 +30,29 @@
     <!-- Simplebar (for sidebar scrolling) -->
     <script src="https://cdn.jsdelivr.net/npm/simplebar@latest/dist/simplebar.min.js"></script>
     
-    <!-- DataTables (jQuery already loaded in header) -->
+    <!-- jQuery must load before DataTables (plugins expect global jQuery) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- DataTables -->
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     
-    <!-- QR Code Scanner (Simple HID Scanner Support) -->
+    <!-- QR Code Scanner -->
+    <script src="<?php echo base_url('qr/scanner.js'); ?>"></script>
+    
+    <!-- Initialize QR Scanner -->
     <script>
-        // Simple QR scanner for HID barcode scanners
-        (function() {
-            const qrInput = document.getElementById('qr-scanner-input');
-            if (!qrInput) return;
-            
-            let scanBuffer = '';
-            let scanTimeout;
-            
-            qrInput.addEventListener('keydown', function(e) {
-                // Clear buffer on Enter
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (scanBuffer.trim()) {
-                        const qrCode = scanBuffer.trim();
-                        scanBuffer = '';
-                        // Redirect to asset view
-                        window.location.href = '<?php echo base_url('assets/view.php'); ?>?qr=' + encodeURIComponent(qrCode);
-                    }
-                } else if (e.key.length === 1) {
-                    // Add character to buffer
-                    scanBuffer += e.key;
-                    // Reset timeout
-                    clearTimeout(scanTimeout);
-                    scanTimeout = setTimeout(function() {
-                        scanBuffer = '';
-                    }, 1000);
-                }
+        // Initialize QR scanner on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const scanner = new QRScanner({
+                onScan: async function(qrCode) {
+                    // Default behavior: redirect to asset page
+                    window.location.href = '<?php echo base_url('assets/view.php'); ?>?qr=' + encodeURIComponent(qrCode);
+                },
+                scanDelay: 100
             });
-            
-            // Focus the input when page loads (for HID scanners)
-            qrInput.focus();
-        })();
+            scanner.init();
+            window.qrScanner = scanner; // Make available globally
+        });
     </script>
     
     <!-- Volt Dashboard JS -->

@@ -6,22 +6,8 @@
  */
 
 // Load environment variables if .env file exists
-$envPath = __DIR__ . '/../../.env';
-if (file_exists($envPath)) {
-    // Parse .env file (simple key=value format)
-    $env = [];
-    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        // Skip comments
-        if (strpos(trim($line), '#') === 0) {
-            continue;
-        }
-        // Parse key=value pairs
-        if (strpos($line, '=') !== false) {
-            list($key, $value) = explode('=', $line, 2);
-            $env[trim($key)] = trim($value);
-        }
-    }
+if (file_exists(__DIR__ . '/../../.env')) {
+    $env = parse_ini_file(__DIR__ . '/../../.env');
     $db_host = $env['DB_HOST'] ?? 'localhost';
     $db_name = $env['DB_NAME'] ?? 'onestop_asset_shop';
     $db_user = $env['DB_USER'] ?? 'root';
@@ -34,7 +20,8 @@ if (file_exists($envPath)) {
     $db_pass = getenv('DB_PASS') ?: '';
 }
 
-// Create PDO connection
+// Create PDO connection (allow running without DB so login page can be viewed locally)
+$pdo = null;
 try {
     $pdo = new PDO(
         "mysql:host={$db_host};dbname={$db_name};charset=utf8mb4",
@@ -46,8 +33,11 @@ try {
             PDO::ATTR_EMULATE_PREPARES => false
         ]
     );
+    define('DB_AVAILABLE', true);
 } catch (PDOException $e) {
     // Log error securely (don't expose credentials)
     error_log("Database connection failed: " . $e->getMessage());
-    die("Database connection failed. Please contact the administrator.");
+    $pdo = null;
+    define('DB_AVAILABLE', false);
+    // Don't die - allow login page to render so UI can be viewed locally
 }

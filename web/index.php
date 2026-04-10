@@ -3,56 +3,100 @@
  * Dashboard / Home Page
  */
 require_once __DIR__ . '/config/app.php';
-require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/config/firestore.php';
 require_login();
 
 $page_title = 'Dashboard';
 
-// Get dashboard statistics
-try {
-    // Total assets
-    $totalAssets = $pdo->query("SELECT COUNT(*) as count FROM assets")->fetch()['count'];
-    
-    // Assets by country
-    $assetsByCountry = $pdo->query("
-        SELECT c.country_name, c.country_code, COUNT(a.asset_id) as count
-        FROM countries c
-        LEFT JOIN assets a ON c.country_id = a.country_id
-        GROUP BY c.country_id, c.country_name, c.country_code
-        ORDER BY c.country_name
-    ")->fetchAll();
-    
-    // Assets by status
-    $assetsByStatus = $pdo->query("
-        SELECT status, COUNT(*) as count
-        FROM assets
-        GROUP BY status
-        ORDER BY count DESC
-    ")->fetchAll();
-    
-    // Recent transactions
-    $recentTransactions = $pdo->query("
-        SELECT t.*, a.name as asset_name, a.qr_code_id
-        FROM transactions t
-        JOIN assets a ON t.asset_id = a.asset_id
-        ORDER BY t.transaction_date DESC
-        LIMIT 10
-    ")->fetchAll();
-    
-    // Pending requests
-    $pendingRequests = $pdo->query("
-        SELECT COUNT(*) as count
-        FROM requests
-        WHERE status IN ('Draft', 'Submitted')
-    ")->fetch()['count'];
-    
-} catch (PDOException $e) {
-    error_log("Dashboard query error: " . $e->getMessage());
-    $totalAssets = 0;
-    $assetsByCountry = [];
-    $assetsByStatus = [];
-    $recentTransactions = [];
-    $pendingRequests = 0;
+// Firestore-backed dashboard statistics
+$assets = am_firestore_get_collection('am_core_assets', 1000);
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$transactions = am_firestore_get_collection('am_core_transactions', 1000);
+$requests = am_firestore_get_collection('pr_master_requests', 1000);
+
+$totalAssets = count($assets);
+
+// Item class counts
+$classCounts = ['FixedAsset' => 0, 'Material' => 0, 'Consumable' => 0, 'Inventory' => 0];
+foreach ($assets as $asset) {
+    $cls = (string)($asset['item_class'] ?? '');
+    if (isset($classCounts[$cls])) {
+        $classCounts[$cls]++;
+    }
+}
+
+// Country counts
+$countryMap = [];
+foreach ($countries as $country) {
+    $countryId = (string)($country['country_id'] ?? $country['id'] ?? '');
+    $countryMap[$countryId] = [
+        'country_name' => (string)($country['country_name'] ?? 'Unknown'),
+        'country_code' => (string)($country['country_code'] ?? 'N/A'),
+        'count' => 0,
+    ];
+}
+foreach ($assets as $asset) {
+    $countryId = (string)($asset['country_id'] ?? '');
+    if ($countryId === '') {
+        continue;
+    }
+    if (!isset($countryMap[$countryId])) {
+        $countryMap[$countryId] = [
+            'country_name' => 'Unknown',
+            'country_code' => 'N/A',
+            'count' => 0,
+        ];
+    }
+    $countryMap[$countryId]['count']++;
+}
+$assetsByCountry = array_values($countryMap);
+usort($assetsByCountry, fn($a, $b) => strcmp((string)$a['country_name'], (string)$b['country_name']));
+
+// Status counts
+$statusCounts = [];
+foreach ($assets as $asset) {
+    $status = (string)($asset['status'] ?? 'Unknown');
+    $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
+}
+$assetsByStatus = [];
+foreach ($statusCounts as $status => $count) {
+    $assetsByStatus[] = ['status' => $status, 'count' => $count];
+}
+usort($assetsByStatus, fn($a, $b) => (int)$b['count'] <=> (int)$a['count']);
+
+// Recent transactions (joined with asset details)
+$assetById = [];
+foreach ($assets as $asset) {
+    $assetId = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
+    if ($assetId !== '') {
+        $assetById[$assetId] = $asset;
+    }
+}
+usort($transactions, function ($a, $b) {
+    $ad = strtotime((string)($a['transaction_date'] ?? $a['created_at'] ?? '1970-01-01'));
+    $bd = strtotime((string)($b['transaction_date'] ?? $b['created_at'] ?? '1970-01-01'));
+    return $bd <=> $ad;
+});
+$recentTransactions = [];
+foreach (array_slice($transactions, 0, 10) as $txn) {
+    $assetId = (string)($txn['asset_id'] ?? '');
+    $asset = $assetById[$assetId] ?? [];
+    $recentTransactions[] = [
+        'transaction_date' => (string)($txn['transaction_date'] ?? $txn['created_at'] ?? date('c')),
+        'transaction_type' => (string)($txn['transaction_type'] ?? 'Unknown'),
+        'asset_name' => (string)($asset['name'] ?? $txn['asset_name'] ?? 'Unknown asset'),
+        'qr_code_id' => (string)($asset['qr_code_id'] ?? $txn['qr_code_id'] ?? ''),
+        'device_type' => (string)($txn['device_type'] ?? 'Desktop'),
+    ];
+}
+
+// Pending requests
+$pendingRequests = 0;
+foreach ($requests as $req) {
+    $status = (string)($req['status'] ?? '');
+    if ($status === 'Draft' || $status === 'Submitted') {
+        $pendingRequests++;
+    }
 }
 
 include __DIR__ . '/includes/header.php';
@@ -72,7 +116,7 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- Summary Row -->
     <div class="row mb-4">
         <div class="col-12 col-sm-6 col-xl-3 mb-4">
             <div class="card border-0 shadow">
@@ -85,7 +129,7 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Total Assets</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0">Total Items</h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo number_format($totalAssets); ?></h3>
                             </div>
                         </div>
@@ -160,6 +204,34 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Item Classification Breakdown -->
+    <?php
+    $classConfig = [
+        'FixedAsset'  => ['label' => 'Fixed Assets',  'icon' => 'fa-building',       'color' => 'primary',   'desc' => 'PP&E: vehicles, equipment, infrastructure'],
+        'Material'    => ['label' => 'Materials',      'icon' => 'fa-cubes',          'color' => 'warning',   'desc' => 'Construction & installation inputs'],
+        'Consumable'  => ['label' => 'Consumables',    'icon' => 'fa-recycle',        'color' => 'info',      'desc' => 'Operational supplies, PPE, office'],
+        'Inventory'   => ['label' => 'Inventory',      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => 'Meters, ready boards, spare parts'],
+    ];
+    ?>
+    <div class="row mb-4">
+        <?php foreach ($classConfig as $classKey => $cfg): ?>
+        <div class="col-12 col-sm-6 col-xl-3 mb-4">
+            <a href="<?php echo base_url('assets/index.php?item_class=' . $classKey); ?>" class="text-decoration-none">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-body text-center py-4">
+                        <div class="icon-shape icon-shape-<?php echo $cfg['color']; ?> rounded-circle mx-auto mb-3" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas <?php echo $cfg['icon']; ?> fa-lg text-white"></i>
+                        </div>
+                        <h3 class="fw-extrabold mb-1"><?php echo number_format($classCounts[$classKey]); ?></h3>
+                        <h2 class="h5 fw-normal text-gray-600 mb-1"><?php echo $cfg['label']; ?></h2>
+                        <small class="text-gray-500"><?php echo $cfg['desc']; ?></small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
     <!-- Assets by Country -->
     <div class="row mb-4">
         <div class="col-12 col-lg-6 mb-4">
@@ -227,6 +299,9 @@ include __DIR__ . '/includes/header.php';
                                                 'Available' => 'success',
                                                 'Allocated' => 'warning',
                                                 'CheckedOut' => 'info',
+                                                'InProject' => 'primary',
+                                                'Consumed' => 'secondary',
+                                                'Deployed' => 'dark',
                                                 'Missing' => 'danger',
                                                 default => 'secondary'
                                             };

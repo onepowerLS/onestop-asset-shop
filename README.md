@@ -4,79 +4,123 @@
 
 A unified, modern asset management platform replacing fragmented Google Sheets and legacy WordPress systems. Designed for operations across **Lesotho, Zambia, and Benin**.
 
+## Item Classification Model
+
+All physical items are classified into four tiers aligned with IAS 16 / IAS 2 accounting standards:
+
+| Class | Treatment | Description |
+|---|---|---|
+| **Fixed Asset** | Capitalized, depreciated (IAS 16 PP&E) | Vehicles, heavy equipment, IT, installed infrastructure |
+| **Material** | Expensed to project on issuance (IAS 2) | Construction/installation inputs: wire, poles, panels |
+| **Consumable** | Expensed immediately on use | Operational supplies: PPE, office, maintenance |
+| **Inventory** | Carried as current asset until deployed (IAS 2) | Meters, ready boards, spare parts, kits |
+
+See [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) for the full classification SOP with decision tree and edge cases.
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) | End-user guide for all application features |
+| [`docs/FIRESTORE_SCHEMA.md`](docs/FIRESTORE_SCHEMA.md) | Collection schemas, field reference, PHP API usage |
+| [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) | Item classification SOP with decision tree |
+| [`database/MIGRATION_GUIDE.md`](database/MIGRATION_GUIDE.md) | Data migration procedures and legacy mapping |
+| [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md) | AWS EC2 deployment and CI/CD |
+| [`TESTING.md`](TESTING.md) | Testing checklists and UAT scenarios |
+| [`qr/README.md`](qr/README.md) | QR code format, generation API, scanning |
+
+## SHARED FIREBASE PROJECT -- READ BEFORE MAKING CHANGES
+
+> **This project shares Firebase project `pr-system-4ea55` with the PR System and other 1PWR tools.** Deploying Firestore security rules, authentication config, or any Firebase-level settings from this repo will overwrite the configuration for ALL dependent systems -- including the production PR system used daily by staff across Lesotho, Zambia, and Benin.
+>
+> **Before deploying any Firebase changes:**
+> 1. Check `firestore.rules` -- it must include rules for ALL systems (AM, PR, Job Cards), not just AM collections. The catch-all rule MUST be `allow read, write: if request.auth != null;` -- never `if false`.
+> 2. Do NOT run `firebase deploy --only firestore:rules` unless you have verified the rules file covers every dependent system's collections.
+> 3. Coordinate with the PR System repo (`PR 25 NOV`) to keep rules files in sync.
+> 4. If you need to test rules changes, use the Firebase Emulator Suite -- never deploy experimental rules to production.
+
 ## Features
 
-- 🏷️ **QR Code Integration**: Print labels (Brother PT-P710BT) and scan assets (Symcode 2D Scanner)
-- 📱 **Tablet-Optimized**: Mobile-first interface for field operations (stock ingestion, check-in/out, stock taking)
-- 🌍 **Multi-Country Support**: Unified inventory tracking across Lesotho, Zambia, and Benin
-- 📊 **Consolidated Database**: Single source of truth replacing 15+ Google Sheets
-- 🔄 **Auto-Deployment**: CI/CD pipeline to AWS EC2
+- **4-Tier Item Classification**: Industry-standard asset/material/consumable/inventory model with 22 seed categories
+- **QR Code Integration**: Print labels (Brother PT-P710BT) and scan items (Symcode 2D Scanner)
+- **Tablet-Optimized**: Mobile-first interface for field operations (stock ingestion, check-in/out, stock taking)
+- **Multi-Country Support**: Unified tracking across Lesotho, Zambia, and Benin
+- **Lifecycle Tracking**: Items transition between classes (e.g., Material -> Fixed Asset on commissioning)
+- **Depreciation Support**: Per-category useful life and depreciation method for Fixed Assets
+- **Reorder Alerts**: Configurable reorder points for Consumables and Inventory
+- **Consolidated Database**: Single source of truth replacing 15+ Google Sheets
+- **Auto-Deployment**: CI/CD pipeline to AWS EC2
 
 ## Technology Stack
 
-- **Backend**: PHP 8.5 (Custom)
+- **Backend**: PHP with Firestore (Firebase) data layer
 - **Frontend**: Volt Dashboard (Bootstrap 5)
-- **Database**: MariaDB 10.5
-- **Web Server**: Apache 2.4
-- **Hosting**: AWS EC2 (Amazon Linux 2023)
-- **SSL**: Let's Encrypt (Certbot)
+- **Database**: Firestore (primary), MySQL (schema reference)
+- **Auth**: Firebase Authentication (SSO via Nexus portal)
+- **Hosting**: AWS EC2 / Firebase Hosting
 - **Version Control**: Git (GitHub: `onepowerLS/onestop-asset-shop`)
 
 ## Current Status
 
-**Last Updated:** January 25, 2026  
-**Phase:** Data Migration & Quality Enhancement
-
-### ✅ Completed
-- ✅ AWS EC2 hosting configured (Amazon Linux 2023)
-- ✅ Application deployed and accessible at https://am.1pwrafrica.com
-- ✅ Database schema implemented (MariaDB)
-- ✅ **1,609 assets imported** from SQL dump
-- ✅ All application pages functional (view, add, edit assets)
-- ✅ User authentication and admin access
-- ✅ QR code generation system
-- ✅ Multi-country support (Lesotho, Zambia, Benin)
-- ✅ Bug fixes (404 errors, jQuery issues, path duplication)
-
-### ⏳ Current Step: Data Quality Enhancement
-- ⏳ **Import from Access Database** - Waiting for .accdb file or CSV export
-- ⏳ **Import from Google Sheets** - Ready (CSV or API)
-- ⏳ Complete data population (manufacturer, model, prices, etc.)
-
-**See [PROJECT_STATUS.md](PROJECT_STATUS.md) for detailed status.**  
+- [x] Source code extracted from InMotion hosting
+- [x] Database schema analyzed and modernized
+- [x] Google Sheets inventory mapped (15+ sources)
+- [x] Dropbox data sources assessed (see [`database/DATA_SOURCES_ASSESSMENT.md`](database/DATA_SOURCES_ASSESSMENT.md))
+- [x] 4-tier item classification model implemented (IAS 16/IAS 2)
+- [x] 22 seed categories defined across all classes
+- [x] Classification SOP with decision tree created
+- [x] Firestore write/update/delete layer (`web/config/firestore.php`)
+- [x] Asset CRUD: add, view, edit with item_class-driven forms
+- [x] Admin pages: categories, locations, employees
+- [x] Stock levels dashboard with reorder alerts
+- [x] Transaction history with filtering
+- [x] Check-out/check-in workflow
+- [x] Request management with approval flow
+- [x] QR code generation via Firestore (API + batch admin)
+- [x] Data migration ETL (Python) -- 2,874 items from 9 sources, classified and deduplicated
+- [x] Legacy category_type → item_class mapping (built into ETL)
+- [x] Firestore security rules (role-based via permissionLevel, deployed)
+- [x] Tablet mode (scan-centric check-out/in, stock count, quick lookup)
+- [x] Reports & export (6 report types, CSV and PDF)
+- [x] Admin migration page (batch import from ETL JSON to Firestore)
+- [ ] Initial data load (run ETL → import via admin page)
+- [ ] UAT walkthrough on staging server
 
 ## Project Structure
 
 ```
 onestop-asset-shop/
 ├── database/
-│   ├── migrations/          # Database schema migrations
-│   └── seeds/              # Initial data seeding
-├── backend/                # API/Backend logic
-├── frontend/               # Volt Dashboard refactor
-├── qr/                     # QR generation & scanning
-└── deployment/              # AWS deployment configs
+│   ├── schema-consolidated.sql   # Canonical schema with item_class model
+│   ├── MIGRATION_GUIDE.md        # Data migration procedures
+│   └── migrations/               # Step-by-step migration scripts
+├── docs/
+│   └── SOP-ITEM-CLASSIFICATION.md  # Classification SOP & decision tree
+├── web/
+│   ├── config/                   # App, Firebase, Firestore config
+│   ├── includes/                 # Header, sidebar, footer templates
+│   ├── assets/                   # Item listing, add, edit, view
+│   ├── inventory/                # Stock level tracking
+│   ├── requests/                 # Material/item requests
+│   ├── checkout/                 # Check-out/in workflows
+│   ├── admin/                    # Categories, locations, employees, QR, migration
+│   ├── tablet/                   # Tablet-optimized scan-centric UI
+│   ├── reports/                  # Report generation and CSV/PDF export
+│   └── api/                      # QR generation and other APIs
+├── migration/
+│   ├── etl.py                    # Python ETL: Excel sources → classified JSON
+│   └── output/                   # ETL output (JSON files for import)
+├── qr/                           # QR generation & scanning utilities
+├── firestore.rules               # Firestore security rules
+└── deployment/                   # AWS deployment configs
 ```
 
 ## Getting Started
 
-### Access the Application
-- **URL**: https://am.1pwrafrica.com
-- **Admin Login**: 
-  - Username: `mso`
-  - Password: `Welcome123!` (⚠️ Change after first login)
-
-### Documentation
-- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Complete project status and current step
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Testing procedures
-- **[database/MIGRATION_INSTRUCTIONS.md](database/MIGRATION_INSTRUCTIONS.md)** - Data migration guide
-- **[database/ACCESS_DATABASE_IMPORT.md](database/ACCESS_DATABASE_IMPORT.md)** - Access database import
-- **[database/GOOGLE_SHEETS_API_SETUP.md](database/GOOGLE_SHEETS_API_SETUP.md)** - Google Sheets setup
-
-### Quick Links
-- **GitHub Repository**: https://github.com/onepowerLS/onestop-asset-shop
-- **Deployment**: Auto-deploy via GitHub Actions
-- **Server**: AWS EC2 (16.28.64.221)
+1. Clone the repo: `git clone https://github.com/onepowerLS/onestop-asset-shop.git`
+2. Copy `web/config/firebase.php.example` to `web/config/firebase.php` and add credentials
+3. Serve via Apache/Nginx pointing document root to `web/`
+4. Log in via Firebase Authentication
 
 ## License
 

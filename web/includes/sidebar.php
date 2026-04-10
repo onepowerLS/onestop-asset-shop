@@ -32,10 +32,9 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 
         <ul class="nav flex-column pt-3 pt-md-0">
             <li class="nav-item">
-                <a href="<?php echo base_url(); ?>" class="nav-link d-flex align-items-center mb-4">
-                    <span class="sidebar-icon me-2">
-                        <img src="<?php echo base_url('assets/img/brand/1pwr_logo.png'); ?>" alt="1PWR Logo" style="max-width: 120px; height: auto;" />
-                    </span>
+                <a href="<?php echo base_url(); ?>" class="nav-link d-flex align-items-center">
+                    <span class="sidebar-icon" style="font-weight:700;font-size:1.4rem;color:#1976d2;">1PWR</span>
+                    <span class="sidebar-text ms-1" style="font-weight:500;">Asset Management</span>
                 </a>
             </li>
 
@@ -48,13 +47,54 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
-            <li class="nav-item <?php echo $current_page === 'assets' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('assets/index.php'); ?>" class="nav-link">
-                    <span class="sidebar-icon">
-                        <i class="fas fa-box"></i>
+            <?php
+            $classParam = $_GET['item_class'] ?? '';
+            ?>
+            <li class="nav-item">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-catalog">
+                    <span>
+                        <span class="sidebar-icon">
+                            <i class="fas fa-th-large"></i>
+                        </span>
+                        <span class="sidebar-text">Catalog</span>
                     </span>
-                    <span class="sidebar-text">Assets</span>
-                </a>
+                    <span class="link-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </span>
+                </span>
+                <div class="multi-level collapse <?php echo in_array($current_page, ['assets', 'index']) && $classParam ? 'show' : ''; ?>" id="submenu-catalog">
+                    <ul class="flex-column nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('assets/index.php'); ?>">
+                                <span class="sidebar-text">All Items</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $classParam === 'FixedAsset' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=FixedAsset'); ?>">
+                                <i class="fas fa-building me-1 text-primary"></i>
+                                <span class="sidebar-text">Fixed Assets</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $classParam === 'Material' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Material'); ?>">
+                                <i class="fas fa-cubes me-1 text-warning"></i>
+                                <span class="sidebar-text">Materials</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $classParam === 'Consumable' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Consumable'); ?>">
+                                <i class="fas fa-recycle me-1 text-info"></i>
+                                <span class="sidebar-text">Consumables</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $classParam === 'Inventory' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Inventory'); ?>">
+                                <i class="fas fa-boxes-stacked me-1 text-success"></i>
+                                <span class="sidebar-text">Inventory</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
 
             <li class="nav-item <?php echo $current_page === 'requests' ? 'active' : ''; ?>">
@@ -71,7 +111,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-warehouse"></i>
                     </span>
-                    <span class="sidebar-text">Inventory</span>
+                    <span class="sidebar-text">Stock Levels</span>
                 </a>
             </li>
 
@@ -81,6 +121,53 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <i class="fas fa-hand-holding"></i>
                     </span>
                     <span class="sidebar-text">Check-Out/In</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </span>
+                    <span class="sidebar-text">Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="<?php echo base_url('tablet/index.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-tablet-screen-button"></i>
+                    </span>
+                    <span class="sidebar-text">Tablet Mode</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-4 mb-1">
+                <small class="nav-link text-gray-500 text-uppercase fw-bold py-1" style="font-size:0.7rem;letter-spacing:0.05em;">Switch Tool</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="https://pr.1pwrafrica.com/" target="_blank" rel="noopener">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-file-invoice text-warning"></i>
+                    </span>
+                    <span class="sidebar-text">Procurement</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="http://prod.1pwrafrica.com/" target="_blank" rel="noopener">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-clipboard-check text-info"></i>
+                    </span>
+                    <span class="sidebar-text">Job Cards</span>
+                </a>
+            </li>
+
+            <li class="nav-item <?php echo $current_page === 'help' ? 'active' : ''; ?>">
+                <a href="<?php echo base_url('help.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-question-circle"></i>
+                    </span>
+                    <span class="sidebar-text">Help</span>
                 </a>
             </li>
 
@@ -117,6 +204,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/qr-labels.php'); ?>">
                                 <span class="sidebar-text">QR Labels</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/migrate.php'); ?>">
+                                <span class="sidebar-text">Data Migration</span>
                             </a>
                         </li>
                     </ul>

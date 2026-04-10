@@ -1,6 +1,8 @@
 <?php
 /**
  * Header Template
+ * 
+ * Includes Volt Dashboard CSS and sets up the page structure
  */
 require_once __DIR__ . '/../config/app.php';
 $page_title = $page_title ?? 'OneStop Asset Shop';
@@ -12,13 +14,11 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title><?php echo htmlspecialchars($page_title); ?> - <?php echo APP_NAME; ?></title>
     
-    <!-- Favicon (optional - comment out if file doesn't exist) -->
-    <!-- <link rel="icon" type="image/png" sizes="32x32" href="<?php echo base_url('assets/img/favicon/favicon-32x32.png'); ?>"> -->
-    
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24' font-weight='bold' fill='%231976d2'>1P</text></svg>">
     
     <!-- Volt Dashboard CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@themesberg/volt-bootstrap-5-dashboard@1.4.2/dist/css/volt.min.css" rel="stylesheet">
     
     <!-- DataTables -->
@@ -26,9 +26,6 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- jQuery (load early, before any scripts that need it) -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     
     <!-- QR Code Scanner (hidden input for HID scanner) -->
     <style>
@@ -52,32 +49,6 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
         .scan-mode-indicator.active {
             display: block;
         }
-        /* Ensure sidebar is fixed on the left */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            z-index: 1000;
-        }
-        /* Ensure content area accounts for sidebar */
-        .content {
-            margin-left: 0;
-        }
-        @media (min-width: 992px) {
-            .content {
-                margin-left: 280px;
-            }
-        }
-        /* Compact topbar */
-        .navbar-top {
-            min-height: 56px;
-        }
-        /* Logo styling in sidebar */
-        .sidebar .nav-link img {
-            max-width: 100%;
-            height: auto;
-        }
     </style>
 </head>
 <body>
@@ -92,7 +63,7 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
 
     <nav class="navbar navbar-dark navbar-theme-primary px-4 col-12 d-lg-none">
         <a class="navbar-brand me-lg-5" href="<?php echo base_url(); ?>">
-            <img src="<?php echo base_url('assets/img/brand/1pwr_logo.png'); ?>" alt="1PWR Logo" style="max-height: 30px; width: auto;" />
+            <span style="font-weight:700;font-size:1.1rem;color:#fff;">1PWR</span> <span style="font-weight:400;color:rgba(255,255,255,0.8);">AM</span>
         </a>
         <div class="d-flex align-items-center">
             <button class="navbar-toggler d-lg-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">

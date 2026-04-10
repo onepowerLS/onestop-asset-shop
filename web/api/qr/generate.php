@@ -1,74 +1,70 @@
 <?php
-/**
- * Generate QR Code for Asset
- * 
- * GET /api/qr/generate.php?asset_id=X - Generate a unique QR code ID for an asset
- */
-
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../config/firestore.php';
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     exit;
 }
 
-if (!isset($_GET['asset_id'])) {
+$assetDocId = trim($_GET['asset_id'] ?? '');
+
+if ($assetDocId === '') {
     http_response_code(400);
-    echo json_encode(['error' => 'asset_id is required']);
+    echo json_encode(['success' => false, 'error' => 'Asset ID required']);
     exit;
 }
 
-$assetId = (int)$_GET['asset_id'];
+$asset = am_firestore_get_document('am_core_assets', $assetDocId);
+if (!$asset) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Asset not found']);
+    exit;
+}
 
-try {
-    // Check if asset exists and doesn't already have a QR code
-    $stmt = $pdo->prepare("SELECT asset_id, name, qr_code_id, country_id FROM assets WHERE asset_id = ?");
-    $stmt->execute([$assetId]);
-    $asset = $stmt->fetch();
-    
-    if (!$asset) {
-        http_response_code(404);
-        echo json_encode(['error' => 'Asset not found']);
-        exit;
+if (!empty($asset['qr_code_id'])) {
+    echo json_encode(['success' => true, 'qr_code_id' => $asset['qr_code_id'], 'asset_id' => $assetDocId]);
+    exit;
+}
+
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countryCode = 'UNK';
+$countryId = (string)($asset['country_id'] ?? '');
+foreach ($countries as $c) {
+    if ((string)($c['country_id'] ?? $c['id'] ?? '') === $countryId) {
+        $countryCode = (string)($c['country_code'] ?? 'UNK');
+        break;
     }
-    
-    if (!empty($asset['qr_code_id'])) {
-        echo json_encode([
-            'success' => true,
-            'qr_code_id' => $asset['qr_code_id'],
-            'message' => 'QR code already exists'
-        ]);
-        exit;
+}
+
+$itemClass = (string)($asset['item_class'] ?? 'ITM');
+$prefixes = ['FixedAsset' => 'FA', 'Material' => 'MAT', 'Consumable' => 'CON', 'Inventory' => 'INV'];
+$classPrefix = $prefixes[$itemClass] ?? 'ITM';
+
+$allAssets = am_firestore_get_collection('am_core_assets', 2000);
+$qrPrefix = "1PWR-{$countryCode}-{$classPrefix}-";
+$maxNum = 0;
+foreach ($allAssets as $a) {
+    $qr = (string)($a['qr_code_id'] ?? '');
+    if (str_starts_with($qr, $qrPrefix)) {
+        $numPart = (int)substr($qr, strlen($qrPrefix));
+        if ($numPart > $maxNum) $maxNum = $numPart;
     }
-    
-    // Get country code for prefix
-    $stmt = $pdo->prepare("SELECT country_code FROM countries WHERE country_id = ?");
-    $stmt->execute([$asset['country_id']]);
-    $country = $stmt->fetch();
-    $countryCode = $country ? $country['country_code'] : 'XXX';
-    
-    // Generate unique QR code ID: 1PWR-{COUNTRY}-{ASSET_ID}-{RANDOM}
-    $randomPart = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
-    $qrCodeId = sprintf("1PWR-%s-%05d-%s", $countryCode, $assetId, $randomPart);
-    
-    // Update asset with QR code
-    $stmt = $pdo->prepare("UPDATE assets SET qr_code_id = ? WHERE asset_id = ?");
-    $stmt->execute([$qrCodeId, $assetId]);
-    
-    echo json_encode([
-        'success' => true,
-        'qr_code_id' => $qrCodeId,
-        'asset_id' => $assetId,
-        'message' => 'QR code generated successfully'
-    ]);
-    
-} catch (PDOException $e) {
-    error_log("Error generating QR code: " . $e->getMessage());
+}
+
+$qrCodeId = $qrPrefix . str_pad((string)($maxNum + 1), 6, '0', STR_PAD_LEFT);
+
+$result = am_firestore_update_document('am_core_assets', $assetDocId, [
+    'qr_code_id' => $qrCodeId,
+    'updated_at' => date('c'),
+]);
+
+if ($result['ok']) {
+    echo json_encode(['success' => true, 'qr_code_id' => $qrCodeId, 'asset_id' => $assetDocId]);
+} else {
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to generate QR code: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => $result['error'] ?? 'Failed to assign QR code']);
 }

@@ -1,35 +1,59 @@
-# Secrets and credentials
-.secrets/
-*.pem
-*.key
-
 # Environment files
 .env
 .env.local
 .env.*.local
 
-# Google credentials
-google-credentials.json
-database/google-credentials.json
+# Dependencies
+/vendor/
+/node_modules/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 *.log
-migration_log.txt
-
-# Dependencies
-vendor/
-node_modules/
+logs/
+*.log.*
 
 # Temporary files
+tmp/
+temp/
 *.tmp
-*.temp
+
+# Database
+*.sql
+*.db
+*.sqlite
+
+# Deployment
+deploy/
+*.tar.gz
+*.zip
+
+# Backup files
+*.bak
+*.backup
+
+# Compiled files
+*.cache
+*.compiled
+
+# Sensitive data
+config/local.php
+secrets/
+.secrets/
+*.pem
+*.key
+
+# Build output
+dist/
+build/

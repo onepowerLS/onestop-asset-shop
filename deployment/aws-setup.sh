@@ -45,8 +45,8 @@ fi
 
 sudo tee $APACHE_CONF > /dev/null <<EOF
 <VirtualHost *:80>
-    ServerName am.1pwrafrica.com
-    ServerAlias www.am.1pwrafrica.com
+    ServerName assets.1pwrafrica.com
+    ServerAlias www.assets.1pwrafrica.com
     
     DocumentRoot /var/www/onestop-asset-shop/web
     
@@ -115,7 +115,7 @@ fi
 
 # Set up SSL (Let's Encrypt) - optional
 echo "To set up SSL with Let's Encrypt, run:"
-echo "sudo certbot --apache -d am.1pwrafrica.com"
+echo "sudo certbot --apache -d assets.1pwrafrica.com"
 
 echo "=========================================="
 echo "Setup complete!"

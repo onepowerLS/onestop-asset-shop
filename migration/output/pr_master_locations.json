@@ -1,0 +1,122 @@
+[
+  {
+    "location_code": "LSO-HQ",
+    "location_name": "Headquarters (Maseru)",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-MAT",
+    "location_name": "Matsieng Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-TLH",
+    "location_name": "Thaba-Liholo Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-MAS",
+    "location_name": "Mashai Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-SHG",
+    "location_name": "Sehong Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-LEB",
+    "location_name": "Lebakeng Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-RIB",
+    "location_name": "Ribaneng Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-KET",
+    "location_name": "Ketane Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-SEH",
+    "location_name": "Sehonghong Concession",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-LSB",
+    "location_name": "Let\u0161eng-la-Baroa",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-MAK",
+    "location_name": "Makhoakhoeng",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-TOS",
+    "location_name": "Tosing",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "LSO-SEB",
+    "location_name": "Sebelekoane",
+    "location_type": "Site",
+    "country_code": "LSO",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "ZMB-HQ",
+    "location_name": "Zambia HQ",
+    "location_type": "Site",
+    "country_code": "ZMB",
+    "parent_location_code": "",
+    "active": 1
+  },
+  {
+    "location_code": "BEN-HQ",
+    "location_name": "Benin HQ",
+    "location_type": "Site",
+    "country_code": "BEN",
+    "parent_location_code": "",
+    "active": 1
+  }
+]

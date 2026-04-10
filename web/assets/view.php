@@ -1,422 +1,292 @@
 <?php
-/**
- * View Asset Details
- */
 require_once __DIR__ . '/../config/app.php';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/firestore.php';
 require_login();
 
-$page_title = 'Asset Details';
+$assetId = $_GET['id'] ?? '';
+$qrCode = $_GET['qr'] ?? '';
 
-$asset_id = null;
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$categories = am_firestore_get_collection('pr_master_categories', 1000);
+$locations = am_get_pr_sites();
+
+$countryById = [];
+foreach ($countries as $c) {
+    $cid = (string)($c['country_id'] ?? $c['id'] ?? '');
+    if ($cid !== '') $countryById[$cid] = $c;
+}
+$categoryById = [];
+foreach ($categories as $c) {
+    $cid = (string)($c['category_id'] ?? $c['id'] ?? '');
+    if ($cid !== '') $categoryById[$cid] = $c;
+}
+$locationById = [];
+foreach ($locations as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') $locationById[$lid] = $l;
+}
+
 $asset = null;
-$error = '';
 
-// Get asset ID from query string (either ?id=X or ?qr=QR_CODE)
-if (isset($_GET['id'])) {
-    $asset_id = intval($_GET['id']);
-} elseif (isset($_GET['qr'])) {
-    $qr_code = trim($_GET['qr']);
-    $stmt = $pdo->prepare("SELECT asset_id FROM assets WHERE qr_code_id = ?");
-    $stmt->execute([$qr_code]);
-    $result = $stmt->fetch();
-    if ($result) {
-        $asset_id = $result['asset_id'];
-    } else {
-        $error = "Asset with QR code '$qr_code' not found.";
-    }
-} else {
-    $error = "No asset specified.";
-}
-
-// Load asset details
-if ($asset_id && empty($error)) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                a.*,
-                c.country_name, c.country_code,
-                l.location_name, l.location_code,
-                cat.category_name, cat.category_type
-            FROM assets a
-            LEFT JOIN countries c ON a.country_id = c.country_id
-            LEFT JOIN locations l ON a.location_id = l.location_id
-            LEFT JOIN categories cat ON a.category_id = cat.category_id
-            WHERE a.asset_id = ?
-        ");
-        $stmt->execute([$asset_id]);
-        $asset = $stmt->fetch();
-        
-        if (!$asset) {
-            $error = "Asset not found.";
-        } else {
-            $page_title = 'Asset: ' . htmlspecialchars($asset['name']);
+if ($assetId !== '') {
+    $asset = am_firestore_get_document('am_core_assets', $assetId);
+} elseif ($qrCode !== '') {
+    $allAssets = am_firestore_get_collection('am_core_assets', 2000);
+    foreach ($allAssets as $a) {
+        if ((string)($a['qr_code_id'] ?? '') === $qrCode) {
+            $asset = $a;
+            $assetId = (string)($a['id'] ?? '');
+            break;
         }
-    } catch (PDOException $e) {
-        error_log("Error loading asset: " . $e->getMessage());
-        $error = "Error loading asset details.";
     }
 }
+
+if (!$asset) {
+    $_SESSION['flash_error'] = 'Item not found.';
+    header('Location: ' . base_url('assets/index.php'));
+    exit;
+}
+
+$page_title = (string)($asset['name'] ?? 'Item Detail');
+
+$allocations = am_firestore_get_collection('am_core_allocations', 2000);
+$transactions = am_firestore_get_collection('am_core_transactions', 2000);
+
+$itemAllocations = array_filter($allocations, fn($a) => (string)($a['asset_id'] ?? '') === $assetId);
+$itemTransactions = array_filter($transactions, fn($t) => (string)($t['asset_id'] ?? '') === $assetId);
+usort($itemTransactions, function ($a, $b) {
+    return strtotime((string)($b['transaction_date'] ?? $b['created_at'] ?? '1970-01-01'))
+        <=> strtotime((string)($a['transaction_date'] ?? $a['created_at'] ?? '1970-01-01'));
+});
+
+$classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
+$classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+$cls = (string)($asset['item_class'] ?? '');
+
+$country = $countryById[(string)($asset['country_id'] ?? '')] ?? [];
+$category = $categoryById[(string)($asset['category_id'] ?? '')] ?? [];
+$location = $locationById[(string)($asset['location_id'] ?? '')] ?? [];
+
+$flash = $_SESSION['flash_success'] ?? '';
+unset($_SESSION['flash_success']);
 
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
-        <div class="d-block mb-4 mb-md-0">
+        <div>
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="<?php echo base_url('index.php'); ?>">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>">Assets</a></li>
-                    <li class="breadcrumb-item active">Asset Details</li>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>">Catalog</a></li>
+                    <?php if ($cls): ?>
+                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php?item_class=' . urlencode($cls)); ?>"><?php echo htmlspecialchars($classLabels[$cls] ?? $cls); ?></a></li>
+                    <?php endif; ?>
+                    <li class="breadcrumb-item active"><?php echo htmlspecialchars($asset['asset_tag'] ?? $assetId); ?></li>
                 </ol>
             </nav>
-            <h1 class="h2">Asset Details</h1>
+            <h1 class="h2 mt-2">
+                <?php echo htmlspecialchars($asset['name'] ?? ''); ?>
+                <span class="badge bg-<?php echo $classColors[$cls] ?? 'secondary'; ?> ms-2"><?php echo htmlspecialchars($classLabels[$cls] ?? $cls); ?></span>
+            </h1>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
-                <i class="fas fa-arrow-left me-2"></i>
-                Back to Assets
+            <a href="<?php echo base_url('assets/edit.php?id=' . urlencode($assetId)); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
+                <i class="fas fa-edit me-2"></i>Edit
             </a>
-            <?php if ($asset): ?>
-            <a href="<?php echo base_url('assets/edit.php?id=' . $asset_id); ?>" class="btn btn-sm btn-primary d-inline-flex align-items-center">
-                <i class="fas fa-edit me-2"></i>
-                Edit Asset
+            <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-sm btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
             </a>
-            <?php endif; ?>
         </div>
     </div>
 
-    <?php if ($error): ?>
-    <div class="alert alert-danger" role="alert">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        <?php echo htmlspecialchars($error); ?>
+    <?php if ($flash): ?>
+    <div class="alert alert-success alert-dismissible fade show">
+        <?php echo htmlspecialchars($flash); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-    <?php elseif ($asset): ?>
-    
+    <?php endif; ?>
+
     <div class="row">
         <!-- Main Details -->
         <div class="col-12 col-lg-8 mb-4">
             <div class="card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-box me-2"></i>Asset Information</h5>
-                </div>
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Item Details</h2></div>
                 <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <strong>Asset Name:</strong>
-                            <p class="mb-0"><?php echo htmlspecialchars($asset['name']); ?></p>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Asset Tag</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['asset_tag'] ?? 'N/A'); ?></p>
                         </div>
-                        <div class="col-md-6">
-                            <strong>QR Code ID:</strong>
-                            <p class="mb-0"><code><?php echo htmlspecialchars($asset['qr_code_id'] ?? 'N/A'); ?></code></p>
+                        <?php if (($asset['legacy_tag'] ?? '') !== ''): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Legacy ID</small>
+                            <p class="fw-bold mb-0"><code><?php echo htmlspecialchars($asset['legacy_tag']); ?></code></p>
                         </div>
-                    </div>
-                    
-                    <?php if ($asset['description']): ?>
-                    <div class="row mb-3">
+                        <?php endif; ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">QR Code</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['qr_code_id'] ?: 'Not assigned'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Status</small>
+                            <p class="mb-0">
+                                <span class="badge bg-<?php
+                                    echo match($asset['status'] ?? '') {
+                                        'Available' => 'success', 'Allocated' => 'warning', 'CheckedOut' => 'info',
+                                        'InProject' => 'primary', 'Consumed' => 'secondary', 'Deployed' => 'dark',
+                                        'Missing' => 'danger', default => 'secondary'
+                                    };
+                                ?>"><?php echo htmlspecialchars($asset['status'] ?? 'Unknown'); ?></span>
+                            </p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Category</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($category['category_name'] ?? 'N/A'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Country</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars(($country['country_name'] ?? '') . ' (' . ($country['country_code'] ?? '') . ')'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Location</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($location['location_name'] ?? 'N/A'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Condition</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['condition_status'] ?? 'N/A'); ?></p>
+                        </div>
+                        <?php if ($cls !== 'FixedAsset'): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Quantity</small>
+                            <p class="fw-bold mb-0"><?php echo (int)($asset['quantity'] ?? 1); ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($asset['description'] ?? ''): ?>
                         <div class="col-12">
-                            <strong>Description:</strong>
+                            <small class="text-gray-500">Description</small>
                             <p class="mb-0"><?php echo nl2br(htmlspecialchars($asset['description'])); ?></p>
                         </div>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <strong>Category:</strong>
-                            <p class="mb-0">
-                                <?php if ($asset['category_name']): ?>
-                                    <?php echo htmlspecialchars($asset['category_name']); ?>
-                                    <span class="badge bg-secondary ms-2"><?php echo htmlspecialchars($asset['category_type'] ?? ''); ?></span>
-                                <?php else: ?>
-                                    <span class="text-muted">Not assigned</span>
-                                <?php endif; ?>
-                            </p>
+                </div>
+            </div>
+
+            <?php if ($cls === 'FixedAsset'): ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Asset Specifics</h2></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Serial Number</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['serial_number'] ?? 'N/A'); ?></p>
                         </div>
-                        <div class="col-md-4">
-                            <strong>Status:</strong>
-                            <p class="mb-0">
-                                <span class="badge bg-<?php 
-                                    echo match($asset['status']) {
-                                        'Available' => 'success',
-                                        'Allocated' => 'warning',
-                                        'CheckedOut' => 'info',
-                                        'Missing' => 'danger',
-                                        'WrittenOff' => 'secondary',
-                                        'Retired' => 'dark',
-                                        default => 'secondary'
-                                    };
-                                ?>">
-                                    <?php echo htmlspecialchars($asset['status']); ?>
-                                </span>
-                            </p>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Manufacturer</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['manufacturer'] ?? 'N/A'); ?></p>
                         </div>
-                        <div class="col-md-4">
-                            <strong>Condition:</strong>
-                            <p class="mb-0">
-                                <span class="badge bg-<?php 
-                                    echo match($asset['condition_status']) {
-                                        'New' => 'success',
-                                        'Good' => 'primary',
-                                        'Fair' => 'warning',
-                                        'Poor' => 'warning',
-                                        'Damaged' => 'danger',
-                                        'Retired' => 'dark',
-                                        default => 'secondary'
-                                    };
-                                ?>">
-                                    <?php echo htmlspecialchars($asset['condition_status']); ?>
-                                </span>
-                            </p>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Model</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['model'] ?? 'N/A'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Purchase Date</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['purchase_date'] ?? 'N/A'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Purchase Price</small>
+                            <p class="fw-bold mb-0"><?php echo $asset['purchase_price'] !== null ? number_format((float)$asset['purchase_price'], 2) : 'N/A'; ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Salvage Value</small>
+                            <p class="fw-bold mb-0"><?php echo $asset['salvage_value'] !== null ? number_format((float)$asset['salvage_value'], 2) : 'N/A'; ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Warranty Expiry</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['warranty_expiry'] ?? 'N/A'); ?></p>
                         </div>
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
-        <!-- Sidebar Info -->
+        <!-- Sidebar -->
         <div class="col-12 col-lg-4 mb-4">
-            <!-- Location & Country -->
+            <?php if ($asset['notes'] ?? ''): ?>
             <div class="card border-0 shadow mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Location</h5>
-                </div>
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Notes</h2></div>
                 <div class="card-body">
-                    <p class="mb-2">
-                        <strong>Country:</strong><br>
-                        <?php echo htmlspecialchars($asset['country_name'] ?? 'N/A'); ?>
-                        <span class="badge bg-gray-200 text-gray-800 ms-2"><?php echo htmlspecialchars($asset['country_code'] ?? ''); ?></span>
-                    </p>
-                    <p class="mb-0">
-                        <strong>Location:</strong><br>
-                        <?php if ($asset['location_name']): ?>
-                            <?php echo htmlspecialchars($asset['location_name']); ?>
-                            <span class="badge bg-gray-200 text-gray-800 ms-2"><?php echo htmlspecialchars($asset['location_code'] ?? ''); ?></span>
-                        <?php else: ?>
-                            <span class="text-muted">Not specified</span>
-                        <?php endif; ?>
-                    </p>
-                </div>
-            </div>
-
-            <!-- Identification -->
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-barcode me-2"></i>Identification</h5>
-                </div>
-                <div class="card-body">
-                    <p class="mb-2">
-                        <strong>Serial Number:</strong><br>
-                        <?php echo $asset['serial_number'] ? htmlspecialchars($asset['serial_number']) : '<span class="text-muted">Not provided</span>'; ?>
-                    </p>
-                    <p class="mb-2">
-                        <strong>Asset Tag:</strong><br>
-                        <?php echo $asset['asset_tag'] ? htmlspecialchars($asset['asset_tag']) : '<span class="text-muted">Not assigned</span>'; ?>
-                    </p>
-                    <p class="mb-0">
-                        <strong>Quantity:</strong><br>
-                        <?php echo htmlspecialchars($asset['quantity'] ?? 1); ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?>
-                    </p>
-                </div>
-            </div>
-
-            <!-- Manufacturer Details -->
-            <?php if ($asset['manufacturer'] || $asset['model']): ?>
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-industry me-2"></i>Manufacturer</h5>
-                </div>
-                <div class="card-body">
-                    <?php if ($asset['manufacturer']): ?>
-                    <p class="mb-2">
-                        <strong>Make:</strong><br>
-                        <?php echo htmlspecialchars($asset['manufacturer']); ?>
-                    </p>
-                    <?php endif; ?>
-                    <?php if ($asset['model']): ?>
-                    <p class="mb-2">
-                        <strong>Model:</strong><br>
-                        <?php echo htmlspecialchars($asset['model']); ?>
-                    </p>
-                    <?php endif; ?>
-                    <?php if (!empty($asset['vehicle_year'])): ?>
-                    <p class="mb-0">
-                        <strong>Year:</strong><br>
-                        <?php echo htmlspecialchars($asset['vehicle_year']); ?>
-                    </p>
-                    <?php endif; ?>
+                    <p class="mb-0"><?php echo nl2br(htmlspecialchars($asset['notes'])); ?></p>
                 </div>
             </div>
             <?php endif; ?>
 
-            <!-- Vehicle Details (if applicable) -->
-            <?php 
-            $hasVehicleDetails = !empty($asset['engine_number']) || !empty($asset['transmission_type']) || !empty($asset['fuel_type']) || !empty($asset['drive_type']);
-            if ($hasVehicleDetails): 
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Timestamps</h2></div>
+                <div class="card-body">
+                    <small class="text-gray-500">Created</small>
+                    <p class="fw-bold mb-2"><?php echo htmlspecialchars($asset['created_at'] ?? 'N/A'); ?></p>
+                    <small class="text-gray-500">Last Updated</small>
+                    <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['updated_at'] ?? 'N/A'); ?></p>
+                </div>
+            </div>
+
+            <!-- Active Allocations -->
+            <?php
+            $activeAllocs = array_filter($itemAllocations, fn($a) => (string)($a['status'] ?? '') === 'Active');
+            if (!empty($activeAllocs)):
             ?>
             <div class="card border-0 shadow mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-car me-2"></i>Vehicle Details</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (!empty($asset['engine_number'])): ?>
-                    <p class="mb-2">
-                        <strong>Engine Number:</strong><br>
-                        <?php echo htmlspecialchars($asset['engine_number']); ?>
-                    </p>
-                    <?php endif; ?>
-                    <?php if (!empty($asset['transmission_type'])): ?>
-                    <p class="mb-2">
-                        <strong>Transmission:</strong><br>
-                        <?php echo $asset['transmission_type'] === 'MT' ? 'Manual' : 'Automatic'; ?>
-                    </p>
-                    <?php endif; ?>
-                    <?php if (!empty($asset['fuel_type'])): ?>
-                    <p class="mb-2">
-                        <strong>Fuel Type:</strong><br>
-                        <?php echo htmlspecialchars($asset['fuel_type']); ?>
-                    </p>
-                    <?php endif; ?>
-                    <?php if (!empty($asset['drive_type'])): ?>
-                    <p class="mb-0">
-                        <strong>Drive:</strong><br>
-                        <?php echo htmlspecialchars($asset['drive_type']); ?>
-                    </p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Financial & Dates -->
-    <div class="row">
-        <div class="col-12 col-lg-6 mb-4">
-            <div class="card border-0 shadow">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-dollar-sign me-2"></i>Financial Information</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <strong>Purchase Date:</strong><br>
-                            <?php echo $asset['purchase_date'] ? date('M d, Y', strtotime($asset['purchase_date'])) : '<span class="text-muted">Not specified</span>'; ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong>Purchase Price:</strong><br>
-                            <?php echo $asset['purchase_price'] ? '$' . number_format($asset['purchase_price'], 2) : '<span class="text-muted">Not specified</span>'; ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong>Current Value:</strong><br>
-                            <?php echo $asset['current_value'] ? '$' . number_format($asset['current_value'], 2) : '<span class="text-muted">Not specified</span>'; ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong>Warranty Expiry:</strong><br>
-                            <?php echo $asset['warranty_expiry'] ? date('M d, Y', strtotime($asset['warranty_expiry'])) : '<span class="text-muted">Not specified</span>'; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-6 mb-4">
-            <div class="card border-0 shadow">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Additional Information</h5>
-                </div>
-                <div class="card-body">
-                    <p class="mb-2">
-                        <strong>Asset Type:</strong><br>
-                        <span class="badge bg-secondary"><?php echo htmlspecialchars($asset['asset_type'] ?? 'Non-Current'); ?></span>
-                    </p>
-                    <?php if ($asset['notes']): ?>
-                    <p class="mb-0">
-                        <strong>Notes:</strong><br>
-                        <?php echo nl2br(htmlspecialchars($asset['notes'])); ?>
-                    </p>
-                    <?php endif; ?>
-                    <hr>
-                    <p class="mb-0 text-muted small">
-                        <strong>Created:</strong> <?php echo date('M d, Y H:i', strtotime($asset['created_at'])); ?><br>
-                        <strong>Last Updated:</strong> <?php echo date('M d, Y H:i', strtotime($asset['updated_at'])); ?>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Odometer Readings (for vehicles) -->
-    <?php 
-    $isVehicle = ($asset['category_name'] ?? '') === 'Vehicles';
-    if ($isVehicle): 
-    ?>
-    <div class="row">
-        <div class="col-12 mb-4">
-            <div class="card border-0 shadow">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Odometer History</h5>
-                    <a href="<?php echo base_url('assets/edit.php?id=' . $asset_id); ?>" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-plus me-1"></i> Add Reading
-                    </a>
-                </div>
-                <div class="card-body">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Active Allocations (<?php echo count($activeAllocs); ?>)</h2></div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover" id="odometerTable">
-                            <thead>
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Employee</th><th>Since</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($activeAllocs as $alloc): ?>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Reading (km)</th>
-                                    <th>Distance Since Last</th>
-                                    <th>Notes</th>
+                                    <td><?php echo htmlspecialchars($alloc['employee_id'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars(substr((string)($alloc['allocation_date'] ?? ''), 0, 10)); ?></td>
                                 </tr>
-                            </thead>
-                            <tbody id="odometerReadings">
-                                <tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
     </div>
-    <script>
-    const assetId = <?php echo $asset_id; ?>;
-    fetch('<?php echo base_url('api/odometer/'); ?>?asset_id=' + assetId)
-        .then(response => response.json())
-        .then(data => {
-            const tbody = document.getElementById('odometerReadings');
-            if (data.readings && data.readings.length > 0) {
-                let html = '';
-                data.readings.forEach((reading, index) => {
-                    const nextReading = data.readings[index + 1];
-                    const distance = nextReading ? (reading.reading_km - nextReading.reading_km).toLocaleString() + ' km' : '-';
-                    html += `
-                        <tr>
-                            <td>${new Date(reading.reading_date).toLocaleDateString()}</td>
-                            <td><strong>${parseInt(reading.reading_km).toLocaleString()}</strong> km</td>
-                            <td>${distance}</td>
-                            <td>${reading.notes || '<span class="text-muted">-</span>'}</td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = html;
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No odometer readings recorded yet.</td></tr>';
-            }
-        })
-        .catch(error => {
-            document.getElementById('odometerReadings').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading readings</td></tr>';
-        });
-    </script>
-    <?php endif; ?>
 
-    <?php else: ?>
-    <div class="alert alert-warning" role="alert">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        Asset not found or invalid asset ID.
+    <!-- Transaction History -->
+    <div class="card border-0 shadow">
+        <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Transaction History</h2></div>
+        <div class="card-body">
+            <?php if (empty($itemTransactions)): ?>
+            <p class="text-gray-500 text-center py-3 mb-0">No transactions recorded for this item.</p>
+            <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>From</th><th>To</th><th>Device</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        <?php foreach (array_slice($itemTransactions, 0, 50) as $txn): ?>
+                        <tr>
+                            <td><?php echo date('M d, Y H:i', strtotime((string)($txn['transaction_date'] ?? $txn['created_at'] ?? ''))); ?></td>
+                            <td><span class="badge bg-primary"><?php echo htmlspecialchars($txn['transaction_type'] ?? ''); ?></span></td>
+                            <td><?php echo (int)($txn['quantity'] ?? 1); ?></td>
+                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['from_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
+                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['to_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
+                            <td><span class="badge bg-gray-200 text-gray-800"><?php echo htmlspecialchars($txn['device_type'] ?? 'Desktop'); ?></span></td>
+                            <td><?php echo htmlspecialchars(substr((string)($txn['notes'] ?? ''), 0, 60)); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
-    <?php endif; ?>
 </div>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

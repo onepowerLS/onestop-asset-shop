@@ -5,7 +5,10 @@
 This guide explains how to migrate data from:
 - **Old System**: `npower5_asset_management` database
 - **Google Sheets**: RET Materials, FAC Items, O&M Database, Meters, Ready Boards, etc.
+- **Dropbox Data Sources**: Excel spreadsheets and Access databases (see [DATA_SOURCES_ASSESSMENT.md](DATA_SOURCES_ASSESSMENT.md))
 - **Into**: New consolidated `onestop_asset_shop` schema
+
+> **Note**: The original migration source was found to be corrupt. See [DATA_SOURCES_ASSESSMENT.md](DATA_SOURCES_ASSESSMENT.md) for a comprehensive assessment of alternative data sources identified in January 2026.
 
 ## Key Improvements
 
@@ -42,34 +45,57 @@ Quantity          → quantity (same)
 ```
 
 **New Fields to Populate:**
-- `qr_code_id`: Generate unique IDs (e.g., `1PWR-LSO-001234`)
+- `item_class`: Determined from category's `item_class` (see Section 2 mapping)
+- `qr_code_id`: Generate unique IDs (e.g., `1PWR-LSO-FA-001234`)
 - `country_id`: Determine from location or default to Lesotho (LSO)
-- `asset_type`: Map from old `asset_type` field
+- `salvage_value`: Set for Fixed Assets only (typically 5-10% of purchase_price)
 
-### 2. Categories Consolidation
+### 2. Categories & Item Classification
 
-**Google Sheets Categories → New categories table:**
+The old `category_type` enum has been replaced by a 4-tier model:
 
-| Old Source | Category Type | Example Codes |
-|------------|--------------|---------------|
-| RET Material Items Database | RET | RET-001, RET-002 |
-| FAC Material Items Database | FAC | FAC-001, FAC-002 |
-| O&M Material Database | O&M | O&M-001, O&M-002 |
-| General Materials Database | General | GEN-001, GEN-002 |
-| Meters Database | Meters | MET-001, MET-002 |
-| Ready Boards Database | ReadyBoards | RB-001, RB-002 |
-| Engineering Tool List | Tools | TOOL-001, TOOL-002 |
+**Legacy category_type -> New item_class + department_scope mapping:**
+
+| Old category_type | New item_class | department_scope | Rationale |
+|---|---|---|---|
+| RET | Material | RET | Construction inputs for mini-grid builds |
+| FAC | Material | FAC | Building/facilities construction inputs |
+| O&M | Material or Consumable | O&M | If durable component -> Material; if consumable supply -> Consumable |
+| General | (varies) | General | Review each item individually |
+| Meters | Inventory | General | Finished goods for customer deployment |
+| ReadyBoards | Inventory | General | Finished goods for customer deployment |
+| Tools | FixedAsset or Consumable | All | If purchase_price >= $200 -> FixedAsset; else -> Consumable |
+| Other | (manual review) | General | Classify per decision tree in SOP |
 
 **Migration SQL Example:**
 ```sql
-INSERT INTO categories (category_code, category_name, category_type)
+-- Step 1: Migrate RET categories to Materials
+INSERT INTO categories (category_code, category_name, item_class, department_scope)
 SELECT 
-    CONCAT('RET-', LPAD(category_id, 3, '0')) as category_code,
+    CONCAT('MAT-', LPAD(category_id, 3, '0')) as category_code,
     name as category_name,
-    'RET' as category_type
+    'Material' as item_class,
+    'RET' as department_scope
 FROM old_categories 
 WHERE category_type = 'RET';
+
+-- Step 2: Migrate Meters to Inventory
+INSERT INTO categories (category_code, category_name, item_class, department_scope)
+SELECT 
+    CONCAT('INV-', LPAD(category_id, 3, '0')) as category_code,
+    name as category_name,
+    'Inventory' as item_class,
+    'General' as department_scope
+FROM old_categories 
+WHERE category_type = 'Meters';
+
+-- Step 3: Backfill item_class on assets from their category
+UPDATE assets a
+JOIN categories c ON a.category_id = c.category_id
+SET a.item_class = c.item_class;
 ```
+
+See [`docs/SOP-ITEM-CLASSIFICATION.md`](../docs/SOP-ITEM-CLASSIFICATION.md) for the full decision tree and edge cases.
 
 ### 3. Locations & Countries
 
@@ -91,17 +117,17 @@ WHERE category_type = 'RET';
                  └── Room/Cabinet
    ```
 
-### 4. Requests (Google Forms → Database)
+### 4. Requests (Google Forms -> Database)
 
-**Google Forms to migrate:**
-- RET Items Request Form → `requests` with `request_type='RET'`
-- FAC Items Request Form → `requests` with `request_type='FAC'`
-- Meters Request Form → `requests` with `request_type='Meters'`
-- Ready Board Request Form → `requests` with `request_type='ReadyBoards'`
+**Google Forms to migrate (using new item_class + department_scope):**
+- RET Items Request Form -> `requests` with `item_class='Material'`, `department_scope='RET'`
+- FAC Items Request Form -> `requests` with `item_class='Material'`, `department_scope='FAC'`
+- Meters Request Form -> `requests` with `item_class='Inventory'`, `department_scope='General'`
+- Ready Board Request Form -> `requests` with `item_class='Inventory'`, `department_scope='General'`
 
 **Migration Process:**
 1. Export each Google Form to CSV
-2. Parse CSV and create `requests` records
+2. Parse CSV and create `requests` records with correct `item_class` and `department_scope`
 3. Create `request_items` for each line item
 4. Set `requested_for_country` based on form metadata or default
 
@@ -170,18 +196,39 @@ See `database/migrations/` folder for step-by-step migration scripts:
 After migration, run these to verify:
 
 ```sql
--- Check asset counts by country
-SELECT c.country_name, COUNT(*) as asset_count
+-- Check item counts by class
+SELECT item_class, COUNT(*) as item_count
+FROM assets
+GROUP BY item_class
+ORDER BY item_count DESC;
+
+-- Check item counts by country and class
+SELECT c.country_name, a.item_class, COUNT(*) as item_count
 FROM assets a
 JOIN countries c ON a.country_id = c.country_id
-GROUP BY c.country_name;
+GROUP BY c.country_name, a.item_class
+ORDER BY c.country_name, a.item_class;
+
+-- Verify all assets have item_class set
+SELECT COUNT(*) as missing_class
+FROM assets
+WHERE item_class IS NULL OR item_class = '';
+
+-- Check category distribution
+SELECT cat.item_class, cat.category_name, COUNT(a.asset_id) as items
+FROM categories cat
+LEFT JOIN assets a ON a.category_id = cat.category_id
+GROUP BY cat.item_class, cat.category_name
+ORDER BY cat.item_class, items DESC;
 
 -- Check QR code coverage
 SELECT 
-    COUNT(*) as total_assets,
-    COUNT(qr_code_id) as assets_with_qr,
+    item_class,
+    COUNT(*) as total,
+    COUNT(qr_code_id) as with_qr,
     COUNT(*) - COUNT(qr_code_id) as missing_qr
-FROM assets;
+FROM assets
+GROUP BY item_class;
 
 -- Check inventory levels
 SELECT 

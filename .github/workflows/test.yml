@@ -1,0 +1,87 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  test:
+    name: PHP Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: onestop_asset_shop_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo, pdo_mysql, mbstring, json, curl
+      
+      - name: Validate PHP syntax
+        run: |
+          echo "Checking PHP syntax..."
+          find . -name "*.php" -not -path "./vendor/*" -not -path "./.git/*" -exec php -l {} \; | grep -v "No syntax errors"
+          if [ $? -eq 0 ]; then
+            echo "Syntax errors found!"
+            exit 1
+          fi
+          echo "All PHP files have valid syntax"
+      
+      - name: Run database migrations
+        run: |
+          mysql -h 127.0.0.1 -u root -proot onestop_asset_shop_test < database/schema-consolidated.sql
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: root
+          MYSQL_DATABASE: onestop_asset_shop_test
+      
+      - name: Run basic connectivity tests
+        run: |
+          php -r "
+          require 'web/config/database.php';
+          \$stmt = \$pdo->query('SELECT COUNT(*) FROM countries');
+          \$count = \$stmt->fetchColumn();
+          echo 'Countries table has ' . \$count . ' records';
+          if (\$count < 3) {
+            echo 'ERROR: Expected at least 3 countries';
+            exit(1);
+          }
+          echo 'Database connectivity test passed';
+          "
+        env:
+          DB_HOST: 127.0.0.1
+          DB_NAME: onestop_asset_shop_test
+          DB_USER: root
+          DB_PASS: root
+      
+      - name: Check for security issues
+        run: |
+          echo "Checking for common security issues..."
+          # Check for hardcoded passwords
+          if grep -r "password.*=.*['\"].*[a-zA-Z0-9]" web/ --include="*.php" | grep -v "password_hash\|password_verify"; then
+            echo "WARNING: Potential hardcoded passwords found"
+          fi
+          # Check for SQL injection vulnerabilities (basic check)
+          if grep -r "\$_GET.*\$pdo->query\|mysql_query" web/ --include="*.php"; then
+            echo "WARNING: Potential SQL injection vulnerabilities"
+          fi
+          echo "Security checks completed"
