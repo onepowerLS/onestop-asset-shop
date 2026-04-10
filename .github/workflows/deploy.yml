@@ -1,10 +1,11 @@
+# Auto-deploy: push to branch `main` on the GitHub remote (or run workflow manually).
 name: Deploy to AWS EC2
 
 on:
   push:
     branches:
-      - main  # Deploy to production on main branch
-  workflow_dispatch:  # Allow manual triggers
+      - main
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1  # Change to your preferred region
@@ -74,4 +75,4 @@ jobs:
       - name: Health check
         run: |
           sleep 10
-          curl -f https://assets.1pwrafrica.com/health.php || exit 1
+          curl -fsS --fail https://am.1pwrafrica.com/health.php -o /dev/null

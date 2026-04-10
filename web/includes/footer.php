@@ -30,12 +30,11 @@
     <!-- Simplebar (for sidebar scrolling) -->
     <script src="https://cdn.jsdelivr.net/npm/simplebar@latest/dist/simplebar.min.js"></script>
     
+    <!-- jQuery must load before DataTables (plugins expect global jQuery) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <!-- DataTables -->
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-    
-    <!-- jQuery (required for DataTables) -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     
     <!-- QR Code Scanner -->
     <script src="<?php echo base_url('qr/scanner.js'); ?>"></script>
