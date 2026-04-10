@@ -23,16 +23,13 @@
         </footer>
     </div>
 
+    <!-- jQuery must be first — DataTables and inline scripts expect window.$ / jQuery -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <!-- Core JS -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-    
-    <!-- Simplebar (for sidebar scrolling) -->
-    <script src="https://cdn.jsdelivr.net/npm/simplebar@latest/dist/simplebar.min.js"></script>
-    
-    <!-- jQuery must load before DataTables (plugins expect global jQuery) -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <!-- DataTables -->
+    <script src="https://cdn.jsdelivr.net/npm/simplebar@6.2.5/dist/simplebar.min.js"></script>
+    <!-- DataTables (after jQuery) -->
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     
@@ -55,7 +52,8 @@
         });
     </script>
     
-    <!-- Volt Dashboard JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@themesberg/volt-bootstrap-5-dashboard@1.4.2/dist/js/volt.min.js"></script>
+    <!-- SweetAlert2 + Volt (npm package has no dist/js/volt.min.js — use published src/assets/js/volt.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@themesberg/volt-bootstrap-5-dashboard@1.4.1/src/assets/js/volt.js"></script>
 </body>
 </html>

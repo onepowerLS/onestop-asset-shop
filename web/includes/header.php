@@ -17,9 +17,8 @@ $page_title = $page_title ?? 'OneStop Asset Shop';
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24' font-weight='bold' fill='%231976d2'>1P</text></svg>">
     
-    <!-- Volt Dashboard CSS -->
+    <!-- Base CSS (Volt SCSS is source-only on npm; dist/css/volt.min.css is not published — Bootstrap + app markup) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@themesberg/volt-bootstrap-5-dashboard@1.4.2/dist/css/volt.min.css" rel="stylesheet">
     
     <!-- DataTables -->
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
