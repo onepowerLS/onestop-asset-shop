@@ -52,8 +52,9 @@
         });
     </script>
     
-    <!-- SweetAlert2 + Volt (npm package has no dist/js/volt.min.js — use published src/assets/js/volt.js) -->
+    <!-- Volt peer deps (volt.js expects these globals — not bundled in the npm src file) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@themesberg/volt-bootstrap-5-dashboard@1.4.1/src/assets/js/volt.js"></script>
 </body>
 </html>
