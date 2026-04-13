@@ -6,9 +6,10 @@
  */
 require_once __DIR__ . '/../config/app.php';
 $page_title = $page_title ?? 'OneStop Asset Shop';
+$html_lang = $page_lang ?? 'en';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo htmlspecialchars($html_lang); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">

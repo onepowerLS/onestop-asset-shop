@@ -150,6 +150,18 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
             <?php endif; ?>
 
+            <?php
+            $inLoadout = str_contains((string)($_SERVER['PHP_SELF'] ?? ''), '/loadout/');
+            ?>
+            <li class="nav-item <?php echo $inLoadout ? 'active' : ''; ?>">
+                <a href="<?php echo base_url('loadout/index.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-dolly"></i>
+                    </span>
+                    <span class="sidebar-text">Load-out manifests</span>
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link">
                     <span class="sidebar-icon">
@@ -187,6 +199,15 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <i class="fas fa-clipboard-check text-info"></i>
                     </span>
                     <span class="sidebar-text">Job Cards</span>
+                </a>
+            </li>
+
+            <li class="nav-item <?php echo $current_page === 'tutorial' ? 'active' : ''; ?>">
+                <a href="<?php echo base_url('tutorial.php'); ?>" class="nav-link">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </span>
+                    <span class="sidebar-text">Tutorial</span>
                 </a>
             </li>
 

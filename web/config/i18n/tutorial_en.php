@@ -1,0 +1,140 @@
+<?php
+declare(strict_types=1);
+
+return [
+    'page_title' => 'Tutorial',
+    'lang_label' => 'Language',
+    'lang_en' => 'English',
+    'lang_fr' => 'Français',
+    'subtitle' => 'Guided walkthroughs for 1PWR Asset Management',
+    'intro' => 'Follow the app tour to learn the layout, then open workflow guides for day-to-day tasks. Links open in this app (same tab).',
+    'app_tour_title' => 'App walkthrough',
+    'app_tour_lead' => 'Recommended order for new users — about 10 minutes.',
+    'workflows_title' => 'Workflow step-throughs',
+    'workflows_lead' => 'Task-focused checklists you can follow on staging or production.',
+    'step_label' => 'Step',
+    'open' => 'Open',
+    'back_help' => 'Full user guide',
+    'tours' => [
+        [
+            'id' => 'app-shell',
+            'title' => 'Orientation: sidebar and tools',
+            'steps' => [
+                ['text' => 'After login, note the left sidebar: Dashboard, Catalog, Requests, Stock, Check-Out/In, Load-out manifests, Reports, Tablet, Help, and external links to Procurement and Job Cards.', 'href' => '', 'link_label' => ''],
+                ['text' => 'Use the top bar on small screens to open the menu. Your role controls which actions you can perform (see Help → Roles).', 'href' => '', 'link_label' => ''],
+                ['text' => 'Open the Dashboard to see totals, classification cards, and recent transactions.', 'href' => 'index.php', 'link_label' => 'Dashboard'],
+            ],
+        ],
+        [
+            'id' => 'catalog-basics',
+            'title' => 'Find and inspect an item',
+            'steps' => [
+                ['text' => 'Go to Catalog → All Items. Try filters (class, category, country, status) and the search box.', 'href' => 'assets/index.php', 'link_label' => 'Catalog'],
+                ['text' => 'Click a row to open the item detail page: history, QR, allocations.', 'href' => '', 'link_label' => ''],
+                ['text' => 'If you have edit rights, use Edit to update fields or status.', 'href' => '', 'link_label' => ''],
+            ],
+        ],
+    ],
+    'workflows' => [
+        [
+            'id' => 'wf-new-item',
+            'title' => 'Register a new catalog item',
+            'intro' => 'Managers and Admins can create stock or asset records.',
+            'steps' => [
+                'Catalog → + Add New Item.',
+                'Select classification first — the form fields change (Fixed Asset vs quantity-based classes).',
+                'Complete required fields and pick a category for that class.',
+                'Save; note the generated asset tag. Assign a QR later from Admin → QR Labels if needed.',
+            ],
+            'href' => 'assets/add.php',
+            'link_label' => 'Add item',
+        ],
+        [
+            'id' => 'wf-checkout',
+            'title' => 'Check out and check in (desktop)',
+            'intro' => 'Issue equipment to a colleague and return it to a location.',
+            'steps' => [
+                'Open Check-Out/In.',
+                'Check Out: choose an Available item, select the employee, optional return date, submit.',
+                'To return: in Check In, pick the active allocation and the return location, submit.',
+                'Verify status and history on the item page and under Transactions.',
+            ],
+            'href' => 'checkout/index.php',
+            'link_label' => 'Check-Out/In',
+        ],
+        [
+            'id' => 'wf-request-pr',
+            'title' => 'Submit a procurement request',
+            'intro' => 'For material needs tracked through the Requests → Procurement flow.',
+            'steps' => [
+                'Requests → Procurement → New Request.',
+                'Choose item class, department, country, priority.',
+                'Describe quantity, timing, and context; submit.',
+                'Track status; managers/admins approve, reject, or fulfill.',
+            ],
+            'href' => 'requests/index.php',
+            'link_label' => 'Requests',
+        ],
+        [
+            'id' => 'wf-service',
+            'title' => 'Service workflow request',
+            'intro' => 'Template-driven requests in am_core_requests.',
+            'steps' => [
+                'Open Requests → Service workflows.',
+                'Create or select a request matching your template (type varies).',
+                'Managers/Admins change status to Approved, Rejected, Fulfilled, or Cancelled as appropriate.',
+            ],
+            'href' => 'requests/workflow-index.php',
+            'link_label' => 'Service workflows',
+        ],
+        [
+            'id' => 'wf-loadout',
+            'title' => 'Load-out manifest (HQ → site)',
+            'intro' => 'Pack and track shipments tied to a trip ID when using Fleet integration.',
+            'steps' => [
+                'Open Load-out manifests → New manifest.',
+                'Add lines and destinations; link trip ID when integrating with fm.1pwrafrica.com.',
+                'Update status as the shipment progresses; recipients verify against the manifest.',
+            ],
+            'href' => 'loadout/index.php',
+            'link_label' => 'Load-out manifests',
+        ],
+        [
+            'id' => 'wf-tablet',
+            'title' => 'Tablet Mode: scan and move stock',
+            'intro' => 'For warehouse floors with a handheld scanner.',
+            'steps' => [
+                'Sidebar → Tablet Mode (or /tablet/).',
+                'Choose Check-Out/In, Stock Count, or Quick Lookup.',
+                'Scan a label — the scanner types the code; confirm the action on screen.',
+                'Use Desktop Mode to return to the standard UI.',
+            ],
+            'href' => 'tablet/index.php',
+            'link_label' => 'Tablet Mode',
+        ],
+        [
+            'id' => 'wf-reports',
+            'title' => 'Export a report',
+            'intro' => 'Auditors and managers often need CSV/PDF evidence.',
+            'steps' => [
+                'Open Reports.',
+                'Pick a report card (e.g. Asset Register, Transaction Log).',
+                'Set filters, then download CSV or PDF.',
+            ],
+            'href' => 'reports/index.php',
+            'link_label' => 'Reports',
+        ],
+        [
+            'id' => 'wf-stock-levels',
+            'title' => 'Review low stock',
+            'intro' => 'For Materials, Consumables, and Inventory classes.',
+            'steps' => [
+                'Stock Levels → enable Low stock only if needed.',
+                'Filter by class and country.',
+                'Use the data to trigger procurement or transfers.',
+            ],
+            'href' => 'inventory/index.php',
+            'link_label' => 'Stock Levels',
+        ],
+    ],
+];

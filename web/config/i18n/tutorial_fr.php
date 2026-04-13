@@ -1,0 +1,140 @@
+<?php
+declare(strict_types=1);
+
+return [
+    'page_title' => 'Tutoriel',
+    'lang_label' => 'Langue',
+    'lang_en' => 'English',
+    'lang_fr' => 'Français',
+    'subtitle' => 'Parcours guidés pour la gestion d’actifs 1PWR',
+    'intro' => 'Suivez la visite de l’application pour comprendre la navigation, puis les fiches métier pour les tâches courantes. Les liens s’ouvrent dans cette application.',
+    'app_tour_title' => 'Visite de l’application',
+    'app_tour_lead' => 'Ordre recommandé pour les nouveaux utilisateurs — environ 10 minutes.',
+    'workflows_title' => 'Fiches procédure (workflows)',
+    'workflows_lead' => 'Listes de contrôle pour la préproduction ou la production.',
+    'step_label' => 'Étape',
+    'open' => 'Ouvrir',
+    'back_help' => 'Guide utilisateur complet',
+    'tours' => [
+        [
+            'id' => 'app-shell',
+            'title' => 'Repères : menu et outils',
+            'steps' => [
+                ['text' => 'Après connexion, observez le menu de gauche : Tableau de bord, Catalogue, Demandes, Stock, Sortie/retour, Manifestes, Rapports, Tablette, Aide, et les liens externes Achats et Job Cards.', 'href' => '', 'link_label' => ''],
+                ['text' => 'Sur petit écran, utilisez la barre du haut pour ouvrir le menu. Votre rôle détermine les actions possibles (voir Aide → Rôles).', 'href' => '', 'link_label' => ''],
+                ['text' => 'Ouvrez le Tableau de bord pour les totaux, les cartes par classe et les transactions récentes.', 'href' => 'index.php', 'link_label' => 'Tableau de bord'],
+            ],
+        ],
+        [
+            'id' => 'catalog-basics',
+            'title' => 'Trouver et consulter un article',
+            'steps' => [
+                ['text' => 'Catalogue → Tous les articles. Essayez les filtres (classe, catégorie, pays, statut) et la recherche.', 'href' => 'assets/index.php', 'link_label' => 'Catalogue'],
+                ['text' => 'Cliquez une ligne pour la fiche détail : historique, QR, affectations.', 'href' => '', 'link_label' => ''],
+                ['text' => 'Si vous avez le droit d’édition, utilisez Modifier pour mettre à jour les champs ou le statut.', 'href' => '', 'link_label' => ''],
+            ],
+        ],
+    ],
+    'workflows' => [
+        [
+            'id' => 'wf-new-item',
+            'title' => 'Enregistrer un nouvel article',
+            'intro' => 'Les managers et administrateurs peuvent créer des fiches stock ou immobilisation.',
+            'steps' => [
+                'Catalogue → + Ajouter un article.',
+                'Choisissez d’abord la classification — le formulaire s’adapte (immobilisation vs classes en quantité).',
+                'Renseignez les champs obligatoires et une catégorie pour cette classe.',
+                'Enregistrez ; notez l’étiquette d’actif générée. Attribuez un QR plus tard via Admin → Étiquettes QR si besoin.',
+            ],
+            'href' => 'assets/add.php',
+            'link_label' => 'Ajouter un article',
+        ],
+        [
+            'id' => 'wf-checkout',
+            'title' => 'Sortie et retour (bureau)',
+            'intro' => 'Mettre du matériel à disposition d’un collaborateur et le retourner sur un lieu.',
+            'steps' => [
+                'Ouvrez Sortie / Retour.',
+                'Sortie : choisissez un article Disponible, le collaborateur, éventuellement la date de retour, validez.',
+                'Retour : dans Retour, sélectionnez l’affectation active et le lieu de retour, validez.',
+                'Vérifiez le statut et l’historique sur la fiche article et dans Transactions.',
+            ],
+            'href' => 'checkout/index.php',
+            'link_label' => 'Sortie / Retour',
+        ],
+        [
+            'id' => 'wf-request-pr',
+            'title' => 'Créer une demande d’achat',
+            'intro' => 'Pour les besoins suivis via Demandes → Achats.',
+            'steps' => [
+                'Demandes → Achats → Nouvelle demande.',
+                'Choisissez la classe, le département, le pays, la priorité.',
+                'Décrivez quantité, délais et contexte ; envoyez.',
+                'Suivez le statut ; les managers/administrateurs approuvent, rejettent ou honorent.',
+            ],
+            'href' => 'requests/index.php',
+            'link_label' => 'Demandes',
+        ],
+        [
+            'id' => 'wf-service',
+            'title' => 'Demande « flux de service »',
+            'intro' => 'Demandes basées sur modèles (am_core_requests).',
+            'steps' => [
+                'Ouvrez Demandes → Flux de service.',
+                'Créez ou sélectionnez une demande selon le modèle (le type varie).',
+                'Les managers/administrateurs passent le statut à Approuvé, Rejeté, Honoré ou Annulé.',
+            ],
+            'href' => 'requests/workflow-index.php',
+            'link_label' => 'Flux de service',
+        ],
+        [
+            'id' => 'wf-loadout',
+            'title' => 'Manifeste de chargement (siège → site)',
+            'intro' => 'Préparer et suivre les envois liés à un ID de voyage avec la Flotte.',
+            'steps' => [
+                'Manifestes de chargement → Nouveau manifeste.',
+                'Ajoutez les lignes et destinations ; renseignez l’ID de voyage pour l’intégration fm.1pwrafrica.com.',
+                'Mettez à jour le statut ; les destinataires vérifient par rapport au manifeste.',
+            ],
+            'href' => 'loadout/index.php',
+            'link_label' => 'Manifestes de chargement',
+        ],
+        [
+            'id' => 'wf-tablet',
+            'title' => 'Mode tablette : scanner et mouvements',
+            'intro' => 'Pour l’entrepôt avec lecteur portable.',
+            'steps' => [
+                'Menu → Mode tablette (ou /tablet/).',
+                'Choisissez Sortie/retour, Inventaire ou Recherche rapide.',
+                'Scannez une étiquette — le lecteur simule le clavier ; confirmez à l’écran.',
+                'Mode bureau pour revenir à l’interface standard.',
+            ],
+            'href' => 'tablet/index.php',
+            'link_label' => 'Mode tablette',
+        ],
+        [
+            'id' => 'wf-reports',
+            'title' => 'Exporter un rapport',
+            'intro' => 'Les auditeurs et managers exportent souvent en CSV/PDF.',
+            'steps' => [
+                'Ouvrez Rapports.',
+                'Choisissez une carte (ex. registre des actifs, journal des transactions).',
+                'Réglez les filtres, puis téléchargez CSV ou PDF.',
+            ],
+            'href' => 'reports/index.php',
+            'link_label' => 'Rapports',
+        ],
+        [
+            'id' => 'wf-stock-levels',
+            'title' => 'Contrôler le stock bas',
+            'intro' => 'Pour matériaux, consommables et inventaire.',
+            'steps' => [
+                'Niveaux de stock → activez « stock bas » si besoin.',
+                'Filtrez par classe et pays.',
+                'Utilisez la vue pour lancer achats ou transferts.',
+            ],
+            'href' => 'inventory/index.php',
+            'link_label' => 'Niveaux de stock',
+        ],
+    ],
+];
