@@ -98,13 +98,36 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </div>
             </li>
 
-            <li class="nav-item <?php echo $current_page === 'requests' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('requests/index.php'); ?>" class="nav-link">
-                    <span class="sidebar-icon">
-                        <i class="fas fa-clipboard-list"></i>
+            <?php
+            $requestsPages = ['requests', 'workflow-index', 'workflow-new', 'workflow-view'];
+            $requestsOpen = in_array($current_page, $requestsPages, true);
+            ?>
+            <li class="nav-item">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $requestsOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-requests" style="cursor:pointer;">
+                    <span>
+                        <span class="sidebar-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </span>
+                        <span class="sidebar-text">Requests</span>
                     </span>
-                    <span class="sidebar-text">Requests</span>
-                </a>
+                    <span class="link-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </span>
+                </span>
+                <div class="multi-level collapse <?php echo $requestsOpen ? 'show' : ''; ?>" id="submenu-requests">
+                    <ul class="flex-column nav">
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $current_page === 'requests' ? 'active' : ''; ?>" href="<?php echo base_url('requests/index.php'); ?>">
+                                <span class="sidebar-text">Procurement</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo in_array($current_page, ['workflow-index', 'workflow-new', 'workflow-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/workflow-index.php'); ?>">
+                                <span class="sidebar-text">Service workflows</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
 
             <li class="nav-item <?php echo $current_page === 'inventory' ? 'active' : ''; ?>">

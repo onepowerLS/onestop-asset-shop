@@ -116,7 +116,12 @@ include __DIR__ . '/../includes/header.php';
     <div class="d-flex justify-content-between align-items-center py-4">
         <div>
             <h1 class="h2">Requests</h1>
-            <p class="mb-0"><?php echo count($filtered); ?> requests</p>
+            <p class="mb-0"><?php echo count($filtered); ?> procurement requests</p>
+            <p class="small text-muted mb-0 mt-1">
+                For ready boards and other AM service requests, use
+                <a href="<?php echo base_url('requests/workflow-index.php'); ?>">Service workflows</a>
+                (replaces the <a href="https://docs.google.com/forms/d/1F-Hfa_HdRidRd3BOPEiG-6f4Zha-AWdTdGFG8-6iTUI/viewform" target="_blank" rel="noopener">legacy Google Form</a>).
+            </p>
         </div>
         <?php if (!am_is_auditor_readonly()): ?>
         <a href="<?php echo base_url('requests/index.php?new=1'); ?>" class="btn btn-sm btn-gray-800">

@@ -63,6 +63,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Template-driven service requests (Ready boards, future types)
+    match /am_core_requests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
     // ── AM PR master / shared collections ───────────────────────
 
     match /pr_master_categories/{docId} {
