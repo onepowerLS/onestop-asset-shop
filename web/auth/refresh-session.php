@@ -46,6 +46,7 @@ if ($uid === '' || $uid !== (string)$_SESSION['user_id']) {
 
 $_SESSION['firebase_id_token'] = $idToken;
 echo json_encode(['ok' => true]);
+exit;
 
 /**
  * @return array<string,mixed>|null

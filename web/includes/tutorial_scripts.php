@@ -27,5 +27,11 @@ $amTutorialCfg = am_tutorial_client_config();
 }
 .am-tutorial-panel { max-width: 32rem; margin: 0 auto; pointer-events: auto; padding: 1rem 1.1rem; }
 </style>
-<script>window.AM_TUTORIAL = <?php echo json_encode($amTutorialCfg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;</script>
+<script>window.AM_TUTORIAL = <?php
+    $amTutorialJson = json_encode(
+        $amTutorialCfg,
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+    );
+    echo $amTutorialJson !== false ? $amTutorialJson : '{}';
+?>;</script>
 <script src="<?php echo htmlspecialchars(base_url('assets/js/am-tutorial.js')); ?>" defer></script>
