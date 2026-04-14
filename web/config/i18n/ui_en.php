@@ -1,0 +1,21 @@
+<?php
+return [
+    'lang_en' => 'English',
+    'lang_fr' => 'Français',
+    'nav_language' => 'Language',
+    'nav_country_scope' => 'Country scope',
+    'scope_all' => 'All my countries',
+    'scope_lso' => 'Lesotho only',
+    'scope_zmb' => 'Zambia only',
+    'scope_ben' => 'Benin only',
+    'country_access_notice' => 'Your profile has no AM country access. Ask an administrator to set amCountryAccess (e.g. LSO, ZMB, BEN) on your Firestore user document.',
+    'assets_blurb' => 'Manage and track items in your permitted countries.',
+    'tutorial_mode' => 'Tutorials',
+    'tutorial_choose' => 'Choose a tutorial…',
+    'tutorial_back' => 'Back',
+    'tutorial_next' => 'Next',
+    'tutorial_finish' => 'Finish tutorial',
+    'tutorial_exit' => 'Exit',
+    'tutorial_step_of' => 'Step %1$s of %2$s',
+    'tutorial_missing' => 'Open the highlighted navigation item or tap Next — the page may still be loading.',
+];

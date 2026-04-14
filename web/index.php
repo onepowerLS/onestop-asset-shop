@@ -5,7 +5,10 @@
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/firestore.php';
 require_once __DIR__ . '/config/authz.php';
+require_once __DIR__ . '/config/country_scope.php';
+require_once __DIR__ . '/config/locale.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $page_title = 'Dashboard';
 
@@ -14,6 +17,8 @@ $assets = am_firestore_get_collection('am_core_assets', 1000);
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $transactions = am_firestore_get_collection('am_core_transactions', 1000);
 $requests = am_firestore_get_collection('pr_master_requests', 1000);
+
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries)));
 
 $totalAssets = count($assets);
 
@@ -104,6 +109,9 @@ include __DIR__ . '/includes/header.php';
 ?>
 
 <div class="py-4">
+    <?php if (empty(am_country_allow_codes())): ?>
+    <div class="alert alert-warning"><?php echo htmlspecialchars(am_ui('country_access_notice')); ?></div>
+    <?php endif; ?>
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
         <div class="d-block mb-4 mb-md-0">
             <h1 class="h2">Dashboard</h1>
@@ -120,7 +128,7 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <!-- Summary Row -->
-    <div class="row mb-4">
+    <div class="row mb-4" data-tutorial="tutorial-dashboard-kpis">
         <div class="col-12 col-sm-6 col-xl-3 mb-4">
             <div class="card border-0 shadow">
                 <div class="card-body">
@@ -216,7 +224,7 @@ include __DIR__ . '/includes/header.php';
         'Inventory'   => ['label' => 'Inventory',      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => 'Meters, ready boards, spare parts'],
     ];
     ?>
-    <div class="row mb-4">
+    <div class="row mb-4" data-tutorial="tutorial-dashboard-class">
         <?php foreach ($classConfig as $classKey => $cfg): ?>
         <div class="col-12 col-sm-6 col-xl-3 mb-4">
             <a href="<?php echo base_url('assets/index.php?item_class=' . $classKey); ?>" class="text-decoration-none">
@@ -326,7 +334,7 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <!-- Recent Transactions -->
-    <div class="row">
+    <div class="row" data-tutorial="tutorial-dashboard-recent">
         <div class="col-12 mb-4">
             <div class="card border-0 shadow">
                 <div class="card-header">

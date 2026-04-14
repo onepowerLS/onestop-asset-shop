@@ -195,7 +195,7 @@ $amRole   = $_SESSION['role'] ?? $_SESSION['am_role'] ?? 'Viewer';
     <div style="text-align:center; padding:24px 20px 8px;">
         <h2 style="font-size:1.3rem; color: var(--1pwr-blue);">Select Operation</h2>
     </div>
-    <div class="mode-grid">
+    <div class="mode-grid" data-tutorial="tutorial-tablet-modes">
         <a class="mode-card checkout" onclick="startScan('checkout')">
             <div class="icon"><i class="fas fa-hand-holding-hand"></i></div>
             <h3>Check-Out / In</h3>
@@ -211,7 +211,7 @@ $amRole   = $_SESSION['role'] ?? $_SESSION['am_role'] ?? 'Viewer';
             <h3>Quick Lookup</h3>
             <p>Scan to view item details</p>
         </a>
-        <a class="mode-card desktop" href="<?= base_url('index.php') ?>">
+        <a class="mode-card desktop" href="<?= base_url('index.php') ?>" data-tutorial="tutorial-tablet-desktop">
             <div class="icon"><i class="fas fa-desktop"></i></div>
             <h3>Desktop Mode</h3>
             <p>Full dashboard view</p>
@@ -438,5 +438,10 @@ function esc(s) {
     return d.innerHTML;
 }
 </script>
+<?php
+require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/tutorial_interactive.php';
+include __DIR__ . '/../includes/tutorial_scripts.php';
+?>
 </body>
 </html>

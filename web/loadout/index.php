@@ -6,13 +6,17 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/loadout_manifests.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $page_title = 'Load-out manifests';
 $statusFilter = trim($_GET['status'] ?? '');
 $tripFilter = trim($_GET['trip'] ?? '');
 
 $manifests = am_firestore_get_collection(AM_LOADOUT_COLLECTION, 2000);
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$manifests = array_values(array_filter($manifests, fn($m) => am_record_in_country_scope($m, $countries)));
 
 if ($statusFilter !== '') {
     $manifests = array_values(array_filter($manifests, fn($m) => (string)($m['status'] ?? '') === $statusFilter));
@@ -50,7 +54,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
-        <div>
+        <div data-tutorial="tutorial-loadout-header">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-2">
                     <li class="breadcrumb-item"><a href="<?php echo base_url('index.php'); ?>">Home</a></li>
@@ -58,7 +62,7 @@ include __DIR__ . '/../includes/header.php';
                 </ol>
             </nav>
             <h1 class="h3 mb-1">Load-out manifests</h1>
-            <p class="text-muted mb-0">Packing lists for items leaving HQ toward a field site. Link a manifest to a Fleet / trip in <code>fm.1pwrafrica.com</code> via the trip ID (API or Firestore).</p>
+            <p class="text-muted mb-0" data-tutorial="tutorial-loadout-fleet">Packing lists for items leaving HQ toward a field site. Link a manifest to a Fleet / trip in <code>fm.1pwrafrica.com</code> via the trip ID (API or Firestore).</p>
         </div>
         <?php if (!am_is_auditor_readonly()): ?>
         <a href="<?php echo base_url('loadout/edit.php'); ?>" class="btn btn-primary">

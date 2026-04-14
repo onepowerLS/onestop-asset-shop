@@ -2,14 +2,18 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 am_require_can_mutate();
 
 $page_title = 'Check-Out / Check-In';
 $errors = [];
 $success = '';
 
+$countries = am_firestore_get_collection('pr_master_countries', 500);
 $assets = am_firestore_get_collection('am_core_assets', 2000);
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries)));
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
 if (empty($employees)) {
     $employees = am_firestore_get_collection('am_core_employees', 2000);
@@ -31,6 +35,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = trim($_POST['notes'] ?? '');
 
     if ($assetDocId === '') $errors[] = 'Please select an item.';
+
+    $postedAsset = $assetById[$assetDocId] ?? null;
+    if ($postedAsset) {
+        $pCid = am_resolve_asset_country_id($postedAsset, $countries);
+        if ($pCid === '' || !am_user_may_access_country_id($pCid, $countries)) {
+            $errors[] = 'You cannot act on items outside your country access.';
+        }
+    } elseif ($assetDocId !== '') {
+        $errors[] = 'Invalid item.';
+    }
 
     if ($action === 'checkout') {
         if ($employeeId === '') $errors[] = 'Please select an employee.';
@@ -157,7 +171,7 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="row">
         <!-- Check-Out Form -->
-        <div class="col-12 col-lg-6 mb-4">
+        <div class="col-12 col-lg-6 mb-4" data-tutorial="tutorial-checkout-out">
             <div class="card border-0 shadow">
                 <div class="card-header bg-primary text-white"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-sign-out-alt me-2"></i>Check-Out Item</h2></div>
                 <div class="card-body">
@@ -204,7 +218,7 @@ include __DIR__ . '/../includes/header.php';
         </div>
 
         <!-- Check-In Form -->
-        <div class="col-12 col-lg-6 mb-4">
+        <div class="col-12 col-lg-6 mb-4" data-tutorial="tutorial-checkout-in">
             <div class="card border-0 shadow">
                 <div class="card-header bg-success text-white"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-sign-in-alt me-2"></i>Check-In Item</h2></div>
                 <div class="card-body">
@@ -253,7 +267,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <!-- Active Allocations -->
-    <div class="card border-0 shadow">
+    <div class="card border-0 shadow" data-tutorial="tutorial-checkout-active">
         <div class="card-header">
             <h2 class="fs-5 fw-bold mb-0">Active Allocations (<?php echo count($activeAllocs); ?>)</h2>
         </div>

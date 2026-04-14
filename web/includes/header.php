@@ -5,8 +5,14 @@
  * Includes Volt Dashboard CSS and sets up the page structure
  */
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/locale.php';
+if (function_exists('is_logged_in') && is_logged_in()) {
+    require_once __DIR__ . '/../config/country_scope.php';
+    am_ensure_country_scope_from_session();
+}
+am_locale_bootstrap();
 $page_title = $page_title ?? 'OneStop Asset Shop';
-$html_lang = $page_lang ?? 'en';
+$html_lang = $page_lang ?? am_session_lang();
 $app_name_display = $app_name_display ?? APP_NAME;
 ?>
 <!DOCTYPE html>
@@ -76,5 +82,5 @@ $app_name_display = $app_name_display ?? APP_NAME;
 
     <?php include $am_sidebar_file ?? (__DIR__ . '/sidebar.php'); ?>
 
-    <main class="content">
+    <main class="content" data-tutorial="main-content">
         <?php include __DIR__ . '/topbar.php'; ?>

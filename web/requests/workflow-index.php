@@ -75,7 +75,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 py-4" data-tutorial="tutorial-workflow-header">
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-2">

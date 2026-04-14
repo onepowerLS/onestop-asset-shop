@@ -1,0 +1,21 @@
+<?php
+return [
+    'lang_en' => 'English',
+    'lang_fr' => 'Français',
+    'nav_language' => 'Langue',
+    'nav_country_scope' => 'Périmètre pays',
+    'scope_all' => 'Tous mes pays',
+    'scope_lso' => 'Lesotho uniquement',
+    'scope_zmb' => 'Zambie uniquement',
+    'scope_ben' => 'Bénin uniquement',
+    'country_access_notice' => 'Votre profil n’a pas d’accès pays pour l’AM. Demandez à un administrateur de définir amCountryAccess (ex. LSO, ZMB, BEN) sur votre document utilisateur Firestore.',
+    'assets_blurb' => 'Gérez et suivez les articles dans les pays autorisés.',
+    'tutorial_mode' => 'Tutoriels',
+    'tutorial_choose' => 'Choisir un tutoriel…',
+    'tutorial_back' => 'Retour',
+    'tutorial_next' => 'Suivant',
+    'tutorial_finish' => 'Terminer le tutoriel',
+    'tutorial_exit' => 'Quitter',
+    'tutorial_step_of' => 'Étape %1$s sur %2$s',
+    'tutorial_missing' => 'Ouvrez l’élément de menu surligné ou appuyez sur Suivant — la page charge peut‑être encore.',
+];

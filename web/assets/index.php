@@ -7,7 +7,10 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/locale.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $page_title = 'Assets';
 
@@ -34,6 +37,11 @@ $countries = am_firestore_get_collection('pr_master_countries', 500);
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
+
+$countriesPick = am_countries_for_user_select(array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0)));
+if ($countryFilter !== '' && !am_user_may_access_country_id($countryFilter, $countries)) {
+    $countryFilter = '';
+}
 
 // Index lookups for joins
 $countryById = [];
@@ -72,6 +80,9 @@ foreach ($allocations as $al) {
 $assets = [];
 $needle = strtolower(trim($searchTerm));
 foreach ($assetsRaw as $asset) {
+    if (!am_asset_passes_country_scope($asset, $countries)) {
+        continue;
+    }
     $rawCountryCode = strtoupper(trim((string)($asset['country_code'] ?? '')));
     $countryId = am_resolve_asset_country_id($asset, $countries);
     $categoryId = (string)($asset['category_id'] ?? '');
@@ -131,7 +142,7 @@ usort($assets, function ($a, $b) {
     return strcmp((string)($b['id'] ?? ''), (string)($a['id'] ?? ''));
 });
 
-// Filter options
+// Filter options (master list for joins; pick list is $countriesPick)
 $countries = array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $categories = array_values(array_filter($categories, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $statuses = ['Available', 'Allocated', 'CheckedOut', 'InProject', 'Consumed', 'Deployed', 'Missing', 'WrittenOff', 'Retired'];
@@ -141,14 +152,17 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
+    <?php if (empty(am_country_allow_codes())): ?>
+    <div class="alert alert-warning"><?php echo htmlspecialchars(am_ui('country_access_notice')); ?></div>
+    <?php endif; ?>
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4" data-tutorial="tutorial-assets-header">
         <div class="d-block mb-4 mb-md-0">
             <h1 class="h2"><?php echo htmlspecialchars($page_title); ?></h1>
-            <p class="mb-0">Manage and track all items across Lesotho, Zambia, and Benin</p>
+            <p class="mb-0"><?php echo htmlspecialchars(am_ui('assets_blurb', 'Manage and track items in your permitted countries.')); ?></p>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
             <?php if (!am_is_auditor_readonly()): ?>
-            <a href="<?php echo base_url('assets/add.php' . ($itemClassFilter ? '?item_class=' . urlencode($itemClassFilter) : '')); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
+            <a href="<?php echo base_url('assets/add.php' . ($itemClassFilter ? '?item_class=' . urlencode($itemClassFilter) : '')); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2" data-tutorial="tutorial-assets-add">
                 <i class="fas fa-plus me-2"></i>
                 Add New Item
             </a>
@@ -196,7 +210,7 @@ include __DIR__ . '/../includes/header.php';
                     <label class="form-label">Country</label>
                     <select class="form-select" name="country">
                         <option value="">All</option>
-                        <?php foreach ($countries as $country):
+                        <?php foreach ($countriesPick as $country):
                             $cntId = (string)($country['country_id'] ?? $country['id'] ?? '');
                         ?>
                         <option value="<?php echo $cntId; ?>" <?php echo $countryFilter == $cntId ? 'selected' : ''; ?>>
@@ -226,7 +240,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <!-- Assets Table -->
-    <div class="card border-0 shadow">
+    <div class="card border-0 shadow" data-tutorial="tutorial-assets-table">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover" id="assetsTable">

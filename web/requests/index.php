@@ -113,7 +113,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <div class="d-flex justify-content-between align-items-center py-4">
+    <div class="d-flex justify-content-between align-items-center py-4" data-tutorial="tutorial-requests-header">
         <div>
             <h1 class="h2">Requests</h1>
             <p class="mb-0"><?php echo count($filtered); ?> procurement requests</p>

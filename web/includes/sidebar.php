@@ -40,7 +40,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
 
             <li class="nav-item <?php echo $current_page === 'index' || $current_page === 'dashboard' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('index.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('index.php'); ?>" class="nav-link" data-tutorial="nav-dashboard">
                     <span class="sidebar-icon">
                         <i class="fas fa-home"></i>
                     </span>
@@ -52,7 +52,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             $classParam = $_GET['item_class'] ?? '';
             ?>
             <li class="nav-item">
-                <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-catalog">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-catalog" data-tutorial="nav-catalog">
                     <span>
                         <span class="sidebar-icon">
                             <i class="fas fa-th-large"></i>
@@ -66,7 +66,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <div class="multi-level collapse <?php echo in_array($current_page, ['assets', 'index']) && $classParam ? 'show' : ''; ?>" id="submenu-catalog">
                     <ul class="flex-column nav">
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo base_url('assets/index.php'); ?>">
+                            <a class="nav-link" href="<?php echo base_url('assets/index.php'); ?>" data-tutorial="nav-assets-all">
                                 <span class="sidebar-text">All Items</span>
                             </a>
                         </li>
@@ -103,7 +103,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             $requestsOpen = in_array($current_page, $requestsPages, true);
             ?>
             <li class="nav-item">
-                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $requestsOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-requests" style="cursor:pointer;">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $requestsOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-requests" style="cursor:pointer;" data-tutorial="nav-requests">
                     <span>
                         <span class="sidebar-icon">
                             <i class="fas fa-clipboard-list"></i>
@@ -117,12 +117,12 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <div class="multi-level collapse <?php echo $requestsOpen ? 'show' : ''; ?>" id="submenu-requests">
                     <ul class="flex-column nav">
                         <li class="nav-item">
-                            <a class="nav-link <?php echo $current_page === 'requests' ? 'active' : ''; ?>" href="<?php echo base_url('requests/index.php'); ?>">
+                            <a class="nav-link <?php echo $current_page === 'requests' ? 'active' : ''; ?>" href="<?php echo base_url('requests/index.php'); ?>" data-tutorial="nav-requests-procurement">
                                 <span class="sidebar-text">Procurement</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo in_array($current_page, ['workflow-index', 'workflow-new', 'workflow-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/workflow-index.php'); ?>">
+                            <a class="nav-link <?php echo in_array($current_page, ['workflow-index', 'workflow-new', 'workflow-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/workflow-index.php'); ?>" data-tutorial="nav-requests-workflows">
                                 <span class="sidebar-text">Service workflows</span>
                             </a>
                         </li>
@@ -131,7 +131,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
 
             <li class="nav-item <?php echo $current_page === 'inventory' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('inventory/index.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('inventory/index.php'); ?>" class="nav-link" data-tutorial="nav-inventory">
                     <span class="sidebar-icon">
                         <i class="fas fa-warehouse"></i>
                     </span>
@@ -141,7 +141,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 
             <?php if (!am_is_auditor_readonly()): ?>
             <li class="nav-item <?php echo $current_page === 'checkout' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('checkout/index.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('checkout/index.php'); ?>" class="nav-link" data-tutorial="nav-checkout">
                     <span class="sidebar-icon">
                         <i class="fas fa-hand-holding"></i>
                     </span>
@@ -154,7 +154,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             $inLoadout = str_contains((string)($_SERVER['PHP_SELF'] ?? ''), '/loadout/');
             ?>
             <li class="nav-item <?php echo $inLoadout ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('loadout/index.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('loadout/index.php'); ?>" class="nav-link" data-tutorial="nav-loadout">
                     <span class="sidebar-icon">
                         <i class="fas fa-dolly"></i>
                     </span>
@@ -168,7 +168,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             $telecomOpen = $inSim || $inPhoneReq;
             ?>
             <li class="nav-item">
-                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $telecomOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-telecom" style="cursor:pointer;">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $telecomOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-telecom" style="cursor:pointer;" data-tutorial="nav-telecom">
                     <span>
                         <span class="sidebar-icon"><i class="fas fa-sim-card"></i></span>
                         <span class="sidebar-text">Telecom</span>
@@ -191,7 +191,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
 
             <li class="nav-item">
-                <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link" data-tutorial="nav-reports">
                     <span class="sidebar-icon">
                         <i class="fas fa-chart-bar"></i>
                     </span>
@@ -201,7 +201,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 
             <?php if (!am_is_auditor_readonly()): ?>
             <li class="nav-item">
-                <a href="<?php echo base_url('tablet/index.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('tablet/index.php'); ?>" class="nav-link" data-tutorial="nav-tablet">
                     <span class="sidebar-icon">
                         <i class="fas fa-tablet-screen-button"></i>
                     </span>
@@ -231,7 +231,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
 
             <li class="nav-item <?php echo $current_page === 'tutorial' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('tutorial.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('tutorial.php'); ?>" class="nav-link" data-tutorial="nav-tutorial">
                     <span class="sidebar-icon">
                         <i class="fas fa-graduation-cap"></i>
                     </span>
@@ -240,7 +240,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
 
             <li class="nav-item <?php echo $current_page === 'help' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('help.php'); ?>" class="nav-link">
+                <a href="<?php echo base_url('help.php'); ?>" class="nav-link" data-tutorial="nav-help">
                     <span class="sidebar-icon">
                         <i class="fas fa-question-circle"></i>
                     </span>

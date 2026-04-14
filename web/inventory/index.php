@@ -93,7 +93,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4" data-tutorial="tutorial-inventory-header">
         <div>
             <h1 class="h2">Stock Levels</h1>
             <p class="mb-0">Inventory tracking for Materials, Consumables, and Inventory items</p>

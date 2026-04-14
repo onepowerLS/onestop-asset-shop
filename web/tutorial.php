@@ -35,6 +35,16 @@ $toggleFr = $page_lang === 'fr' ? 'btn-primary' : 'btn-outline-primary';
 
 <p class="lead fs-6"><?php echo htmlspecialchars($t['intro']); ?></p>
 
+<div class="alert alert-info border-0 shadow-sm mb-4">
+    <h2 class="h6 text-info mb-2"><i class="fas fa-mouse-pointer me-1"></i> <?php echo $page_lang === 'fr' ? 'Tutoriel interactif (style Fleet Hub)' : 'Interactive tutorial (Fleet Hub style)'; ?></h2>
+    <p class="mb-2 small"><?php echo $page_lang === 'fr'
+        ? 'Les étapes surlignent les zones réelles de l’application. Ouvrez le menu « Tutoriels » dans la barre du haut, ou lancez la visite depuis le tableau de bord.'
+        : 'Steps spotlight real UI targets. Use the <strong>Tutorials</strong> dropdown in the top bar, or start from the dashboard link below.'; ?></p>
+    <a href="<?php echo htmlspecialchars(base_url('index.php?tutorial=1')); ?>" class="btn btn-sm btn-primary">
+        <i class="fas fa-play me-1"></i> <?php echo $page_lang === 'fr' ? 'Démarrer sur le tableau de bord' : 'Start on Dashboard'; ?>
+    </a>
+</div>
+
 <div class="d-flex flex-wrap gap-2 mb-4">
     <a href="<?php echo htmlspecialchars(am_localized_url('help.php')); ?>" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-book me-1"></i> <?php echo htmlspecialchars($t['back_help']); ?>

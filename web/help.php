@@ -22,7 +22,7 @@ $toggleFr = $page_lang === 'fr' ? 'btn-primary' : 'btn-outline-primary';
 <div class="container-fluid px-4 py-4" style="max-width: 960px;">
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-    <div>
+    <div data-tutorial="tutorial-help-header">
         <h1 class="h2 mb-1"><?php echo htmlspecialchars($help['page_title']); ?></h1>
         <p class="text-muted mb-0"><?php echo htmlspecialchars($help['subtitle']); ?></p>
     </div>
