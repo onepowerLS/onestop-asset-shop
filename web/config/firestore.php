@@ -17,6 +17,15 @@ function am_firestore_id_token(): string {
     return (string)($_SESSION['firebase_id_token'] ?? '');
 }
 
+/** Session token, or a Bearer override (e.g. FM / API callers passing a Firebase ID token). */
+function am_firestore_resolve_id_token(?string $overrideToken = null): string {
+    $t = trim((string)$overrideToken);
+    if ($t !== '') {
+        return $t;
+    }
+    return am_firestore_id_token();
+}
+
 function am_firestore_base_url(): string {
     $project = am_firestore_project_id();
     return 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
@@ -161,8 +170,8 @@ function am_php_to_firestore_fields(array $data): array {
 
 // ── Single-document read ────────────────────────────────────────────
 
-function am_firestore_get_document(string $collection, string $documentId): ?array {
-    $token = am_firestore_id_token();
+function am_firestore_get_document(string $collection, string $documentId, ?string $idTokenOverride = null): ?array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return null;
     }
@@ -178,8 +187,8 @@ function am_firestore_get_document(string $collection, string $documentId): ?arr
 
 // ── Create document ─────────────────────────────────────────────────
 
-function am_firestore_create_document(string $collection, array $data, ?string $documentId = null): array {
-    $token = am_firestore_id_token();
+function am_firestore_create_document(string $collection, array $data, ?string $documentId = null, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
         return ['ok' => false, 'error' => 'Not authenticated', 'id' => ''];
     }
@@ -206,8 +215,8 @@ function am_firestore_create_document(string $collection, array $data, ?string $
 
 // ── Update document ─────────────────────────────────────────────────
 
-function am_firestore_update_document(string $collection, string $documentId, array $data): array {
-    $token = am_firestore_id_token();
+function am_firestore_update_document(string $collection, string $documentId, array $data, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
     }
@@ -236,8 +245,8 @@ function am_firestore_update_document(string $collection, string $documentId, ar
 
 // ── Delete document ─────────────────────────────────────────────────
 
-function am_firestore_delete_document(string $collection, string $documentId): array {
-    $token = am_firestore_id_token();
+function am_firestore_delete_document(string $collection, string $documentId, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
     }
@@ -381,8 +390,8 @@ function am_resolve_asset_country_id(array $asset, array $countries): string {
     return '';
 }
 
-function am_firestore_get_collection(string $collectionName, int $pageSize = 1000): array {
-    $token = am_firestore_id_token();
+function am_firestore_get_collection(string $collectionName, int $pageSize = 1000, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
         return [];
     }
@@ -498,4 +507,43 @@ function am_get_pr_sites(): array {
     );
 
     return $locations;
+}
+
+/**
+ * Load shared `users/{uid}` profile (same document as PR portal).
+ * Includes optional `capabilities` map (e.g. sim_team_assign, sim_phone_link).
+ */
+function am_fetch_pr_user_profile(string $idToken, string $uid): array {
+    $cfg = am_firebase_config();
+    if (empty($cfg['project_id']) || empty($idToken) || empty($uid)) {
+        return ['ok' => false, 'data' => []];
+    }
+
+    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($cfg['project_id']) .
+        '/databases/(default)/documents/users/' . rawurlencode($uid);
+
+    $result = am_http_get_json($url, ['Authorization: Bearer ' . $idToken]);
+    if (!$result['ok']) {
+        return ['ok' => false, 'data' => []];
+    }
+
+    $data = am_firestore_document_to_array($result['json']);
+    $caps = $data['capabilities'] ?? [];
+    if (!is_array($caps)) {
+        $caps = [];
+    }
+
+    return [
+        'ok' => true,
+        'data' => [
+            'firstName' => (string)($data['firstName'] ?? ''),
+            'lastName' => (string)($data['lastName'] ?? ''),
+            'role' => (string)($data['role'] ?? ''),
+            'permissionLevel' => $data['permissionLevel'] ?? null,
+            'department' => (string)($data['department'] ?? ''),
+            'organization' => (string)($data['organization'] ?? ''),
+            'isActive' => $data['isActive'] ?? true,
+            'capabilities' => $caps,
+        ],
+    ];
 }

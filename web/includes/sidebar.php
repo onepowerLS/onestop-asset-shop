@@ -162,6 +162,34 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <?php
+            $inSim = str_contains((string)($_SERVER['PHP_SELF'] ?? ''), '/sim/');
+            $inPhoneReq = str_contains((string)($_SERVER['PHP_SELF'] ?? ''), '/phone-requests/');
+            $telecomOpen = $inSim || $inPhoneReq;
+            ?>
+            <li class="nav-item">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $telecomOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-telecom" style="cursor:pointer;">
+                    <span>
+                        <span class="sidebar-icon"><i class="fas fa-sim-card"></i></span>
+                        <span class="sidebar-text">Telecom</span>
+                    </span>
+                    <span class="link-arrow"><i class="fas fa-chevron-right"></i></span>
+                </span>
+                <div class="multi-level collapse <?php echo $telecomOpen ? 'show' : ''; ?>" id="submenu-telecom">
+                    <ul class="flex-column nav">
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $inSim ? 'active' : ''; ?>" href="<?php echo base_url('sim/index.php'); ?>">SIM registry</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $inPhoneReq ? 'active' : ''; ?>" href="<?php echo base_url('phone-requests/index.php'); ?>">Phone requests</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('it/index.php'); ?>">IT Helpdesk</a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
             <li class="nav-item">
                 <a href="<?php echo base_url('reports/index.php'); ?>" class="nav-link">
                     <span class="sidebar-icon">

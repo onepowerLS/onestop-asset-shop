@@ -9,6 +9,7 @@
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firebase.php';
+require_once __DIR__ . '/../config/firestore.php';
 
 header('Content-Type: application/json');
 
@@ -60,6 +61,7 @@ if ($idToken !== '' && $uid !== '') {
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
+    $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
 
     echo json_encode(['ok' => true, 'redirect' => '/index.php']);
     exit;
@@ -122,6 +124,7 @@ if ($identifier !== '' && $password !== '') {
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
+    $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
 
     header('Location: /index.php');
     exit;

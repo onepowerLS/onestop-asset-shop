@@ -20,7 +20,7 @@ return [
             'id' => 'app-shell',
             'title' => 'Orientation: sidebar and tools',
             'steps' => [
-                ['text' => 'After login, note the left sidebar: Dashboard, Catalog, Requests, Stock, Check-Out/In, Load-out manifests, Reports, Tablet, Help, and external links to Procurement and Job Cards.', 'href' => '', 'link_label' => ''],
+                ['text' => 'After login, note the left sidebar: Dashboard, Catalog, Requests, Stock, Check-Out/In, Load-out manifests, Telecom (SIM registry, phone requests, IT Helpdesk), Reports, Tablet, Help, and external links to Procurement and Job Cards.', 'href' => '', 'link_label' => ''],
                 ['text' => 'Use the top bar on small screens to open the menu. Your role controls which actions you can perform (see Help → Roles).', 'href' => '', 'link_label' => ''],
                 ['text' => 'Open the Dashboard to see totals, classification cards, and recent transactions.', 'href' => 'index.php', 'link_label' => 'Dashboard'],
             ],
@@ -98,6 +98,31 @@ return [
             ],
             'href' => 'loadout/index.php',
             'link_label' => 'Load-out manifests',
+        ],
+        [
+            'id' => 'wf-sim',
+            'title' => 'SIM registry and assignments',
+            'intro' => 'Finance can assign SIMs to teams; IT can link SIMs to handset assets. Admins can do both. Your Firestore user document must include the matching capability flags.',
+            'steps' => [
+                'Open Telecom → SIM registry (read access is for all signed-in users).',
+                'If you have permission: Register SIM or Edit; record MSISDN, pool, location, and status.',
+                'Use Assign to create a team assignment or link the SIM to a phone asset ID from the catalog.',
+                'Firestore rules enforce assignment type against your capabilities — team vs phone asset.',
+            ],
+            'href' => 'sim/index.php',
+            'link_label' => 'SIM registry',
+        ],
+        [
+            'id' => 'wf-phone-request',
+            'title' => 'Request a new phone',
+            'intro' => 'Procurement / IT fulfillment for new handsets or lines (country is selected on the form, e.g. Lesotho).',
+            'steps' => [
+                'Telecom → Phone requests → New request.',
+                'Enter justification and country; submit.',
+                'Managers and Admins update status (Approved, Fulfilled, etc.) from the list.',
+            ],
+            'href' => 'phone-requests/index.php',
+            'link_label' => 'Phone requests',
         ],
         [
             'id' => 'wf-tablet',

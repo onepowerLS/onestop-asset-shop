@@ -313,39 +313,6 @@ function am_firestore_value(array $fields, string $field, mixed $default = null)
     return $default;
 }
 
-function am_fetch_pr_user_profile(string $idToken, string $uid): array {
-    $cfg = am_firebase_config();
-    if (empty($cfg['project_id']) || empty($idToken) || empty($uid)) {
-        return ['ok' => false, 'data' => []];
-    }
-
-    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($cfg['project_id']) .
-        '/databases/(default)/documents/users/' . rawurlencode($uid);
-
-    $result = am_http_get_json($url, ['Authorization: Bearer ' . $idToken]);
-    if (!$result['ok']) {
-        return ['ok' => false, 'data' => []];
-    }
-
-    $fields = $result['json']['fields'] ?? [];
-    if (!is_array($fields)) {
-        $fields = [];
-    }
-
-    return [
-        'ok' => true,
-        'data' => [
-            'firstName' => am_firestore_value($fields, 'firstName', ''),
-            'lastName' => am_firestore_value($fields, 'lastName', ''),
-            'role' => am_firestore_value($fields, 'role', ''),
-            'permissionLevel' => am_firestore_value($fields, 'permissionLevel', null),
-            'department' => am_firestore_value($fields, 'department', ''),
-            'organization' => am_firestore_value($fields, 'organization', ''),
-            'isActive' => am_firestore_value($fields, 'isActive', true),
-        ],
-    ];
-}
-
 function am_map_pr_role_to_am(string $prRole = '', mixed $permissionLevel = null): string {
     $normalizedRole = strtoupper(trim($prRole));
     $perm = is_numeric($permissionLevel) ? (int)$permissionLevel : null;

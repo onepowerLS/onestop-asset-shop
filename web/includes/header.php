@@ -7,13 +7,14 @@
 require_once __DIR__ . '/../config/app.php';
 $page_title = $page_title ?? 'OneStop Asset Shop';
 $html_lang = $page_lang ?? 'en';
+$app_name_display = $app_name_display ?? APP_NAME;
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($html_lang); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title><?php echo htmlspecialchars($page_title); ?> - <?php echo APP_NAME; ?></title>
+    <title><?php echo htmlspecialchars($page_title); ?> - <?php echo htmlspecialchars($app_name_display); ?></title>
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24' font-weight='bold' fill='%231976d2'>1P</text></svg>">
@@ -63,8 +64,8 @@ $html_lang = $page_lang ?? 'en';
     </div>
 
     <nav class="navbar navbar-dark navbar-theme-primary px-4 col-12 d-lg-none">
-        <a class="navbar-brand me-lg-5" href="<?php echo base_url(); ?>">
-            <span style="font-weight:700;font-size:1.1rem;color:#fff;">1PWR</span> <span style="font-weight:400;color:rgba(255,255,255,0.8);">AM</span>
+        <a class="navbar-brand me-lg-5" href="<?php echo base_url(isset($am_nav_home) ? $am_nav_home : ''); ?>">
+            <span style="font-weight:700;font-size:1.1rem;color:#fff;">1PWR</span> <span style="font-weight:400;color:rgba(255,255,255,0.8);"><?php echo htmlspecialchars($am_brand_suffix ?? 'AM'); ?></span>
         </a>
         <div class="d-flex align-items-center">
             <button class="navbar-toggler d-lg-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
@@ -73,7 +74,7 @@ $html_lang = $page_lang ?? 'en';
         </div>
     </nav>
 
-    <?php include __DIR__ . '/sidebar.php'; ?>
+    <?php include $am_sidebar_file ?? (__DIR__ . '/sidebar.php'); ?>
 
     <main class="content">
         <?php include __DIR__ . '/topbar.php'; ?>

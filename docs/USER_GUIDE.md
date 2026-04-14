@@ -2,7 +2,7 @@
 
 ## Logging In
 
-Navigate to `https://assets.1pwrafrica.com`. Enter your 1PWR email and password (or your legacy username). The system authenticates through Firebase, then checks your role in the shared `users` collection.
+Navigate to `https://am.1pwrafrica.com`. Enter your 1PWR email and password (or your legacy username). The system authenticates through Firebase, then checks your role in the shared `users` collection.
 
 **Roles:**
 
@@ -150,6 +150,47 @@ The request list shows status summary cards at the top. Click a request to view 
 
 ---
 
+## Load-out manifests
+
+Use **Load-out manifests** in the sidebar when operations pack goods leaving HQ (or the warehouse) toward a field site. A manifest is a packing list with line items tied to catalog assets where applicable.
+
+- **Draft** -- edit lines, quantities, and notes.
+- **Packed / Shipped / Delivered** -- progress the shipment lifecycle as appropriate.
+- **Fleet Management:** manifests can be linked to a trip (`trip_id`) so Fleet sees the same load-out from the FM app. Trip linking is a Manager-level action; see internal FM/AM integration notes if you connect trips from `fm.1pwrafrica.com`.
+
+Open a manifest to **view** or **print** the packing list for the warehouse team.
+
+---
+
+## Telecom
+
+The **Telecom** menu covers SIM cards and phone procurement requests. Capabilities are split so Finance can assign numbers to teams and IT can link SIMs to handset assets in the catalog (your account may show only the actions you are allowed to perform).
+
+### SIM registry
+
+Lists **SIM cards** (MSISDN and operational fields such as pool, site label, and assignment). Search and filter to find a number. Edit a SIM to update status, notes, or location context after verification.
+
+### SIM assignments
+
+From a SIM, you can record an **assignment**:
+
+- **Team / function** -- which pool or team uses the line (Finance-oriented workflow).
+- **Phone asset** -- link the SIM to a **Fixed Asset** handset in the catalog (IT-oriented workflow). Use the handset’s asset id from the item detail page.
+
+Assignments are time-stamped; use this to keep the registry aligned with physical swaps.
+
+### Phone requests
+
+**Phone requests** are for requesting new handsets or lines through procurement/IT. Submit a justification and country; managers update status (Approved, Fulfilled, etc.) through the list and detail views.
+
+---
+
+## IT Helpdesk
+
+**IT Helpdesk** (under Telecom in the sidebar) is for IT and AM Operations tickets: hardware issues, access, and operational requests. Create a ticket with a title and description, set priority, and track status through resolution. This replaces ad-hoc channels for issues that should stay auditable alongside Asset Management.
+
+---
+
 ## QR Codes
 
 ### Generating QR Codes
@@ -185,10 +226,7 @@ Manage the category hierarchy. Categories are grouped by item class. Each catego
 
 ### Locations
 
-Manage the location hierarchy (Country > Region > Site > Building > Room). Locations are used for:
-- Where items are stored
-- Where items are checked out to/from
-- Multi-country filtering
+**Read-only in AM:** site and location data are synced from the **PR Portal**. Use this page to browse sites by country. To add or change a site, update it in the PR Portal at `https://pr.1pwrafrica.com` (locations drive where items are stored, checked out from, and filtered).
 
 ### Employees
 

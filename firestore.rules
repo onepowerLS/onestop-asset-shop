@@ -33,6 +33,43 @@ service cloud.firestore {
       return isAuthenticated();
     }
 
+    // Optional map on users/{uid}: capabilities.sim_team_assign, capabilities.sim_phone_link
+    function capSimTeamAssign() {
+      return userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.sim_team_assign == true;
+    }
+
+    function capSimPhoneLink() {
+      return userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.sim_phone_link == true;
+    }
+
+    function canWriteSimCard() {
+      return isAdmin() || capSimTeamAssign() || capSimPhoneLink();
+    }
+
+    function canWriteSimAssignment() {
+      return isAdmin() ||
+        (request.resource.data.assignment_type == 'team' && capSimTeamAssign()) ||
+        (request.resource.data.assignment_type == 'phone_asset' && capSimPhoneLink()) ||
+        ((request.resource.data.assignment_type == 'vehicle_tracker' ||
+          request.resource.data.assignment_type == 'site_gateway' ||
+          request.resource.data.assignment_type == 'other') &&
+         (capSimTeamAssign() || capSimPhoneLink()));
+    }
+
+    function canUpdateSimAssignment() {
+      return isAdmin() ||
+        (request.resource.data.assignment_type == 'team' && capSimTeamAssign()) ||
+        (request.resource.data.assignment_type == 'phone_asset' && capSimPhoneLink()) ||
+        ((request.resource.data.assignment_type == 'vehicle_tracker' ||
+          request.resource.data.assignment_type == 'site_gateway' ||
+          request.resource.data.assignment_type == 'other') &&
+         (capSimTeamAssign() || capSimPhoneLink()));
+    }
+
     // ── AM core collections ─────────────────────────────────────
 
     match /am_core_assets/{docId} {
@@ -68,6 +105,42 @@ service cloud.firestore {
       allow read:   if isViewer();
       allow create: if isViewer();
       allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    // HQ → site packing lists; trip_id links to Fleet Management trips (fm.1pwrafrica.com)
+    match /am_core_loadout_manifests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isManager();
+      allow update: if isManager();
+      allow delete: if isManager();
+    }
+
+    match /am_core_sim_cards/{docId} {
+      allow read:   if isViewer();
+      allow create, update: if canWriteSimCard();
+      allow delete: if isAdmin();
+    }
+
+    match /am_core_sim_assignments/{docId} {
+      allow read:   if isViewer();
+      allow create: if canWriteSimAssignment();
+      allow update: if canUpdateSimAssignment();
+      allow delete: if isAdmin();
+    }
+
+    match /am_core_phone_requests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    match /it_support_tickets/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();
+      allow update: if isAdmin() || isManager() ||
+        resource.data.requester_uid == request.auth.uid;
       allow delete: if isAdmin();
     }
 

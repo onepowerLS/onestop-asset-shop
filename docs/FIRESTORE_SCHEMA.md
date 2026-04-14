@@ -146,6 +146,32 @@ Reference data for item categories. AM reads these; Procurement manages them.
 | `fulfilled_date` | string | ISO timestamp |
 | `notes` | string | Free-text |
 
+### am_core_loadout_manifests
+
+Load-out / packing manifests for items leaving HQ toward a field site. Optional `trip_id` ties a manifest to a trip in Fleet Management (`fm.1pwrafrica.com`). AM owns this collection; FM typically **reads** by `trip_id` or calls the AM HTTP API.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `manifest_number` | string | yes | Human-readable id, e.g. `LO-2026-0001` |
+| `title` | string | no | Short description |
+| `status` | string | yes | `Draft`, `Packed`, `Shipped`, `Delivered`, `Cancelled` |
+| `origin_label` | string | no | e.g. `HQ / Warehouse` |
+| `destination_site_id` | string | no | Site id from `sites` / `referenceData_sites` (via AM site picker) |
+| `destination_site_label` | string | no | Denormalized display label |
+| `country_id` | string | no | `pr_master_countries` id |
+| `trip_id` | string | no | Fleet trip document id (set from FM or AM UI) |
+| `trip_label` | string | no | Optional display name for the trip |
+| `lines` | array | no | Line items: `line_no`, `asset_id`, `quantity`, `notes`, `name_snapshot`, `tag_snapshot` |
+| `notes` | string | no | Manifest-level notes |
+| `source_system` | string | no | e.g. `am.1pwrafrica.com` |
+| `linked_from_fm` | boolean | no | Set when linked via FM API |
+| `created_at` | string | auto | ISO timestamp |
+| `updated_at` | string | auto | ISO timestamp |
+| `created_by` | string | auto | Firebase UID |
+| `updated_by` | string | auto | Firebase UID |
+
+**HTTP API (AM):** `GET/POST https://am.1pwrafrica.com/api/loadout-manifests/index.php` — authenticate with `Authorization: Bearer <Firebase ID token>` (same project as AM), or `api_key` + `FIREBASE_ADMIN_BEARER_TOKEN` for server jobs. See `web/api/loadout-manifests/index.php`.
+
 ### users
 
 Shared Firebase Auth user profiles (owned by PR system).
@@ -159,8 +185,81 @@ Shared Firebase Auth user profiles (owned by PR system).
 | `department` | string | Department name |
 | `organization` | string | Organization |
 | `isActive` | boolean | Active flag |
+| `capabilities` | map | Optional flags for fine-grained AM/IT actions (see below) |
 
-AM maps PR roles to AM roles: `Admin`, `Manager`, `Viewer` (see `am_map_pr_role_to_am()` in `web/config/firebase.php`).
+**Capabilities (optional, boolean values):** `sim_team_assign` (Finance — assign SIM to teams/pools), `sim_phone_link` (IT — link SIM to handset assets), `it_queue_manage`, `am_ops_queue_manage`. Admins retain full access regardless. Set in Firestore on `users/{uid}`; loaded into PHP session at login.
+
+### am_core_sim_cards
+
+SIM registry (telecom). UI: `web/sim/`.
+
+| Field | Type | Description |
+|---|---|---|
+| `msisdn_normalized` | string | Digits-only MSISDN (search key) |
+| `msisdn_display` | string | Raw entry / display |
+| `contact_value` | string | Plan, top-up, or billing notes |
+| `pool` | string | Source bucket (e.g. workbook tab name) |
+| `sim_location` | string | Site / location label |
+| `person_assigned` | string | Person or team description |
+| `status` | string | `Active`, `Suspended`, `Deactivated`, `Lost`, `Unknown` |
+| `locate_status` | string | Locate / could not locate |
+| `notes` | string | Free text |
+| `created_at`, `updated_at` | string | ISO timestamps |
+| `created_by`, `updated_by` | string | Firebase UIDs |
+
+### am_core_sim_assignments
+
+Time-stamped SIM assignments. `assignment_type` drives Firestore rules (team vs phone asset).
+
+| Field | Type | Description |
+|---|---|---|
+| `sim_id` | string | `am_core_sim_cards` document id |
+| `assignment_type` | string | `team`, `phone_asset`, `vehicle_tracker`, `site_gateway`, `other` |
+| `team_label` | string | For `team` |
+| `asset_id` | string | For `phone_asset` — `am_core_assets` id |
+| `site_label` | string | Optional |
+| `notes` | string | Optional |
+| `valid_from` | string | ISO timestamp |
+| `valid_to` | string | Optional; empty = current |
+| `assigned_by` | string | Firebase UID |
+| `created_at` | string | ISO timestamp |
+
+### am_core_phone_requests
+
+Requests for new phones (procurement / IT fulfillment). UI: `web/phone-requests/`.
+
+| Field | Type | Description |
+|---|---|---|
+| `request_number` | string | e.g. `PHR-2026-0001` |
+| `justification` | string | Required |
+| `country_id` | string | `pr_master_countries` ref |
+| `status` | string | `Submitted`, `Approved`, `Rejected`, `Fulfilled`, `Cancelled` |
+| `requested_by` | string | Firebase UID |
+| `requested_by_name` | string | Display |
+| `requested_at` | string | ISO timestamp |
+| `notes` | string | Optional |
+| `fulfilled_notes` | string | Manager |
+
+### it_support_tickets
+
+IT vs AM operations helpdesk. UI: `web/it/` (same app; can be served at `it.1pwrafrica.com`). Legacy Google Form rows can be imported with `source` = `import_google_form_v1`.
+
+| Field | Type | Description |
+|---|---|---|
+| `ticket_number` | string | e.g. `IT-2026-0001` |
+| `queue` | string | `it` or `am_operations` |
+| `title`, `description` | string | |
+| `status` | string | `Open`, `InProgress`, `Resolved`, `Closed`, `Cancelled` |
+| `priority` | string | `Low`, `Normal`, `High`, `Urgent` |
+| `requester_uid`, `requester_name` | string | |
+| `assignee_uid`, `assignee_name` | string | Optional |
+| `vehicle_related` | boolean | Flag only; vehicles handled in FM |
+| `source` | string | `web`, `import_google_form_v1`, etc. |
+| `legacy_import_id` | string | Optional stable id from import |
+| `linked_asset_ids` | array | Optional asset ids |
+| `linked_sim_id` | string | Optional |
+| `comments` | array | Maps: `author_uid`, `author_name`, `body`, `created_at` |
+| `created_at`, `updated_at` | string | ISO timestamps |
 
 ## Firestore PHP API
 

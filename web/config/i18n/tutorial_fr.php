@@ -20,7 +20,7 @@ return [
             'id' => 'app-shell',
             'title' => 'Repères : menu et outils',
             'steps' => [
-                ['text' => 'Après connexion, observez le menu de gauche : Tableau de bord, Catalogue, Demandes, Stock, Sortie/retour, Manifestes, Rapports, Tablette, Aide, et les liens externes Achats et Job Cards.', 'href' => '', 'link_label' => ''],
+                ['text' => 'Après connexion, observez le menu de gauche : Tableau de bord, Catalogue, Demandes, Stock, Sortie/retour, Manifestes, Télécom (cartes SIM, demandes téléphones, assistance IT), Rapports, Tablette, Aide, et les liens externes Achats et Job Cards.', 'href' => '', 'link_label' => ''],
                 ['text' => 'Sur petit écran, utilisez la barre du haut pour ouvrir le menu. Votre rôle détermine les actions possibles (voir Aide → Rôles).', 'href' => '', 'link_label' => ''],
                 ['text' => 'Ouvrez le Tableau de bord pour les totaux, les cartes par classe et les transactions récentes.', 'href' => 'index.php', 'link_label' => 'Tableau de bord'],
             ],
@@ -98,6 +98,31 @@ return [
             ],
             'href' => 'loadout/index.php',
             'link_label' => 'Manifestes de chargement',
+        ],
+        [
+            'id' => 'wf-sim',
+            'title' => 'Registre SIM et affectations',
+            'intro' => 'La Finance affecte les SIM aux équipes ; l’IT les lie aux téléphones du catalogue. Les administrateurs peuvent tout faire. Le document utilisateur Firestore doit exposer les indicateurs de capacité correspondants.',
+            'steps' => [
+                'Ouvrez Télécom → Registre SIM (lecture pour tout utilisateur connecté).',
+                'Avec droits : Enregistrer ou Modifier une SIM ; renseigner MSISDN, pool, lieu, statut.',
+                'Utilisez Affecter pour une équipe ou pour lier la SIM à l’identifiant d’un téléphone au catalogue.',
+                'Les règles Firestore appliquent le type d’affectation (équipe vs téléphone) selon vos capacités.',
+            ],
+            'href' => 'sim/index.php',
+            'link_label' => 'Registre SIM',
+        ],
+        [
+            'id' => 'wf-phone-request',
+            'title' => 'Demander un nouveau téléphone',
+            'intro' => 'Approvisionnement / IT pour nouveaux terminaux ou lignes (pays choisi sur le formulaire, ex. Lesotho).',
+            'steps' => [
+                'Télécom → Demandes téléphones → Nouvelle demande.',
+                'Saisir la justification et le pays ; envoyer.',
+                'Les managers et administrateurs mettent à jour le statut (Approuvé, Honoré, etc.) depuis la liste.',
+            ],
+            'href' => 'phone-requests/index.php',
+            'link_label' => 'Demandes téléphones',
         ],
         [
             'id' => 'wf-tablet',
