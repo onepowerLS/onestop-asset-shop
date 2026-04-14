@@ -60,7 +60,7 @@ Optional / older docs may mention AWS keys for other automation; **this repo’s
 | **Firestore** | Rules deploy; no separate “DB password” for Firestore (uses CLI token). |
 | **`.env` on EC2** (not in git) | `FIREBASE_WEB_API_KEY`, `FIREBASE_PROJECT_ID`, etc.; already required for AM. |
 
-**I cannot complete deployment from this environment** without your GitHub/AWS/Firebase access. You (or CI with secrets) must: merge to `main`, ensure secrets are set, run workflow, then **deploy Firestore rules** separately if they changed.
+The EC2 workflow only updates application code from `main`. **Firestore rules** must be deployed separately (`firebase deploy --only firestore:rules`) whenever `firestore.rules` changes, using a Firebase account with access to project `pr-system-4ea55` (coordinate with PR portal owners — shared project).
 
 ### IT subdomain (`it.1pwrafrica.com`)
 
