@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/firebase.php';
 require_once __DIR__ . '/config/ui_locale.php';
-am_locale_bootstrap();
+am_docs_locale_bootstrap();
 require_once __DIR__ . '/config/docs_i18n.php';
 
 if (!is_logged_in()) {
@@ -11,7 +11,7 @@ if (!is_logged_in()) {
 }
 
 $help = am_i18n_help();
-$page_lang = am_locale();
+$page_lang = am_docs_locale();
 $page_title = $help['page_title'];
 include __DIR__ . '/includes/header.php';
 
@@ -61,7 +61,7 @@ $toggleFr = $page_lang === 'fr' ? 'btn-primary' : 'btn-outline-primary';
 </div>
 
 <div class="text-center pb-4">
-    <a href="<?php echo htmlspecialchars(am_localized_url('tutorial.php')); ?>" class="btn btn-outline-primary">
+    <a href="<?php echo htmlspecialchars(am_docs_localized_url('tutorial.php')); ?>" class="btn btn-outline-primary">
         <i class="fas fa-graduation-cap me-1"></i> <?php echo $page_lang === 'fr' ? 'Ouvrir le tutoriel' : 'Open tutorial'; ?>
     </a>
 </div>

@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/firebase.php';
 require_once __DIR__ . '/config/ui_locale.php';
-am_locale_bootstrap();
+am_docs_locale_bootstrap();
 require_once __DIR__ . '/config/docs_i18n.php';
 
 if (!is_logged_in()) {
@@ -11,7 +11,7 @@ if (!is_logged_in()) {
 }
 
 $t = am_i18n_tutorial();
-$page_lang = am_locale();
+$page_lang = am_docs_locale();
 $page_title = $t['page_title'];
 include __DIR__ . '/includes/header.php';
 
@@ -46,7 +46,7 @@ $toggleFr = $page_lang === 'fr' ? 'btn-primary' : 'btn-outline-primary';
 </div>
 
 <div class="d-flex flex-wrap gap-2 mb-4">
-    <a href="<?php echo htmlspecialchars(am_localized_url('help.php')); ?>" class="btn btn-outline-secondary btn-sm">
+    <a href="<?php echo htmlspecialchars(am_docs_localized_url('help.php')); ?>" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-book me-1"></i> <?php echo htmlspecialchars($t['back_help']); ?>
     </a>
 </div>
@@ -66,7 +66,7 @@ $toggleFr = $page_lang === 'fr' ? 'btn-primary' : 'btn-outline-primary';
                 <?php
                 $href = trim((string) ($step['href'] ?? ''));
                 if ($href !== '') {
-                    $url = am_localized_url($href);
+                    $url = am_docs_localized_url($href);
                     echo ' <a href="' . htmlspecialchars($url) . '">' . htmlspecialchars($step['link_label'] ?: $t['open']) . '</a>';
                 }
                 ?>
@@ -101,7 +101,7 @@ $toggleFr = $page_lang === 'fr' ? 'btn-primary' : 'btn-outline-primary';
                 <?php
                 $wh = trim((string) ($wf['href'] ?? ''));
                 if ($wh !== '') {
-                    $wu = am_localized_url($wh);
+                    $wu = am_docs_localized_url($wh);
                     $wl = (string) ($wf['link_label'] ?? $t['open']);
                     echo '<a href="' . htmlspecialchars($wu) . '" class="btn btn-primary btn-sm"><i class="fas fa-external-link-alt me-1"></i>' . htmlspecialchars($wl) . '</a>';
                 }

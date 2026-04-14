@@ -7,7 +7,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app.php';
 
-function am_locale_bootstrap(): void
+/** Help/Tutorial copy only — must not collide with config/locale.php (am_locale_bootstrap). */
+function am_docs_locale_bootstrap(): void
 {
     if (isset($_GET['lang'])) {
         $l = strtolower((string) $_GET['lang']);
@@ -20,15 +21,15 @@ function am_locale_bootstrap(): void
     }
 }
 
-function am_locale(): string
+function am_docs_locale(): string
 {
     return $_SESSION['am_lang'] ?? 'en';
 }
 
-/** Append lang= to a relative path for navigation preserving locale */
-function am_localized_url(string $path): string
+/** Append lang= to a relative path for navigation preserving Help/Tutorial locale */
+function am_docs_localized_url(string $path): string
 {
     $base = base_url($path);
     $sep = str_contains($base, '?') ? '&' : '?';
-    return $base . $sep . 'lang=' . am_locale();
+    return $base . $sep . 'lang=' . am_docs_locale();
 }
