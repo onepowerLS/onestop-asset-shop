@@ -186,8 +186,11 @@ Shared Firebase Auth user profiles (owned by PR system).
 | `organization` | string | Organization |
 | `isActive` | boolean | Active flag |
 | `capabilities` | map | Optional flags for fine-grained AM/IT actions (see below) |
+| `amCountryAccess` | array of strings | **AM:** ISO-style country codes the user may operate in: `LSO`, `ZMB`, `BEN`. If omitted or empty, non-Admin users have **no** AM country access until set. **Admin** mapped from PR (`permissionLevel` / role) defaults to all three in AM when this field is empty. Nexus-shaped profiles may use `systemAccess.am.countryAccess` instead (same codes). |
 
 **Capabilities (optional, boolean values):** `sim_team_assign` (Finance — assign SIM to teams/pools), `sim_phone_link` (IT — link SIM to handset assets), `it_queue_manage`, `am_ops_queue_manage`. Admins retain full access regardless. Set in Firestore on `users/{uid}`; loaded into PHP session at login.
+
+**Country scope (AM UI):** Session stores allowed codes plus an optional **filter** (all permitted countries vs one country). See `docs/COUNTRY_AND_LANGUAGE.md`. **Procurement** (`pr.1pwrafrica.com`) country rules are separate; mirror the same `amCountryAccess` / org policy there if users should align across tools.
 
 ### am_core_sim_cards
 

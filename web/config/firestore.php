@@ -533,6 +533,9 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
         $caps = [];
     }
 
+    require_once __DIR__ . '/country_scope.php';
+    $amCountryAccess = am_extract_am_country_access_codes($data);
+
     return [
         'ok' => true,
         'data' => [
@@ -544,6 +547,7 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
             'organization' => (string)($data['organization'] ?? ''),
             'isActive' => $data['isActive'] ?? true,
             'capabilities' => $caps,
+            'amCountryAccess' => $amCountryAccess,
         ],
     ];
 }

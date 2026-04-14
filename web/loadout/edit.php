@@ -6,17 +6,25 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/loadout_manifests.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 am_require_can_mutate();
 
 $docId = trim($_GET['id'] ?? '');
 $isNew = ($docId === '');
 
 $manifest = null;
+$countries = am_firestore_get_collection('pr_master_countries', 500);
 if (!$isNew) {
     $manifest = am_firestore_get_document(AM_LOADOUT_COLLECTION, $docId);
     if (!$manifest) {
         $_SESSION['flash_error'] = 'Manifest not found.';
+        header('Location: ' . base_url('loadout/index.php'));
+        exit;
+    }
+    if (!am_record_in_country_scope($manifest, $countries)) {
+        $_SESSION['flash_error'] = 'Manifest is outside your country scope.';
         header('Location: ' . base_url('loadout/index.php'));
         exit;
     }
@@ -25,6 +33,7 @@ if (!$isNew) {
 $page_title = $isNew ? 'New load-out manifest' : 'Edit manifest';
 
 $assets = am_firestore_get_collection('am_core_assets', 2000);
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries)));
 $assetById = [];
 foreach ($assets as $a) {
     $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
@@ -37,7 +46,8 @@ $sites = am_get_pr_sites();
 $statuses = am_loadout_statuses();
 
 $errors = [];
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
+$countries = am_countries_for_user_select($countries);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['form_action'] ?? 'save';
@@ -69,6 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $notes = trim((string)($_POST['notes'] ?? ''));
         $tripId = trim((string)($_POST['trip_id'] ?? ''));
         $tripLabel = trim((string)($_POST['trip_label'] ?? ''));
+
+        if ($countryId !== '' && !am_user_may_access_country_id($countryId, $countries)) {
+            $errors[] = 'You cannot assign this manifest to that country.';
+        }
 
         $rawLines = $_POST['lines'] ?? [];
         $lineRows = [];

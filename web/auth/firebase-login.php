@@ -10,6 +10,8 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firebase.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/locale.php';
 
 header('Content-Type: application/json');
 
@@ -62,6 +64,19 @@ if ($idToken !== '' && $uid !== '') {
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
     $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
+
+    $allow = $profileData['amCountryAccess'] ?? [];
+    if (!is_array($allow)) {
+        $allow = [];
+    }
+    $allow = am_normalize_country_codes($allow);
+    $roleAm = $_SESSION['role'] ?? '';
+    if (empty($allow) && $roleAm === 'Admin') {
+        $allow = am_org_country_codes();
+    }
+    $_SESSION['am_country_allow'] = $allow;
+    $_SESSION['am_country_filter'] = 'all';
+    am_locale_bootstrap();
 
     echo json_encode(['ok' => true, 'redirect' => '/index.php']);
     exit;
@@ -125,6 +140,19 @@ if ($identifier !== '' && $password !== '') {
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
     $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
+
+    $allow = $profileData['amCountryAccess'] ?? [];
+    if (!is_array($allow)) {
+        $allow = [];
+    }
+    $allow = am_normalize_country_codes($allow);
+    $roleAm = $_SESSION['role'] ?? '';
+    if (empty($allow) && $roleAm === 'Admin') {
+        $allow = am_org_country_codes();
+    }
+    $_SESSION['am_country_allow'] = $allow;
+    $_SESSION['am_country_filter'] = 'all';
+    am_locale_bootstrap();
 
     header('Location: /index.php');
     exit;

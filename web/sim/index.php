@@ -7,6 +7,8 @@ require_login();
 
 $page_title = 'SIM registry';
 
+$can_edit_sim = am_can_sim_team_assign() || am_can_sim_phone_link();
+
 $sims = am_firestore_get_collection(AM_SIM_CARDS_COLLECTION, 4000);
 usort($sims, function ($a, $b) {
     return strcmp((string)($a['msisdn_normalized'] ?? ''), (string)($b['msisdn_normalized'] ?? ''));
@@ -16,7 +18,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-3 border-bottom">
     <h1 class="h2 mb-0">SIM registry</h1>
-    <?php if (am_can_sim_team_assign() || am_can_sim_phone_link()): ?>
+    <?php if ($can_edit_sim): ?>
         <a class="btn btn-sm btn-primary" href="<?php echo base_url('sim/sim-edit.php'); ?>">Register SIM</a>
     <?php endif; ?>
 </div>
@@ -45,9 +47,11 @@ include __DIR__ . '/../includes/header.php';
                             <td><?php echo htmlspecialchars((string)($s['sim_location'] ?? '')); ?></td>
                             <td><span class="badge bg-secondary"><?php echo htmlspecialchars((string)($s['status'] ?? '')); ?></span></td>
                             <td class="text-nowrap">
-                                <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url('sim/sim-edit.php?id=' . rawurlencode($sid)); ?>">Edit</a>
-                                <?php if (am_can_sim_team_assign() || am_can_sim_phone_link()): ?>
+                                <?php if ($can_edit_sim): ?>
+                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url('sim/sim-edit.php?id=' . rawurlencode($sid)); ?>">Edit</a>
                                     <a class="btn btn-sm btn-outline-secondary" href="<?php echo base_url('sim/assignment-new.php?sim_id=' . rawurlencode($sid)); ?>">Assign</a>
+                                <?php else: ?>
+                                    <span class="text-muted small">&mdash;</span>
                                 <?php endif; ?>
                             </td>
                         </tr>

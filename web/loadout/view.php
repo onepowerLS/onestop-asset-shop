@@ -6,7 +6,9 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/loadout_manifests.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $docId = trim($_GET['id'] ?? '');
 if ($docId === '') {
@@ -17,6 +19,13 @@ if ($docId === '') {
 $m = am_firestore_get_document(AM_LOADOUT_COLLECTION, $docId);
 if (!$m) {
     $_SESSION['flash_error'] = 'Manifest not found.';
+    header('Location: ' . base_url('loadout/index.php'));
+    exit;
+}
+
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+if (!am_record_in_country_scope($m, $countries)) {
+    $_SESSION['flash_error'] = 'Manifest is outside your country scope.';
     header('Location: ' . base_url('loadout/index.php'));
     exit;
 }

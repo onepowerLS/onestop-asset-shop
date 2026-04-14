@@ -2,7 +2,9 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $assetId = $_GET['id'] ?? '';
 $qrCode = $_GET['qr'] ?? '';
@@ -34,11 +36,15 @@ if ($assetId !== '') {
 } elseif ($qrCode !== '') {
     $allAssets = am_firestore_get_collection('am_core_assets', 2000);
     foreach ($allAssets as $a) {
-        if ((string)($a['qr_code_id'] ?? '') === $qrCode) {
-            $asset = $a;
-            $assetId = (string)($a['id'] ?? '');
-            break;
+        if ((string)($a['qr_code_id'] ?? '') !== $qrCode) {
+            continue;
         }
+        if (!am_asset_passes_country_scope($a, $countries)) {
+            continue;
+        }
+        $asset = $a;
+        $assetId = (string)($a['id'] ?? '');
+        break;
     }
 }
 
@@ -47,6 +53,8 @@ if (!$asset) {
     header('Location: ' . base_url('assets/index.php'));
     exit;
 }
+
+am_require_asset_visible($asset, $countries);
 
 $page_title = (string)($asset['name'] ?? 'Item Detail');
 

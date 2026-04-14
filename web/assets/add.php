@@ -2,7 +2,9 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 am_require_can_mutate();
 
 $page_title = 'Add New Item';
@@ -14,6 +16,7 @@ $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
+$countries = am_countries_for_user_select($countries);
 $categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
 
 $preselectedClass = $_GET['item_class'] ?? '';
@@ -47,6 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($countryId === '') {
         $errors[] = 'Country is required.';
     }
+    if ($countryId !== '' && !am_user_may_access_country_id($countryId, $countries)) {
+        $errors[] = 'You cannot create items for that country.';
+    }
 
     if (empty($errors)) {
         $countryCode = '';
@@ -59,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $existingAssets = am_firestore_get_collection('am_core_assets', 2000);
         $assetTag = am_generate_asset_tag($itemClass, $countryCode, $existingAssets);
+
+        am_require_asset_country_mutate($countryId, $countries);
 
         $data = [
             'name' => $name,
