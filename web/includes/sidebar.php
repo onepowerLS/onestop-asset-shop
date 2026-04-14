@@ -230,12 +230,17 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
-            <li class="nav-item <?php echo $current_page === 'tutorial' ? 'active' : ''; ?>">
-                <a href="<?php echo base_url('tutorial.php'); ?>" class="nav-link" data-tutorial="nav-tutorial">
+            <li class="nav-item">
+                <a href="<?php echo base_url('index.php?tutorial=1'); ?>" class="nav-link" data-tutorial="nav-tutorial">
                     <span class="sidebar-icon">
                         <i class="fas fa-graduation-cap"></i>
                     </span>
-                    <span class="sidebar-text">Tutorial</span>
+                    <span class="sidebar-text">Start tutorial</span>
+                </a>
+            </li>
+            <li class="nav-item <?php echo $current_page === 'tutorial' ? 'active' : ''; ?>">
+                <a href="<?php echo base_url('tutorial.php'); ?>" class="nav-link ps-4">
+                    <span class="sidebar-text small text-gray-400">Text guide</span>
                 </a>
             </li>
 

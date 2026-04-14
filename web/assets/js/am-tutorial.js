@@ -68,15 +68,16 @@
     return m[stepPath] || 'nav-dashboard';
   }
 
+  /** @returns {boolean} true if full page navigation was triggered (skip further init) */
   function bootstrapFromQuery() {
     var params = new URLSearchParams(window.location.search);
     var raw = params.get('tutorial');
-    if (!raw) return;
+    if (!raw) return false;
     var qm = cfg().query_map || {};
     var trackId = qm[raw];
-    if (!trackId || !cfg().tracks[trackId]) return;
+    if (!trackId || !cfg().tracks[trackId]) return false;
     var steps = getSteps(trackId);
-    if (!steps.length) return;
+    if (!steps.length) return false;
     setState({ active: true, trackId: trackId, stepIndex: 0 });
     try {
       var url = new URL(window.location.href);
@@ -85,7 +86,9 @@
     } catch (e) {}
     if (!pathMatches(steps[0].path)) {
       window.location.href = stepUrl(steps[0].path);
+      return true;
     }
+    return false;
   }
 
   function str(key, a, b) {
@@ -298,10 +301,14 @@
   }
 
   function init() {
-    bootstrapFromQuery();
+    if (bootstrapFromQuery()) {
+      return;
+    }
     var st = getState();
     if (st && st.active) {
-      render();
+      requestAnimationFrame(function () {
+        requestAnimationFrame(render);
+      });
     }
 
     document.querySelectorAll('[data-tutorial-start]').forEach(function (btn) {

@@ -13,11 +13,17 @@ if ($returnPath === '' || $returnPath[0] !== '/') {
     $returnPath = '/index.php';
 }
 ?>
-<nav class="navbar navbar-top navbar-expand navbar-dark bg-primary border-bottom">
+<nav class="navbar navbar-top navbar-dark bg-primary border-bottom py-0">
     <div class="container-fluid">
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <!-- Always show tools (no collapse): there was no toggler for #navbarSupportedContent, so language / Tutorials were hidden. -->
+        <div class="d-flex flex-wrap w-100 align-items-center justify-content-end gap-1 py-1" id="navbarSupportedContent">
             <?php if (is_logged_in()): ?>
-            <ul class="navbar-nav align-items-center ms-auto me-2 flex-row gap-2">
+            <ul class="navbar-nav align-items-center ms-auto me-2 flex-row flex-wrap gap-2">
+                <li class="nav-item">
+                    <a href="<?php echo htmlspecialchars(base_url('index.php?tutorial=1')); ?>" class="btn btn-warning btn-sm text-dark fw-semibold shadow-sm" title="<?php echo htmlspecialchars(am_ui('tutorial_mode')); ?>">
+                        <i class="fas fa-map-signs me-1"></i><span class="d-none d-sm-inline"><?php echo htmlspecialchars(am_ui('tutorial_start_tour', 'Start tour')); ?></span>
+                    </a>
+                </li>
                 <li class="nav-item d-flex align-items-center">
                     <form method="post" action="<?php echo htmlspecialchars(base_url('session/update.php')); ?>" class="d-flex align-items-center gap-1 mb-0">
                         <input type="hidden" name="action" value="set_lang">
@@ -62,7 +68,7 @@ if ($returnPath === '' || $returnPath[0] !== '/') {
                 <li class="nav-item dropdown" data-tutorial="header-tutorial-menu">
                     <a class="nav-link text-white dropdown-toggle py-1 px-2 d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?php echo htmlspecialchars(am_ui('tutorial_mode')); ?>">
                         <i class="fas fa-graduation-cap me-1"></i>
-                        <span class="d-none d-md-inline"><?php echo htmlspecialchars(am_ui('tutorial_mode')); ?></span>
+                        <span><?php echo htmlspecialchars(am_ui('tutorial_mode')); ?></span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                         <li><h6 class="dropdown-header"><?php echo htmlspecialchars(am_ui('tutorial_choose')); ?></h6></li>

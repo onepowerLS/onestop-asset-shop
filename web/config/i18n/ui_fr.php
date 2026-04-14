@@ -11,6 +11,7 @@ return [
     'country_access_notice' => 'Votre profil n’a pas d’accès pays pour l’AM. Demandez à un administrateur de définir amCountryAccess (ex. LSO, ZMB, BEN) sur votre document utilisateur Firestore.',
     'assets_blurb' => 'Gérez et suivez les articles dans les pays autorisés.',
     'tutorial_mode' => 'Tutoriels',
+    'tutorial_start_tour' => 'Visite guidée',
     'tutorial_choose' => 'Choisir un tutoriel…',
     'tutorial_back' => 'Retour',
     'tutorial_next' => 'Suivant',

@@ -34,4 +34,4 @@ $amTutorialCfg = am_tutorial_client_config();
     );
     echo $amTutorialJson !== false ? $amTutorialJson : '{}';
 ?>;</script>
-<script src="<?php echo htmlspecialchars(base_url('assets/js/am-tutorial.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(base_url('assets/js/am-tutorial.js')); ?>"></script>
