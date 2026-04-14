@@ -14,6 +14,12 @@ am_locale_bootstrap();
 $page_title = $page_title ?? 'OneStop Asset Shop';
 $html_lang = $page_lang ?? am_session_lang();
 $app_name_display = $app_name_display ?? APP_NAME;
+
+$am_firestore_reauth = false;
+if (function_exists('is_logged_in') && is_logged_in() && !empty($_SESSION['am_firestore_reauth'])) {
+    $am_firestore_reauth = true;
+    unset($_SESSION['am_firestore_reauth']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($html_lang); ?>">
@@ -59,7 +65,45 @@ $app_name_display = $app_name_display ?? APP_NAME;
         }
     </style>
 </head>
-<body>
+<body<?php echo !empty($am_firestore_reauth) ? ' data-am-firestore-reauth="1"' : ''; ?>>
+    <?php
+    if (!empty($am_firestore_reauth)) {
+        require_once __DIR__ . '/../config/firebase.php';
+        $amFbReauth = am_firebase_config();
+    ?>
+    <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.3.0/firebase-auth.js';
+    const firebaseConfig = {
+        apiKey: <?php echo json_encode($amFbReauth['api_key'] ?? '', JSON_UNESCAPED_SLASHES); ?>,
+        authDomain: 'pr-system-4ea55.firebaseapp.com',
+        projectId: <?php echo json_encode($amFbReauth['project_id'] ?? '', JSON_UNESCAPED_SLASHES); ?>,
+        appId: '1:562987209098:web:2f788d189f1c0867cb3873'
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const k = 'am_fs_reauth_done';
+    onAuthStateChanged(auth, async function (user) {
+        if (!user) return;
+        if (sessionStorage.getItem(k) === '1') {
+            return;
+        }
+        sessionStorage.setItem(k, '1');
+        try {
+            const idToken = await user.getIdToken(true);
+            const r = await fetch(<?php echo json_encode(base_url('auth/refresh-session.php')); ?>, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken }),
+                credentials: 'same-origin'
+            });
+            if (r.ok) {
+                location.reload();
+            }
+        } catch (e) {}
+    });
+    </script>
+    <?php } ?>
     <!-- QR Scanner Input (hidden, for HID scanner) -->
     <input type="text" id="qr-scanner-input" class="qr-scanner-input" autocomplete="off" tabindex="-1">
     

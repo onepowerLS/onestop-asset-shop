@@ -413,6 +413,12 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
 
         $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
         if (!$result['ok']) {
+            $st = (int)($result['status'] ?? 0);
+            if ($st === 401 || $st === 403) {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION['am_firestore_reauth'] = true;
+                }
+            }
             break;
         }
 

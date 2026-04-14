@@ -42,14 +42,16 @@ foreach ($countries as $country) {
     ];
 }
 foreach ($assets as $asset) {
-    $countryId = am_resolve_asset_country_id($asset, $countries);
+    $countryId = am_asset_country_bucket_id_for_ui($asset, $countries);
     if ($countryId === '') {
         continue;
     }
     if (!isset($countryMap[$countryId])) {
+        $isCodeBucket = str_starts_with($countryId, '__code__');
+        $label = $isCodeBucket ? substr($countryId, 8) : 'Unknown';
         $countryMap[$countryId] = [
-            'country_name' => 'Unknown',
-            'country_code' => 'N/A',
+            'country_name' => $isCodeBucket ? $label : 'Unknown',
+            'country_code' => $isCodeBucket ? $label : 'N/A',
             'count' => 0,
         ];
     }

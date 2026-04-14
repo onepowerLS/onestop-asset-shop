@@ -69,12 +69,7 @@ if ($idToken !== '' && $uid !== '') {
     if (!is_array($allow)) {
         $allow = [];
     }
-    $allow = am_normalize_country_codes($allow);
-    $roleAm = $_SESSION['role'] ?? '';
-    if (empty($allow) && $roleAm === 'Admin') {
-        $allow = am_org_country_codes();
-    }
-    $_SESSION['am_country_allow'] = $allow;
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
     $_SESSION['am_country_filter'] = 'all';
     am_locale_bootstrap();
 
@@ -145,12 +140,7 @@ if ($identifier !== '' && $password !== '') {
     if (!is_array($allow)) {
         $allow = [];
     }
-    $allow = am_normalize_country_codes($allow);
-    $roleAm = $_SESSION['role'] ?? '';
-    if (empty($allow) && $roleAm === 'Admin') {
-        $allow = am_org_country_codes();
-    }
-    $_SESSION['am_country_allow'] = $allow;
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
     $_SESSION['am_country_filter'] = 'all';
     am_locale_bootstrap();
 

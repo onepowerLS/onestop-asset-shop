@@ -47,6 +47,18 @@ function am_extract_am_country_access_codes(array $doc): array {
     return [];
 }
 
+/**
+ * When Firestore has no amCountryAccess (or only invalid entries), default to all org countries.
+ * Matches legacy behaviour before country scope and aligns with coarse Firestore read rules.
+ *
+ * @param list<string> $codes
+ * @return list<string>
+ */
+function am_apply_default_country_allow_if_empty(array $codes): array {
+    $codes = am_normalize_country_codes($codes);
+    return $codes !== [] ? $codes : am_org_country_codes();
+}
+
 /** @return list<string> */
 function am_country_allow_codes(): array {
     $a = $_SESSION['am_country_allow'] ?? null;
@@ -96,19 +108,85 @@ function am_country_code_for_id(string $countryId, array $countries): string {
 }
 
 /**
+ * LSO / ZMB / BEN for scope checks: uses pr_master_countries when possible, otherwise
+ * asset.country_code or tag inference so listings still work if the master list failed to
+ * load or country_id values no longer match Firestore rows.
+ */
+function am_asset_effective_org_country_code(array $asset, array $countries): string {
+    require_once __DIR__ . '/firestore.php';
+    $valid = array_flip(am_org_country_codes());
+
+    $raw = strtoupper(trim((string)($asset['country_code'] ?? '')));
+    if ($raw !== '' && isset($valid[$raw])) {
+        return $raw;
+    }
+
+    $tagCode = am_infer_country_code_from_tags(
+        (string)($asset['asset_tag'] ?? ''),
+        (string)($asset['qr_code_id'] ?? '')
+    );
+    if ($tagCode !== '' && isset($valid[$tagCode])) {
+        return $tagCode;
+    }
+
+    $cid = trim((string)($asset['country_id'] ?? ''));
+    if ($cid !== '') {
+        $fromMaster = am_country_code_for_id($cid, $countries);
+        if ($fromMaster !== '') {
+            $u = strtoupper(trim($fromMaster));
+            if (isset($valid[$u])) {
+                return $u;
+            }
+        }
+    }
+
+    $resolvedId = am_resolve_asset_country_id($asset, $countries);
+    if ($resolvedId !== '') {
+        $fromMaster = am_country_code_for_id($resolvedId, $countries);
+        if ($fromMaster !== '') {
+            $u = strtoupper(trim($fromMaster));
+            if (isset($valid[$u])) {
+                return $u;
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Grouping key for dashboard / reports: resolved master id when possible, else synthetic __code__LSO.
+ */
+function am_asset_country_bucket_id_for_ui(array $asset, array $countries): string {
+    $cid = am_resolve_asset_country_id($asset, $countries);
+    if ($cid !== '') {
+        return $cid;
+    }
+    $code = am_asset_effective_org_country_code($asset, $countries);
+    if ($code === '') {
+        return '';
+    }
+    foreach ($countries as $c) {
+        $cc = strtoupper(trim((string)($c['country_code'] ?? '')));
+        if ($cc === $code) {
+            $id = (string)($c['country_id'] ?? $c['id'] ?? '');
+            if ($id !== '') {
+                return $id;
+            }
+        }
+    }
+    return '__code__' . $code;
+}
+
+/**
  * Whether the current user may see this asset in list/detail (active scope).
  */
 function am_asset_passes_country_scope(array $asset, array $countries): bool {
-    require_once __DIR__ . '/firestore.php';
     $active = am_country_active_codes();
     if (empty($active)) {
         return false;
     }
-    $cid = am_resolve_asset_country_id($asset, $countries);
-    if ($cid === '') {
-        return false;
-    }
-    $code = am_country_code_for_id($cid, $countries);
+    $code = am_asset_effective_org_country_code($asset, $countries);
     return $code !== '' && in_array($code, $active, true);
 }
 
@@ -186,12 +264,20 @@ function am_record_in_country_scope(array $record, array $countries): bool {
 }
 
 function am_ensure_country_scope_from_session(): void {
-    if (!is_logged_in() || isset($_SESSION['am_country_allow'])) {
+    if (!is_logged_in()) {
+        return;
+    }
+    $existing = $_SESSION['am_country_allow'] ?? null;
+    if (is_array($existing) && !empty(am_normalize_country_codes($existing))) {
         return;
     }
     $tok = (string)($_SESSION['firebase_id_token'] ?? '');
     $uid = (string)($_SESSION['user_id'] ?? '');
     if ($tok === '' || $uid === '') {
+        $_SESSION['am_country_allow'] = am_org_country_codes();
+        if (!isset($_SESSION['am_country_filter'])) {
+            $_SESSION['am_country_filter'] = 'all';
+        }
         return;
     }
     require_once __DIR__ . '/firestore.php';
@@ -201,11 +287,7 @@ function am_ensure_country_scope_from_session(): void {
     if (!is_array($allow)) {
         $allow = [];
     }
-    $allow = am_normalize_country_codes($allow);
-    if (empty($allow) && (($_SESSION['role'] ?? '') === 'Admin')) {
-        $allow = am_org_country_codes();
-    }
-    $_SESSION['am_country_allow'] = $allow;
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
     if (!isset($_SESSION['am_country_filter'])) {
         $_SESSION['am_country_filter'] = 'all';
     }

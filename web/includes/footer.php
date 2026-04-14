@@ -79,6 +79,9 @@ require_once __DIR__ . '/../config/firebase.php';
 
     onAuthStateChanged(auth, async function (user) {
         if (!user) return;
+        if (document.body.dataset.amFirestoreReauth !== '1') {
+            sessionStorage.removeItem('am_fs_reauth_done');
+        }
         try {
             var idToken = await user.getIdToken(true);
             await fetch(<?php echo json_encode(base_url('auth/refresh-session.php')); ?>, {
