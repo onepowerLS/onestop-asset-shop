@@ -93,6 +93,49 @@ Stock tracking per item per location. Used for reorder alerts.
 | `last_counted_at` | string | ISO timestamp |
 | `last_counted_by` | string | Firebase UID |
 
+**Rollup in the UI (no schema change):** Stock Levels (**Rollup**) and the asset registry (**Catalog → Grouped**) merge *display* lines for **Material / Consumable / Inventory** when multiple `am_core_assets` rows share the same **`ugp_part_id`** at the same **location + country**, or the same **category + normalized name + location + country + class** when `ugp_part_id` is empty. **Fixed assets** always show one row per record. This does not delete or merge documents in Firestore; cleaning duplicate documents is a separate data task.
+
+### am_core_duplicate_dismissals
+
+False-positive duplicate groups dismissed from **Reviews → Duplicate review** (not duplicates). Document id = `group_key` (SHA-1 of sorted `am_core_assets` ids). Prevents the same group from reappearing until data changes.
+
+| Field | Type | Description |
+|---|---|---|
+| `group_key` | string | Same as document id |
+| `asset_ids` | array | Doc ids that were in the group |
+| `dismissed_at` | string | ISO timestamp |
+| `dismissed_by_uid` | string | Firebase uid |
+| `reason` | string | Optional note |
+
+### am_core_duplicate_merge_requests
+
+Submitted by reviewers who cannot execute merges: **pending** until a Manager runs the merge from the same UI.
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `pending`, `completed`, `cancelled` |
+| `keeper_id` | string | Surviving `am_core_assets` id |
+| `loser_id` | string | Id to remove after merge |
+| `merge_mode` | string | `purgatory_30d` or `immediate` |
+| `notes` | string | Reviewer note |
+| `requested_by_uid` | string | Firebase uid |
+| `created_at` | string | ISO timestamp |
+| `resolved_at` | string | Optional, when completed/cancelled |
+
+### am_core_asset_purgatory
+
+Snapshots of duplicate `am_core_assets` rows removed by merge when mode is **Purgatory 30 days**. Documents are deleted by the cron job `web/cron/purge-asset-purgatory.php` after `purge_after`.
+
+| Field | Type | Description |
+|---|---|---|
+| `archived_asset` | map | Copy of the removed asset fields |
+| `original_asset_id` | string | Firestore doc id that was deleted |
+| `keeper_asset_id` | string | Surviving `am_core_assets` id |
+| `purge_after` | string | ISO time when cron may delete this snapshot |
+| `status` | string | e.g. `pending_purge` |
+| `merged_at` | string | ISO timestamp |
+| `merged_by_uid` | string | Firebase uid |
+
 ### pr_master_categories
 
 Reference data for item categories. AM reads these; Procurement manages them.

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/inventory_aggregate.php';
 require_login();
 am_ensure_country_scope_from_session();
 
@@ -20,6 +21,8 @@ $statusFilter = $_GET['status'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
 $itemClassFilter = $_GET['item_class'] ?? '';
 $searchTerm = $_GET['search'] ?? '';
+$catalogView = (isset($_GET['catalog_view']) && $_GET['catalog_view'] === 'grouped') ? 'grouped' : 'flat';
+$canCatalogGroup = ($itemClassFilter === '' || in_array($itemClassFilter, am_inventory_stockable_classes(), true));
 
 $itemClassLabels = [
     'FixedAsset'  => 'Fixed Assets',
@@ -142,11 +145,23 @@ usort($assets, function ($a, $b) {
     return strcmp((string)($b['id'] ?? ''), (string)($a['id'] ?? ''));
 });
 
+$catalogGrouped = null;
+if ($catalogView === 'grouped' && $canCatalogGroup) {
+    $catalogGrouped = am_inventory_aggregate_catalog_rows($assets, $countries);
+}
+
 // Filter options (master list for joins; pick list is $countriesPick)
 $countries = array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $categories = array_values(array_filter($categories, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $statuses = ['Available', 'Allocated', 'CheckedOut', 'InProject', 'Consumed', 'Deployed', 'Missing', 'WrittenOff', 'Retired'];
 $itemClasses = ['FixedAsset' => 'Fixed Assets', 'Material' => 'Materials', 'Consumable' => 'Consumables', 'Inventory' => 'Inventory'];
+
+$catalogFlatQs = array_filter($_GET, fn($v) => $v !== '' && $v !== null && $v !== []);
+unset($catalogFlatQs['catalog_view']);
+$catalogFlatUrl = base_url('assets/index.php' . ($catalogFlatQs ? '?' . http_build_query($catalogFlatQs) : ''));
+$catalogGroupedQs = array_filter($_GET, fn($v) => $v !== '' && $v !== null && $v !== []);
+$catalogGroupedQs['catalog_view'] = 'grouped';
+$catalogGroupedUrl = base_url('assets/index.php?' . http_build_query($catalogGroupedQs));
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -161,6 +176,10 @@ include __DIR__ . '/../includes/header.php';
             <p class="mb-0"><?php echo htmlspecialchars(am_ui('assets_blurb', 'Manage and track items in your permitted countries.')); ?></p>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2 mb-2" role="group" aria-label="Catalog view">
+                <a href="<?php echo htmlspecialchars($catalogFlatUrl); ?>" class="btn btn-sm <?php echo $catalogView === 'flat' ? 'btn-primary' : 'btn-outline-primary'; ?>">Each record</a>
+                <a href="<?php echo htmlspecialchars($catalogGroupedUrl); ?>" class="btn btn-sm <?php echo $catalogView === 'grouped' ? 'btn-primary' : 'btn-outline-primary'; ?>" title="Merge stockable lines by part + location">Grouped</a>
+            </div>
             <?php if (!am_is_auditor_readonly()): ?>
             <a href="<?php echo base_url('assets/add.php' . ($itemClassFilter ? '?item_class=' . urlencode($itemClassFilter) : '')); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2" data-tutorial="tutorial-assets-add">
                 <i class="fas fa-plus me-2"></i>
@@ -174,10 +193,17 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+    <?php if ($catalogView === 'grouped' && !$canCatalogGroup): ?>
+    <div class="alert alert-info py-2">Grouped catalog applies to <strong>Materials, Consumables, and Inventory</strong>. With a Fixed Asset filter, each record is listed separately.</div>
+    <?php endif; ?>
+
     <!-- Filters -->
     <div class="card border-0 shadow mb-4">
         <div class="card-body">
             <form method="GET" action="" class="row g-3">
+                <?php if ($catalogView === 'grouped'): ?>
+                <input type="hidden" name="catalog_view" value="grouped">
+                <?php endif; ?>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Search</label>
                     <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="Name, Serial, QR Code...">
@@ -244,6 +270,75 @@ include __DIR__ . '/../includes/header.php';
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover" id="assetsTable">
+                    <?php if ($catalogGrouped !== null): ?>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th class="text-end">Records</th>
+                            <th class="text-end">Qty</th>
+                            <th>UIDs / tags</th>
+                            <th>Class</th>
+                            <th>Category</th>
+                            <th>Country</th>
+                            <th>Location</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($catalogGrouped)): ?>
+                        <tr>
+                            <td colspan="9" class="text-center text-gray-500 py-4">
+                                No items found.<?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a><?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php else: ?>
+                        <?php
+                        $gClassColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
+                        $gClassLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+                        foreach ($catalogGrouped as $g):
+                            $rep = (string)($g['representative_id'] ?? '');
+                            $cls = (string)($g['cls'] ?? '');
+                        ?>
+                        <tr>
+                            <td>
+                                <?php if ($rep !== ''): ?>
+                                <a href="<?php echo base_url('assets/view.php?id=' . urlencode($rep)); ?>" class="fw-semibold"><?php echo htmlspecialchars($g['name'] ?? ''); ?></a>
+                                <?php else: ?>
+                                <?php echo htmlspecialchars($g['name'] ?? ''); ?>
+                                <?php endif; ?>
+                                <?php if ((int)($g['line_count'] ?? 0) > 1): ?>
+                                <span class="badge bg-secondary ms-1"><?php echo (int)$g['line_count']; ?> records</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-end"><?php echo (int)($g['line_count'] ?? 0); ?></td>
+                            <td class="text-end fw-bold"><?php echo number_format((int)($g['qty_sum'] ?? 0)); ?></td>
+                            <td><small class="text-muted"><?php echo htmlspecialchars($g['uid_summary'] ?? '—'); ?></small></td>
+                            <td><span class="badge bg-<?php echo $gClassColors[$cls] ?? 'secondary'; ?>"><?php echo htmlspecialchars($gClassLabels[$cls] ?? $cls); ?></span></td>
+                            <td>
+                                <?php if (trim((string)($g['category_name'] ?? '')) !== ''): ?>
+                                <span class="badge bg-gray-200 text-gray-800"><?php echo htmlspecialchars($g['category_name']); ?></span>
+                                <?php else: ?>
+                                <span class="text-gray-400">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><span class="badge bg-info text-white"><?php echo htmlspecialchars($g['country_code'] ?: '—'); ?></span></td>
+                            <td>
+                                <?php if (trim((string)($g['location_name'] ?? '')) !== ''): ?>
+                                <?php echo htmlspecialchars($g['location_name']); ?>
+                                <?php else: ?>
+                                <span class="text-gray-400">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($rep !== ''): ?>
+                                <a href="<?php echo base_url('assets/view.php?id=' . urlencode($rep)); ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                    <?php else: ?>
                     <thead>
                         <tr>
                             <th>QR Code</th>
@@ -374,6 +469,7 @@ include __DIR__ . '/../includes/header.php';
                         <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
+                    <?php endif; ?>
                 </table>
             </div>
         </div>

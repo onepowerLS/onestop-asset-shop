@@ -139,6 +139,28 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
+            <?php
+            $inReviews = str_contains((string)($_SERVER['PHP_SELF'] ?? ''), '/reviews/');
+            ?>
+            <?php if (is_logged_in() && am_can_duplicate_review()): ?>
+            <li class="nav-item">
+                <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $inReviews ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-reviews" style="cursor:pointer;">
+                    <span>
+                        <span class="sidebar-icon"><i class="fas fa-clone"></i></span>
+                        <span class="sidebar-text">Data quality</span>
+                    </span>
+                    <span class="link-arrow"><i class="fas fa-chevron-right"></i></span>
+                </span>
+                <div class="multi-level collapse <?php echo $inReviews ? 'show' : ''; ?>" id="submenu-reviews">
+                    <ul class="flex-column nav">
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo str_contains((string)($_SERVER['PHP_SELF'] ?? ''), 'duplicate-review') ? 'active' : ''; ?>" href="<?php echo base_url('reviews/duplicate-review.php'); ?>">Duplicate review</a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+            <?php endif; ?>
+
             <?php if (!am_is_auditor_readonly()): ?>
             <li class="nav-item <?php echo $current_page === 'checkout' ? 'active' : ''; ?>">
                 <a href="<?php echo base_url('checkout/index.php'); ?>" class="nav-link" data-tutorial="nav-checkout">
@@ -281,6 +303,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/categories.php'); ?>">
                                 <span class="sidebar-text">Categories</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/duplicate-assets.php'); ?>">
+                                <span class="sidebar-text">Duplicate assets</span>
                             </a>
                         </li>
                         <li class="nav-item">

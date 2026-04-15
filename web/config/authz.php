@@ -60,6 +60,44 @@ function am_is_auditor_readonly(): bool {
     return (($_SESSION['role'] ?? '') === 'Auditor');
 }
 
+/**
+ * Data quality: review suspected duplicate assets (dismiss, request merge, edit links).
+ * Managers/Admins always; others need capability duplicate_review or am_ops_queue_manage.
+ */
+function am_can_duplicate_review(): bool {
+    if (am_is_auditor_readonly()) {
+        return false;
+    }
+    if (am_is_manager_role()) {
+        return true;
+    }
+    return am_capability_bool('duplicate_review') || am_can_am_ops_queue_manage();
+}
+
+/** Execute merge (delete loser, repoint stock) — Managers and Admins only. */
+function am_can_duplicate_merge_execute(): bool {
+    if (am_is_auditor_readonly()) {
+        return false;
+    }
+    return am_is_manager_role();
+}
+
+function am_require_duplicate_review_access(): void {
+    if (!am_can_duplicate_review()) {
+        $_SESSION['flash_error'] = 'You do not have access to duplicate review.';
+        header('Location: ' . base_url('index.php'));
+        exit;
+    }
+}
+
+function am_require_duplicate_merge_execute(): void {
+    if (!am_can_duplicate_merge_execute()) {
+        $_SESSION['flash_error'] = 'Only Managers can merge or delete duplicate records.';
+        header('Location: ' . base_url('reviews/duplicate-review.php'));
+        exit;
+    }
+}
+
 function am_require_can_mutate(): void {
     if (am_is_auditor_readonly()) {
         $_SESSION['flash_error'] = 'Your account has read-only access.';

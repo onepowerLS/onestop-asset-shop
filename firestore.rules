@@ -33,6 +33,20 @@ service cloud.firestore {
       return isAuthenticated();
     }
 
+    function capDuplicateReview() {
+      return isAuthenticated()
+        && userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.duplicate_review == true;
+    }
+
+    function capAmOpsQueue() {
+      return isAuthenticated()
+        && userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.am_ops_queue_manage == true;
+    }
+
     // Optional map on users/{uid}: capabilities.sim_team_assign, capabilities.sim_phone_link
     function capSimTeamAssign() {
       return userDoc().keys().hasAll(['capabilities'])
@@ -98,6 +112,30 @@ service cloud.firestore {
       allow create: if isManager();
       allow update: if isManager();
       allow delete: if isAdmin();
+    }
+
+    // Duplicate merge snapshots; Managers create; Admin cron deletes expired.
+    match /am_core_asset_purgatory/{docId} {
+      allow read:   if isManager();
+      allow create: if isManager();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // "Not duplicates" dismissals (review workspace)
+    match /am_core_duplicate_dismissals/{docId} {
+      allow read:   if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow create: if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Pending merge requests (reviewer → Manager executes)
+    match /am_core_duplicate_merge_requests/{docId} {
+      allow read:   if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow create: if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow update: if isManager();
+      allow delete: if isManager() || isAdmin();
     }
 
     // Template-driven service requests (Ready boards, future types)
