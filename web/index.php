@@ -18,7 +18,15 @@ $countries = am_firestore_get_collection('pr_master_countries', 500);
 $transactions = am_firestore_get_collection('am_core_transactions', 1000);
 $requests = am_firestore_get_collection('pr_master_requests', 1000);
 
-$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries)));
+$locationById = [];
+foreach (am_get_pr_sites() as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+}
+
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
 
 $totalAssets = count($assets);
 
@@ -42,7 +50,7 @@ foreach ($countries as $country) {
     ];
 }
 foreach ($assets as $asset) {
-    $countryId = am_asset_country_bucket_id_for_ui($asset, $countries);
+    $countryId = am_asset_country_bucket_id_for_ui($asset, $countries, $locationById);
     if ($countryId === '') {
         continue;
     }

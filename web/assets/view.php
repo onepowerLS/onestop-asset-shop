@@ -39,7 +39,7 @@ if ($assetId !== '') {
         if ((string)($a['qr_code_id'] ?? '') !== $qrCode) {
             continue;
         }
-        if (!am_asset_passes_country_scope($a, $countries)) {
+        if (!am_asset_passes_country_scope($a, $countries, $locationById)) {
             continue;
         }
         $asset = $a;

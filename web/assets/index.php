@@ -80,7 +80,7 @@ foreach ($allocations as $al) {
 $assets = [];
 $needle = strtolower(trim($searchTerm));
 foreach ($assetsRaw as $asset) {
-    if (!am_asset_passes_country_scope($asset, $countries)) {
+    if (!am_asset_passes_country_scope($asset, $countries, $locationById)) {
         continue;
     }
     $rawCountryCode = strtoupper(trim((string)($asset['country_code'] ?? '')));

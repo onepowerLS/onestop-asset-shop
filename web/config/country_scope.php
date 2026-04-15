@@ -111,8 +111,13 @@ function am_country_code_for_id(string $countryId, array $countries): string {
  * LSO / ZMB / BEN for scope checks: uses pr_master_countries when possible, otherwise
  * asset.country_code or tag inference so listings still work if the master list failed to
  * load or country_id values no longer match Firestore rows.
+ *
+ * When `$locationsById` is provided (map of location_id → row from `am_get_pr_sites()`), country
+ * is inferred from the site's `country_code` so legacy rows with a valid location still scope correctly.
+ *
+ * @param array<string, array<string, mixed>>|null $locationsById
  */
-function am_asset_effective_org_country_code(array $asset, array $countries): string {
+function am_asset_effective_org_country_code(array $asset, array $countries, ?array $locationsById = null): string {
     require_once __DIR__ . '/firestore.php';
     $valid = array_flip(am_org_country_codes());
 
@@ -151,18 +156,29 @@ function am_asset_effective_org_country_code(array $asset, array $countries): st
         }
     }
 
+    if ($locationsById !== null && $locationsById !== []) {
+        $lid = trim((string)($asset['location_id'] ?? ''));
+        if ($lid !== '') {
+            $loc = $locationsById[$lid] ?? [];
+            $cc = am_normalize_asset_country_code_field((string)($loc['country_code'] ?? ''));
+            if ($cc !== '' && isset($valid[$cc])) {
+                return $cc;
+            }
+        }
+    }
+
     return '';
 }
 
 /**
  * Grouping key for dashboard / reports: resolved master id when possible, else synthetic __code__LSO.
  */
-function am_asset_country_bucket_id_for_ui(array $asset, array $countries): string {
+function am_asset_country_bucket_id_for_ui(array $asset, array $countries, ?array $locationsById = null): string {
     $cid = am_resolve_asset_country_id($asset, $countries);
     if ($cid !== '') {
         return $cid;
     }
-    $code = am_asset_effective_org_country_code($asset, $countries);
+    $code = am_asset_effective_org_country_code($asset, $countries, $locationsById);
     if ($code === '') {
         return '';
     }
@@ -179,15 +195,41 @@ function am_asset_country_bucket_id_for_ui(array $asset, array $countries): stri
 }
 
 /**
- * Whether the current user may see this asset in list/detail (active scope).
+ * True when the user is allowed to see items whose country cannot be resolved (legacy imports),
+ * without exposing them to single-country operators. Requires all org countries in the allow list
+ * and the UI country filter set to "all".
  */
-function am_asset_passes_country_scope(array $asset, array $countries): bool {
+function am_user_may_see_unscoped_country_assets(): bool {
+    if (am_country_active_codes() === []) {
+        return false;
+    }
+    $allow = am_normalize_country_codes(am_country_allow_codes());
+    foreach (am_org_country_codes() as $orgCode) {
+        if (!in_array($orgCode, $allow, true)) {
+            return false;
+        }
+    }
+    return am_country_filter_mode() === 'all';
+}
+
+/**
+ * Whether the current user may see this asset in list/detail (active scope).
+ *
+ * @param array<string, array<string, mixed>>|null $locationsById
+ */
+function am_asset_passes_country_scope(array $asset, array $countries, ?array $locationsById = null): bool {
     $active = am_country_active_codes();
     if (empty($active)) {
         return false;
     }
-    $code = am_asset_effective_org_country_code($asset, $countries);
-    return $code !== '' && in_array($code, $active, true);
+    $code = am_asset_effective_org_country_code($asset, $countries, $locationsById);
+    if ($code !== '' && in_array($code, $active, true)) {
+        return true;
+    }
+    if ($code === '' && am_user_may_see_unscoped_country_assets()) {
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -215,7 +257,15 @@ function am_require_asset_country_mutate(string $countryId, array $countries): v
 }
 
 function am_require_asset_visible(array $asset, array $countries): void {
-    if (am_asset_passes_country_scope($asset, $countries)) {
+    $locationsById = [];
+    require_once __DIR__ . '/firestore.php';
+    foreach (am_get_pr_sites() as $l) {
+        $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+        if ($lid !== '') {
+            $locationsById[$lid] = $l;
+        }
+    }
+    if (am_asset_passes_country_scope($asset, $countries, $locationsById)) {
         return;
     }
     $_SESSION['flash_error'] = 'This item is outside your country scope.';

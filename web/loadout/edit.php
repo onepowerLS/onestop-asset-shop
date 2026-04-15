@@ -32,8 +32,16 @@ if (!$isNew) {
 
 $page_title = $isNew ? 'New load-out manifest' : 'Edit manifest';
 
+$sites = am_get_pr_sites();
+$locationById = [];
+foreach ($sites as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+}
 $assets = am_firestore_get_collection('am_core_assets', 2000);
-$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries)));
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
 $assetById = [];
 foreach ($assets as $a) {
     $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
@@ -41,8 +49,6 @@ foreach ($assets as $a) {
         $assetById[$aid] = $a;
     }
 }
-
-$sites = am_get_pr_sites();
 $statuses = am_loadout_statuses();
 
 $errors = [];

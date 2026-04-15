@@ -12,13 +12,20 @@ $errors = [];
 $success = '';
 
 $countries = am_firestore_get_collection('pr_master_countries', 500);
+$locations = am_get_pr_sites();
+$locationById = [];
+foreach ($locations as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+}
 $assets = am_firestore_get_collection('am_core_assets', 2000);
-$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries)));
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
 if (empty($employees)) {
     $employees = am_firestore_get_collection('am_core_employees', 2000);
 }
-$locations = am_get_pr_sites();
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 
 $assetById = [];
