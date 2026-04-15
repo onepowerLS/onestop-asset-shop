@@ -3,10 +3,12 @@
  * Updates PHP session Firebase ID token from the client SDK (fresh token).
  * Firestore reads on the server use this token; it expires ~1h without refresh.
  *
- * Verifies id_token via Google's tokeninfo using POST (GET + query string can
- * exceed URL limits for long JWTs and return 400).
+ * Verifies id_token via Google's tokeninfo endpoint (GET ?id_token=…). The legacy
+ * oauth2 tokeninfo service does not reliably accept POST form bodies; that path
+ * returned 4xx and broke session refresh in production.
  */
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/firebase.php';
 
 header('Content-Type: application/json');
 
@@ -52,10 +54,12 @@ exit;
  * @return array<string,mixed>|null
  */
 function am_verify_google_id_token(string $idToken): ?array {
-    $url = 'https://oauth2.googleapis.com/tokeninfo';
-    $body = http_build_query(['id_token' => $idToken], '', '&', PHP_QUERY_RFC3986);
+    if ($idToken === '') {
+        return null;
+    }
 
-    $raw = am_refresh_session_http_post($url, $body);
+    $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . rawurlencode($idToken);
+    $raw = am_refresh_session_http_get($url);
     if ($raw === null || $raw === '') {
         return null;
     }
@@ -72,16 +76,20 @@ function am_verify_google_id_token(string $idToken): ?array {
     return $data;
 }
 
-function am_refresh_session_http_post(string $url, string $body): ?string {
+function am_refresh_session_http_get(string $url): ?string {
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
+        $opts = [
+            CURLOPT_HTTPGET => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 15,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-            CURLOPT_POSTFIELDS => $body,
-        ]);
+            CURLOPT_FOLLOWLOCATION => true,
+        ];
+        if (am_allow_insecure_ssl_for_local()) {
+            $opts[CURLOPT_SSL_VERIFYPEER] = false;
+            $opts[CURLOPT_SSL_VERIFYHOST] = 0;
+        }
+        curl_setopt_array($ch, $opts);
         $resp = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         unset($ch);
@@ -91,15 +99,21 @@ function am_refresh_session_http_post(string $url, string $body): ?string {
         return is_string($resp) ? $resp : null;
     }
 
-    $ctx = stream_context_create([
+    $ctx = [
         'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-            'content' => $body,
+            'method' => 'GET',
             'timeout' => 15,
             'ignore_errors' => true,
         ],
-    ]);
-    $resp = @file_get_contents($url, false, $ctx);
+    ];
+    if (am_allow_insecure_ssl_for_local()) {
+        $ctx['ssl'] = [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ];
+    }
+    $context = stream_context_create($ctx);
+    $resp = @file_get_contents($url, false, $context);
     return $resp === false ? null : $resp;
 }

@@ -216,7 +216,12 @@ $firebaseConfigured = !empty($firebaseCfg['api_key']) && !empty($firebaseCfg['pr
             var resp = await fetch('/auth/firebase-login.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken, uid: cred.user.uid, email: cred.user.email })
+                body: JSON.stringify({
+                    id_token: idToken,
+                    uid: cred.user.uid,
+                    email: cred.user.email,
+                    refresh_token: cred.user.refreshToken || ''
+                })
             });
 
             var data = await resp.json();

@@ -29,6 +29,7 @@ if (!is_array($input)) {
 $idToken = trim((string)($input['id_token'] ?? ''));
 $uid     = trim((string)($input['uid'] ?? ''));
 $email   = trim((string)($input['email'] ?? ''));
+$refreshToken = trim((string)($input['refresh_token'] ?? ''));
 
 // Legacy form-post support (non-JS fallback)
 $identifier = trim((string)($input['identifier'] ?? ''));
@@ -59,7 +60,7 @@ if ($idToken !== '' && $uid !== '') {
     $_SESSION['employee_id']           = null;
     $_SESSION['auth_source']           = 'firebase';
     $_SESSION['firebase_id_token']     = $idToken;
-    $_SESSION['firebase_refresh_token'] = '';
+    $_SESSION['firebase_refresh_token'] = $refreshToken;
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');

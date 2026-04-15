@@ -247,6 +247,96 @@ function am_firebase_sign_in(string $email, string $password): array {
     ];
 }
 
+/** @return int|null Unix timestamp from Firebase ID token `exp` claim (no crypto verification). */
+function am_firebase_id_token_exp_unix(string $jwt): ?int {
+    $jwt = trim($jwt);
+    if ($jwt === '') {
+        return null;
+    }
+    $parts = explode('.', $jwt);
+    if (count($parts) < 2) {
+        return null;
+    }
+    $b64 = $parts[1];
+    $pad = strlen($b64) % 4;
+    if ($pad > 0) {
+        $b64 .= str_repeat('=', 4 - $pad);
+    }
+    $json = base64_decode(strtr($b64, '-_', '+/'), true);
+    if ($json === false) {
+        return null;
+    }
+    $payload = json_decode($json, true);
+    if (!is_array($payload) || !isset($payload['exp'])) {
+        return null;
+    }
+    return (int)$payload['exp'];
+}
+
+/**
+ * Exchange a Firebase refresh token for a new ID token (Secure Token API).
+ * Used server-side so PHP → Firestore does not depend on Google tokeninfo or client refresh-session.
+ *
+ * @return array{ok: bool, id_token?: string, refresh_token?: string, error?: string}
+ */
+function am_firebase_exchange_refresh_token(string $refreshToken): array {
+    $cfg = am_firebase_config();
+    $refreshToken = trim($refreshToken);
+    if (empty($cfg['api_key']) || $refreshToken === '') {
+        return ['ok' => false, 'error' => 'missing_key_or_token'];
+    }
+
+    $url = 'https://securetoken.googleapis.com/v1/token?key=' . rawurlencode($cfg['api_key']);
+    $body = http_build_query([
+        'grant_type' => 'refresh_token',
+        'refresh_token' => $refreshToken,
+    ], '', '&', PHP_QUERY_RFC3986);
+
+    $response = false;
+    $statusCode = 0;
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        $opts = [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_POSTFIELDS => $body,
+        ];
+        if (am_allow_insecure_ssl_for_local()) {
+            $opts[CURLOPT_SSL_VERIFYPEER] = false;
+            $opts[CURLOPT_SSL_VERIFYHOST] = 0;
+        }
+        curl_setopt_array($ch, $opts);
+        $response = curl_exec($ch);
+        $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        unset($ch);
+    }
+
+    if ($response === false || $statusCode < 200 || $statusCode >= 300) {
+        return ['ok' => false, 'error' => 'http_' . $statusCode];
+    }
+
+    $json = json_decode((string)$response, true);
+    if (!is_array($json)) {
+        return ['ok' => false, 'error' => 'bad_json'];
+    }
+
+    $idToken = (string)($json['id_token'] ?? '');
+    if ($idToken === '') {
+        return ['ok' => false, 'error' => 'no_id_token'];
+    }
+
+    $out = [
+        'ok' => true,
+        'id_token' => $idToken,
+    ];
+    if (!empty($json['refresh_token'])) {
+        $out['refresh_token'] = (string)$json['refresh_token'];
+    }
+    return $out;
+}
+
 function am_firebase_sign_up(string $email, string $password): array {
     $cfg = am_firebase_config();
     if (empty($cfg['api_key'])) {

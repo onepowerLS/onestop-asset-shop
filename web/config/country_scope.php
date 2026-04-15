@@ -116,7 +116,7 @@ function am_asset_effective_org_country_code(array $asset, array $countries): st
     require_once __DIR__ . '/firestore.php';
     $valid = array_flip(am_org_country_codes());
 
-    $raw = strtoupper(trim((string)($asset['country_code'] ?? '')));
+    $raw = am_normalize_asset_country_code_field((string)($asset['country_code'] ?? ''));
     if ($raw !== '' && isset($valid[$raw])) {
         return $raw;
     }

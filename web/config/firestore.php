@@ -17,12 +17,42 @@ function am_firestore_id_token(): string {
     return (string)($_SESSION['firebase_id_token'] ?? '');
 }
 
+/**
+ * If the session has a Firebase refresh token (set at login), mint a fresh ID token once per
+ * request so Firestore reads succeed without relying on the browser calling tokeninfo.
+ */
+function am_firestore_refresh_session_token_from_refresh_token(): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $rt = trim((string)($_SESSION['firebase_refresh_token'] ?? ''));
+    if ($rt === '') {
+        return;
+    }
+    $cur = (string)($_SESSION['firebase_id_token'] ?? '');
+    $exp = am_firebase_id_token_exp_unix($cur);
+    if ($exp !== null && $exp > time() + 120) {
+        return;
+    }
+    $res = am_firebase_exchange_refresh_token($rt);
+    if (empty($res['ok']) || empty($res['id_token'])) {
+        return;
+    }
+    $_SESSION['firebase_id_token'] = (string)$res['id_token'];
+    if (!empty($res['refresh_token'])) {
+        $_SESSION['firebase_refresh_token'] = (string)$res['refresh_token'];
+    }
+}
+
 /** Session token, or a Bearer override (e.g. FM / API callers passing a Firebase ID token). */
 function am_firestore_resolve_id_token(?string $overrideToken = null): string {
     $t = trim((string)$overrideToken);
     if ($t !== '') {
         return $t;
     }
+    am_firestore_refresh_session_token_from_refresh_token();
     return am_firestore_id_token();
 }
 
@@ -347,6 +377,36 @@ function am_firestore_document_to_array(array $doc): array {
  * Resolve pr_master_countries document id for dashboard/joins.
  * Migration rows often set country_code (e.g. LSO) without country_id; AM forms set country_id.
  */
+function am_country_id_known_in_master(string $countryId, array $countries): bool {
+    if ($countryId === '') {
+        return false;
+    }
+    foreach ($countries as $c) {
+        $id = (string)($c['country_id'] ?? $c['id'] ?? '');
+        if ($id !== '' && $id === $countryId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Map common country_code / legacy strings to LSO, ZMB, BEN. */
+function am_normalize_asset_country_code_field(string $raw): string {
+    $u = strtoupper(trim($raw));
+    if ($u === '') {
+        return '';
+    }
+    if (in_array($u, ['LSO', 'ZMB', 'BEN'], true)) {
+        return $u;
+    }
+    static $aliases = [
+        'LESOTHO' => 'LSO',
+        'ZAMBIA' => 'ZMB',
+        'BENIN' => 'BEN',
+    ];
+    return $aliases[$u] ?? '';
+}
+
 function am_infer_country_code_from_tags(string $assetTag, string $qrCodeId): string {
     foreach ([$assetTag, $qrCodeId] as $s) {
         if ($s === '') {
@@ -361,16 +421,25 @@ function am_infer_country_code_from_tags(string $assetTag, string $qrCodeId): st
             return strtoupper($m[1]);
         }
     }
+    foreach ([$assetTag, $qrCodeId] as $s) {
+        if ($s === '') {
+            continue;
+        }
+        // Legacy / free-form: any standalone org code in the string
+        if (preg_match('/\b(LSO|ZMB|BEN)\b/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+    }
     return '';
 }
 
 function am_resolve_asset_country_id(array $asset, array $countries): string {
     $cid = trim((string)($asset['country_id'] ?? ''));
-    if ($cid !== '') {
+    if ($cid !== '' && am_country_id_known_in_master($cid, $countries)) {
         return $cid;
     }
 
-    $code = strtoupper(trim((string)($asset['country_code'] ?? '')));
+    $code = am_normalize_asset_country_code_field((string)($asset['country_code'] ?? ''));
     if ($code === '') {
         $code = am_infer_country_code_from_tags(
             (string)($asset['asset_tag'] ?? ''),

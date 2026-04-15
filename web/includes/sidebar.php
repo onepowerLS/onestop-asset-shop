@@ -284,6 +284,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/ugp-parts.php'); ?>">
+                                <span class="sidebar-text">UGP parts alignment</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/qr-labels.php'); ?>">
                                 <span class="sidebar-text">QR Labels</span>
                             </a>

@@ -33,7 +33,9 @@ Primary item catalog. Every physical item in the system lives here regardless of
 | `quantity` | integer | yes | Default 1; bulk tracking for Material/Consumable/Inventory |
 | `unit_of_measure` | string | yes | `EA`, `M`, `KG`, `L`, `BOX`, `ROLL`, `SET` |
 | `legacy_tag` | string | no | Original item UID/tag from pre-migration system (read-only after import) |
-| `source` | string | no | Migration origin (e.g. `AssetSpreadsheetDB`) |
+| `ugp_part_id` | string | no | Stable part id from **UGP** (`ugp.1pwrafrica.com`); canonical link for assembly/inventory alignment (see `docs/UGP_AM_PART_ALIGNMENT.md`) |
+| `ugp_last_sync_at` | string | no | ISO timestamp when last synced from UGP |
+| `source` | string | no | Migration origin (e.g. `AssetSpreadsheetDB`, `UGP`) |
 | `notes` | string | no | Free-text notes |
 | `created_at` | string | auto | ISO timestamp |
 | `updated_at` | string | auto | ISO timestamp |

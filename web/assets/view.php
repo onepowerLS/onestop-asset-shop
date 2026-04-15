@@ -136,6 +136,12 @@ include __DIR__ . '/../includes/header.php';
                             <p class="fw-bold mb-0"><code><?php echo htmlspecialchars($asset['legacy_tag']); ?></code></p>
                         </div>
                         <?php endif; ?>
+                        <?php if (trim((string)($asset['ugp_part_id'] ?? '')) !== ''): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">UGP part ID</small>
+                            <p class="fw-bold mb-0"><code><?php echo htmlspecialchars((string)$asset['ugp_part_id']); ?></code></p>
+                        </div>
+                        <?php endif; ?>
                         <div class="col-6 col-md-4">
                             <small class="text-gray-500">QR Code</small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['qr_code_id'] ?: 'Not assigned'); ?></p>
