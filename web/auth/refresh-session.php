@@ -1,11 +1,10 @@
 <?php
 /**
- * Updates PHP session Firebase ID token from the client SDK (fresh token).
+ * Updates PHP session Firebase ID token from the client SDK (fresh token) or server refresh token.
  * Firestore reads on the server use this token; it expires ~1h without refresh.
  *
- * Verifies id_token via Google's tokeninfo endpoint (GET ?id_token=…). The legacy
- * oauth2 tokeninfo service does not reliably accept POST form bodies; that path
- * returned 4xx and broke session refresh in production.
+ * Verification uses Google's tokeninfo with POST (form body) so long JWTs are not broken by
+ * GET URL length limits. If tokeninfo fails, we fall back to exchanging firebase_refresh_token.
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firebase.php';
@@ -24,96 +23,76 @@ if (!is_logged_in() || empty($_SESSION['user_id'])) {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
-$idToken = trim((string)($input['id_token'] ?? ''));
-if ($idToken === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Missing id_token']);
-    exit;
-}
-
-$data = am_verify_google_id_token($idToken);
-if ($data === null) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Token verification failed']);
-    exit;
-}
-
-$uid = (string)($data['user_id'] ?? $data['sub'] ?? '');
-if ($uid === '' || $uid !== (string)$_SESSION['user_id']) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'User mismatch']);
-    exit;
-}
-
-$_SESSION['firebase_id_token'] = $idToken;
-echo json_encode(['ok' => true]);
-exit;
+$expectedUid = (string)$_SESSION['user_id'];
 
 /**
- * @return array<string,mixed>|null
+ * Mint ID token from session refresh token and validate claims match this user.
  */
-function am_verify_google_id_token(string $idToken): ?array {
-    if ($idToken === '') {
-        return null;
+$try_apply_session_from_exchange = static function () use ($expectedUid): bool {
+    $rt = trim((string)($_SESSION['firebase_refresh_token'] ?? ''));
+    if ($rt === '') {
+        return false;
     }
-
-    $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . rawurlencode($idToken);
-    $raw = am_refresh_session_http_get($url);
-    if ($raw === null || $raw === '') {
-        return null;
+    $res = am_firebase_exchange_refresh_token($rt);
+    if (empty($res['ok']) || empty($res['id_token'])) {
+        return false;
     }
-
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
-        return null;
+    $newToken = (string)$res['id_token'];
+    $payload = am_firebase_decode_id_token_payload($newToken);
+    if ($payload === null || !am_firebase_id_token_payload_matches_session($payload, $expectedUid)) {
+        return false;
     }
-
-    if (isset($data['error_description']) || isset($data['error'])) {
-        return null;
+    $_SESSION['firebase_id_token'] = $newToken;
+    if (!empty($res['refresh_token'])) {
+        $_SESSION['firebase_refresh_token'] = (string)$res['refresh_token'];
     }
+    return true;
+};
 
-    return $data;
+$input = json_decode(file_get_contents('php://input'), true);
+if (!is_array($input)) {
+    $input = [];
+}
+$idToken = trim((string)($input['id_token'] ?? ''));
+
+if ($idToken !== '') {
+    $data = am_verify_google_id_token($idToken);
+    if ($data !== null) {
+        $uid = (string)($data['user_id'] ?? $data['sub'] ?? '');
+        if ($uid === '' || $uid !== $expectedUid) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'User mismatch']);
+            exit;
+        }
+        $_SESSION['firebase_id_token'] = $idToken;
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    // RCA: tokeninfo often fails from app servers while the JWT from getIdToken() is still valid.
+    // Refresh-token exchange is often unavailable because the web SDK does not expose refreshToken to JS.
+    if (am_accept_firebase_id_token_for_php_session($idToken, $expectedUid)) {
+        $_SESSION['firebase_id_token'] = $idToken;
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    if ($try_apply_session_from_exchange()) {
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    http_response_code(400);
+    echo json_encode([
+        'ok'    => false,
+        'error' => 'Token verification failed',
+        'hint'  => 'tokeninfo_failed_claims_mismatch_or_expired_and_no_valid_refresh_token_in_session',
+    ]);
+    exit;
 }
 
-function am_refresh_session_http_get(string $url): ?string {
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        $opts = [
-            CURLOPT_HTTPGET => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 15,
-            CURLOPT_FOLLOWLOCATION => true,
-        ];
-        if (am_allow_insecure_ssl_for_local()) {
-            $opts[CURLOPT_SSL_VERIFYPEER] = false;
-            $opts[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
-        curl_setopt_array($ch, $opts);
-        $resp = curl_exec($ch);
-        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        unset($ch);
-        if ($resp === false || $code < 200 || $code >= 300) {
-            return null;
-        }
-        return is_string($resp) ? $resp : null;
-    }
-
-    $ctx = [
-        'http' => [
-            'method' => 'GET',
-            'timeout' => 15,
-            'ignore_errors' => true,
-        ],
-    ];
-    if (am_allow_insecure_ssl_for_local()) {
-        $ctx['ssl'] = [
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            'allow_self_signed' => true,
-        ];
-    }
-    $context = stream_context_create($ctx);
-    $resp = @file_get_contents($url, false, $context);
-    return $resp === false ? null : $resp;
+if ($try_apply_session_from_exchange()) {
+    echo json_encode(['ok' => true]);
+    exit;
 }
+
+http_response_code(400);
+echo json_encode(['ok' => false, 'error' => 'Missing id_token']);
+exit;

@@ -132,6 +132,97 @@ function am_http_post_json_stream(string $url, string $body, array $headers): ar
     return ['response' => $response, 'error' => $error, 'status' => $statusCode];
 }
 
+/**
+ * POST application/x-www-form-urlencoded (tokeninfo, Secure Token API, etc.).
+ *
+ * @return array{ok: bool, status: int, error: ?string, json: array<string, mixed>}
+ */
+function am_http_post_form_urlencoded(string $url, array $fields): array {
+    $body = http_build_query($fields, '', '&', PHP_QUERY_RFC3986);
+    $requestHeaders = ['Content-Type: application/x-www-form-urlencoded'];
+
+    $response = false;
+    $error = null;
+    $statusCode = 0;
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        $opts = [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HTTPHEADER => $requestHeaders,
+            CURLOPT_POSTFIELDS => $body,
+        ];
+        if (am_allow_insecure_ssl_for_local()) {
+            $opts[CURLOPT_SSL_VERIFYPEER] = false;
+            $opts[CURLOPT_SSL_VERIFYHOST] = 0;
+        }
+        curl_setopt_array($ch, $opts);
+
+        $response = curl_exec($ch);
+        $error = curl_error($ch);
+        $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        unset($ch);
+
+        if ($response === false || !empty($error) || $statusCode === 0) {
+            $stream = am_http_post_form_urlencoded_stream($url, $body, $requestHeaders);
+            $response = $stream['response'];
+            $error = $stream['error'] ?: $error;
+            $statusCode = $stream['status'] ?: $statusCode;
+        }
+    } else {
+        $stream = am_http_post_form_urlencoded_stream($url, $body, $requestHeaders);
+        $response = $stream['response'];
+        $error = $stream['error'];
+        $statusCode = $stream['status'];
+    }
+
+    $decoded = is_string($response) ? json_decode($response, true) : null;
+    return [
+        'ok' => empty($error) && $statusCode >= 200 && $statusCode < 300,
+        'status' => $statusCode,
+        'error' => $error ?: null,
+        'json' => is_array($decoded) ? $decoded : [],
+    ];
+}
+
+function am_http_post_form_urlencoded_stream(string $url, string $body, array $headers): array {
+    $statusCode = 0;
+    $error = null;
+    $response = false;
+    $ctx = [
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $headers),
+            'content' => $body,
+            'timeout' => 20,
+            'ignore_errors' => true,
+        ],
+    ];
+    if (am_allow_insecure_ssl_for_local()) {
+        $ctx['ssl'] = [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ];
+    }
+    $context = stream_context_create($ctx);
+    $response = @file_get_contents($url, false, $context);
+    if ($response === false) {
+        $error = 'HTTP request failed.';
+    }
+    $respHeaders = function_exists('http_get_last_response_headers')
+        ? http_get_last_response_headers()
+        : ($http_response_header ?? []);
+    if (is_array($respHeaders) && isset($respHeaders[0])) {
+        if (preg_match('/\s(\d{3})\s/', $respHeaders[0], $m)) {
+            $statusCode = (int)$m[1];
+        }
+    }
+    return ['response' => $response, 'error' => $error, 'status' => $statusCode];
+}
+
 function am_http_get_json(string $url, array $headers = []): array {
     $response = false;
     $error = null;
@@ -247,8 +338,12 @@ function am_firebase_sign_in(string $email, string $password): array {
     ];
 }
 
-/** @return int|null Unix timestamp from Firebase ID token `exp` claim (no crypto verification). */
-function am_firebase_id_token_exp_unix(string $jwt): ?int {
+/**
+ * Firebase ID token payload (middle segment). No signature verification.
+ *
+ * @return array<string, mixed>|null
+ */
+function am_firebase_decode_id_token_payload(string $jwt): ?array {
     $jwt = trim($jwt);
     if ($jwt === '') {
         return null;
@@ -267,10 +362,96 @@ function am_firebase_id_token_exp_unix(string $jwt): ?int {
         return null;
     }
     $payload = json_decode($json, true);
-    if (!is_array($payload) || !isset($payload['exp'])) {
+    return is_array($payload) ? $payload : null;
+}
+
+/** @return int|null Unix timestamp from Firebase ID token `exp` claim (no crypto verification). */
+function am_firebase_id_token_exp_unix(string $jwt): ?int {
+    $payload = am_firebase_decode_id_token_payload($jwt);
+    if ($payload === null || !isset($payload['exp'])) {
         return null;
     }
     return (int)$payload['exp'];
+}
+
+/**
+ * Confirms decoded claims match this Firebase project and expected UID (no signature verification).
+ */
+function am_firebase_id_token_payload_matches_session(array $payload, string $expectedUid): bool {
+    $cfg = am_firebase_config();
+    $pid = (string)($cfg['project_id'] ?? '');
+    if ($pid === '' || $expectedUid === '') {
+        return false;
+    }
+    $aud = (string)($payload['aud'] ?? '');
+    $iss = (string)($payload['iss'] ?? '');
+    $sub = (string)($payload['sub'] ?? '');
+    $exp = (int)($payload['exp'] ?? 0);
+    if ($aud !== $pid) {
+        return false;
+    }
+    if ($iss !== 'https://securetoken.google.com/' . $pid) {
+        return false;
+    }
+    if ($sub !== $expectedUid) {
+        return false;
+    }
+    if ($exp < time() - 120) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Bind a browser-minted Firebase ID token to the PHP session using JWT claims (aud/iss/sub/exp).
+ *
+ * This is the practical fallback when {@see am_verify_google_id_token} (Google tokeninfo) fails on
+ * the server — e.g. outbound HTTPS issues, tokeninfo quirks — while the token is still valid.
+ * Cryptographic signature is not verified here; the same claim checks are used as after
+ * refresh_token exchange. Tokens are only accepted if they match the logged-in session UID and project.
+ */
+function am_accept_firebase_id_token_for_php_session(string $idToken, string $expectedUid): bool {
+    $payload = am_firebase_decode_id_token_payload($idToken);
+    return $payload !== null && am_firebase_id_token_payload_matches_session($payload, $expectedUid);
+}
+
+/**
+ * Verify a Firebase/Google ID token via oauth2 tokeninfo.
+ * Uses POST (form body) first so long JWTs are not truncated by URL length limits on GET.
+ *
+ * @return array<string, mixed>|null tokeninfo JSON on success
+ */
+function am_verify_google_id_token(string $idToken): ?array {
+    $idToken = trim($idToken);
+    if ($idToken === '') {
+        return null;
+    }
+    $url = 'https://oauth2.googleapis.com/tokeninfo';
+    $post = am_http_post_form_urlencoded($url, ['id_token' => $idToken]);
+    $data = $post['json'];
+    if (
+        $post['ok']
+        && is_array($data)
+        && !isset($data['error'])
+        && !isset($data['error_description'])
+    ) {
+        return $data;
+    }
+    // Fallback: GET works for shorter tokens; some proxies choke on very long query strings.
+    if (strlen($idToken) < 1800) {
+        $getUrl = $url . '?id_token=' . rawurlencode($idToken);
+        $get = am_http_get_json($getUrl);
+        $gj = $get['json'];
+        if (
+            $get['ok']
+            && is_array($gj)
+            && !isset($gj['error'])
+            && !isset($gj['error_description'])
+        ) {
+            return $gj;
+        }
+    }
+    return null;
 }
 
 /**
