@@ -163,12 +163,14 @@ $catalogGroupedQs = array_filter($_GET, fn($v) => $v !== '' && $v !== null && $v
 $catalogGroupedQs['catalog_view'] = 'grouped';
 $catalogGroupedUrl = base_url('assets/index.php?' . http_build_query($catalogGroupedQs));
 
+$am_firestore_session_token_missing = is_logged_in() && trim((string)am_firestore_id_token()) === '';
+
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <?php if (empty(am_country_allow_codes())): ?>
-    <div class="alert alert-warning"><?php echo htmlspecialchars(am_ui('country_access_notice')); ?></div>
+    <?php if (!empty($am_firestore_session_token_missing)): ?>
+    <div class="alert alert-danger"><?php echo htmlspecialchars(am_ui('firestore_token_notice')); ?></div>
     <?php endif; ?>
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4" data-tutorial="tutorial-assets-header">
         <div class="d-block mb-4 mb-md-0">

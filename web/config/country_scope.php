@@ -63,9 +63,12 @@ function am_apply_default_country_allow_if_empty(array $codes): array {
 function am_country_allow_codes(): array {
     $a = $_SESSION['am_country_allow'] ?? null;
     if (!is_array($a)) {
-        return [];
+        $a = [];
     }
-    return am_normalize_country_codes($a);
+    $codes = am_normalize_country_codes($a);
+    // Never return []: missing/corrupt session or all-invalid codes would hide every asset (all zeros).
+    // Same default as login + am_apply_default_country_allow_if_empty.
+    return am_apply_default_country_allow_if_empty($codes);
 }
 
 /**

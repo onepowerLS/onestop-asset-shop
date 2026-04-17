@@ -9,6 +9,7 @@ return [
     'scope_zmb' => 'Zambia only',
     'scope_ben' => 'Benin only',
     'country_access_notice' => 'Your profile has no AM country access. Ask an administrator to set amCountryAccess (e.g. LSO, ZMB, BEN) on your Firestore user document.',
+    'firestore_token_notice' => 'The server could not load data from Firestore because your session has no valid Firebase token. Sign out and sign in again. If this persists, allow scripts from gstatic.com and firebase.googleapis.com (some ad blockers block Firebase).',
     'assets_blurb' => 'Manage and track items in your permitted countries.',
     'tutorial_mode' => 'Tutorials',
     'tutorial_start_tour' => 'Start tour',

@@ -9,6 +9,7 @@ return [
     'scope_zmb' => 'Zambie uniquement',
     'scope_ben' => 'Bénin uniquement',
     'country_access_notice' => 'Votre profil n’a pas d’accès pays pour l’AM. Demandez à un administrateur de définir amCountryAccess (ex. LSO, ZMB, BEN) sur votre document utilisateur Firestore.',
+    'firestore_token_notice' => 'Le serveur n’a pas pu charger les données Firestore : aucun jeton Firebase valide dans la session. Déconnectez-vous et reconnectez-vous. Si le problème continue, autorisez les scripts gstatic.com et firebase.googleapis.com (certains bloqueurs de publicité bloquent Firebase).',
     'assets_blurb' => 'Gérez et suivez les articles dans les pays autorisés.',
     'tutorial_mode' => 'Tutoriels',
     'tutorial_start_tour' => 'Visite guidée',
