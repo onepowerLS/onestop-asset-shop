@@ -117,8 +117,44 @@ foreach ($requests as $req) {
 
 $am_firestore_session_token_missing = is_logged_in() && trim((string)am_firestore_id_token()) === '';
 
+// Snapshot for browser-console cross-check (so we can see exactly what Firestore returned
+// post-country-scope filtering) without exposing sensitive fields.
+$am_dashboard_debug = [
+    'assets_total' => $totalAssets,
+    'classes' => $classCounts,
+    'countries_buckets' => count($assetsByCountry),
+    'countries_with_assets' => count(array_filter($assetsByCountry, fn($c) => (int)$c['count'] > 0)),
+    'status_buckets' => count($assetsByStatus),
+    'transactions_fetched' => count($transactions),
+    'requests_fetched' => count($requests),
+    'pending_requests' => $pendingRequests,
+    'firestore_token_missing' => $am_firestore_session_token_missing,
+    'country_scope' => function_exists('am_country_allow_codes') ? am_country_allow_codes() : null,
+];
+
 include __DIR__ . '/includes/header.php';
 ?>
+
+<script>
+// Dashboard debug snapshot — cross-check in the browser console whether the
+// server-side fetch returned data (i.e. is the zero-count purely client/UI
+// or is the PHP/Firestore pipeline returning 0 rows).
+window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED_SLASHES); ?>;
+(function(){
+    try {
+        var d = window.AM_DASHBOARD || {};
+        var css = 'color:#fff;background:#198754;padding:2px 6px;border-radius:3px;font-weight:600;';
+        console.log('%cAM dashboard%c assets=%d countries=%d statuses=%d pending=%d token_missing=%s',
+            css, '',
+            d.assets_total || 0,
+            d.countries_with_assets || 0,
+            d.status_buckets || 0,
+            d.pending_requests || 0,
+            String(d.firestore_token_missing));
+        console.log('AM_DASHBOARD', d);
+    } catch (e) {}
+})();
+</script>
 
 <div class="py-4">
     <?php if (!empty($am_firestore_session_token_missing)): ?>

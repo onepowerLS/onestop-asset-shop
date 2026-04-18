@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/version.php';
 if (function_exists('is_logged_in') && is_logged_in()) {
     require_once __DIR__ . '/../config/country_scope.php';
     am_ensure_country_scope_from_session();
@@ -14,6 +15,7 @@ am_locale_bootstrap();
 $page_title = $page_title ?? 'OneStop Asset Shop';
 $html_lang = $page_lang ?? am_session_lang();
 $app_name_display = $app_name_display ?? APP_NAME;
+$am_build = am_app_version();
 
 $am_firestore_reauth = false;
 if (function_exists('is_logged_in') && is_logged_in() && !empty($_SESSION['am_firestore_reauth'])) {
@@ -26,7 +28,28 @@ if (function_exists('is_logged_in') && is_logged_in() && !empty($_SESSION['am_fi
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="am-build-commit" content="<?php echo htmlspecialchars($am_build['commit']); ?>">
+    <meta name="am-build-short" content="<?php echo htmlspecialchars($am_build['short']); ?>">
+    <meta name="am-build-branch" content="<?php echo htmlspecialchars($am_build['branch']); ?>">
+    <meta name="am-build-at" content="<?php echo htmlspecialchars($am_build['built_at']); ?>">
+    <meta name="am-build-source" content="<?php echo htmlspecialchars($am_build['source']); ?>">
     <title><?php echo htmlspecialchars($page_title); ?> - <?php echo htmlspecialchars($app_name_display); ?></title>
+    <script>
+    // Build / deploy identification (for cross-checking what the browser is running)
+    window.AM_BUILD = <?php echo json_encode($am_build, JSON_UNESCAPED_SLASHES); ?>;
+    (function(){
+        try {
+            var b = window.AM_BUILD || {};
+            var css = 'color:#fff;background:#1976d2;padding:2px 6px;border-radius:3px;font-weight:600;';
+            console.log('%cAM build%c %s  branch=%s  built=%s  src=%s',
+                css, '',
+                (b.short || '?') + ' (' + (b.commit || '?').slice(0,12) + ')',
+                b.branch || '?',
+                b.built_at || '?',
+                b.source || '?');
+        } catch (e) {}
+    })();
+    </script>
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24' font-weight='bold' fill='%231976d2'>1P</text></svg>">
