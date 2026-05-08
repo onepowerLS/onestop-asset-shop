@@ -78,6 +78,27 @@ Immutable audit trail for every action taken on an item.
 
 **Transaction types:** `CheckOut`, `CheckIn`, `StockIngestion`, `StockTake`, `Transfer`, `Allocation`, `Return`, `WriteOff`, `QRScan`, `Consume`, `Deploy`
 
+### am_core_mutation_logs
+
+Append-only audit of **every successful** Firestore create / update / delete performed through the AM PHP `am_firestore_*` helpers (covers web, tablet, API, and server jobs using a user or service-account token). Not written by direct mobile SDK writes to Firestore.
+
+| Field | Type | Description |
+|---|---|---|
+| `mutation_at` | string | ISO timestamp when the write succeeded |
+| `operation` | string | `create`, `update`, or `delete` |
+| `target_collection` | string | Firestore collection written |
+| `target_document_id` | string | Document id |
+| `actor_uid` | string | Firebase `sub` of the ID token used for the write (must match caller; rules-enforced) |
+| `actor_email` | string | From PHP session or `users/{uid}` when present |
+| `actor_display_name` | string | Resolved display name (`users` doc: displayName / first+last, else HR employee name) |
+| `actor_employee_number` | string | From `users` (`systemAccess.hr.employeeId`, etc.) or matched `pr_master_employees` row |
+| `location_id` | string | From payload when present |
+| `source` | string | `web`, `tablet`, `api`, or `cron` (from request script path) |
+| `summary` | string | Human-readable line: `Actor (#empno) → op collection/id …` plus changed field names |
+| `updated_fields` | array | Top-level field names written (create/update); empty for delete |
+
+**API:** `GET /api/mutations/index.php` — JSON, scoped to the caller’s AM country access (Bearer `id_token`, query `id_token`, or same-origin session). Optional env: `AM_MUTATION_LOG_ENABLED` (default true), `AM_MUTATION_LOG_API_KEY` (with `FIREBASE_ADMIN_BEARER_TOKEN` for automation).
+
 ### am_core_inventory_levels
 
 Stock tracking per item per location. Used for reorder alerts.

@@ -20,6 +20,39 @@ function am_duplicate_uid_normalize(string $s): string {
 }
 
 /**
+ * Ensure no other asset uses the same normalized value on asset_tag or qr_code_id.
+ *
+ * @param list<array<string, mixed>> $assets
+ */
+function am_duplicate_uid_field_unique_among_assets(
+    string $excludeDocId,
+    string $field,
+    string $raw,
+    array $assets,
+): ?string {
+    if ($field !== 'asset_tag' && $field !== 'qr_code_id') {
+        return 'Invalid field for uniqueness check.';
+    }
+    $norm = am_duplicate_uid_normalize($raw);
+    if ($field === 'qr_code_id' && $norm === '') {
+        return null;
+    }
+    if ($norm === '') {
+        return 'Asset tag cannot be empty.';
+    }
+    foreach ($assets as $a) {
+        $id = (string)($a['id'] ?? $a['asset_id'] ?? '');
+        if ($id === '' || $id === $excludeDocId) {
+            continue;
+        }
+        if (am_duplicate_uid_normalize((string)($a[$field] ?? '')) === $norm) {
+            return 'Another item already uses this value (catalog id ' . $id . '). Choose a unique tag or QR id.';
+        }
+    }
+    return null;
+}
+
+/**
  * Heuristic richness: more populated fields and relations → higher score (keeper wins).
  *
  * @param array<string, mixed> $asset

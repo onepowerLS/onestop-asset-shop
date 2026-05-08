@@ -20,6 +20,7 @@ return [
         'checkout' => 'Sortie et retour',
         'transactions' => 'Transactions',
         'requests' => 'Demandes',
+        'inventory-dispatch' => 'Expédition d\'inventaire',
         'loadout-manifests' => 'Manifestes de chargement',
         'qr-codes' => 'Codes QR',
         'reports' => 'Rapports et export',
@@ -167,7 +168,31 @@ return [
 </ol>
 <p>Les administrateurs et managers peuvent <strong>Approuver</strong>, <strong>Rejeter</strong> (avec note) ou <strong>Honorer</strong> la demande.</p>
 <h5 class="h6 text-uppercase text-muted mt-3">Flux de service</h5>
-<p class="mb-0">Utilisez <strong>Demandes → Flux de service</strong> pour les demandes AM basées sur modèles (collection <code>am_core_requests</code>). Les managers/administrateurs mettent à jour le statut (Approuvé, Rejeté, Honoré, Annulé) depuis la liste ou le détail.</p>',
+<p>Utilisez <strong>Demandes → Flux de service</strong> pour les demandes AM basées sur modèles (collection <code>am_core_requests</code>). Les managers/administrateurs mettent à jour le statut (Approuvé, Rejeté, Honoré, Annulé) depuis la liste ou le détail.</p>
+<h5 class="h6 text-uppercase text-muted mt-3">Expédition d\'inventaire</h5>
+<p class="mb-0">Utilisez <strong>Demandes → Expédition d\'inventaire</strong> pour demander des articles en stock (matériaux, consommables, inventaire) expédiés du siège/entrepôt vers un site dans votre pays. Recherchez et ajoutez des articles du catalogue avec quantités, sélectionnez le site de destination, la date d\'expédition estimée et un réceptionnaire de l\'annuaire. Les managers approuvent, rejettent ou marquent comme honoré.</p>',
+        ],
+        [
+            'id' => 'inventory-dispatch',
+            'icon' => 'fa-truck-fast',
+            'title' => 'Expédition d\'inventaire',
+            'html' => '
+<h5 class="h6 text-uppercase text-muted">Demander du stock pour expédition sur site</h5>
+<p>Ouvrez <strong>Demandes → Expédition d\'inventaire</strong> pour demander des articles en stock envoyés du siège/entrepôt vers un site terrain dans votre pays.</p>
+<ol>
+    <li>Confirmez votre <strong>nom et email</strong> (pré-remplis depuis votre compte)</li>
+    <li>Cliquez sur <strong>Ajouter un article</strong> pour chercher dans le catalogue — recherchez par nom, étiquette ou description</li>
+    <li>Définissez la <strong>quantité</strong> pour chaque article</li>
+    <li>Choisissez le <strong>site de destination</strong> (filtré par pays)</li>
+    <li>Définissez la <strong>date d\'expédition estimée</strong></li>
+    <li>Sélectionnez le <strong>réceptionnaire</strong> depuis l\'annuaire — nom et email se remplissent automatiquement</li>
+    <li><strong>Envoyez</strong> — le numéro de demande suit le format <code>AMW-YYYY-NNNNN</code></li>
+</ol>
+<p>Les managers peuvent <strong>Approuver</strong>, <strong>Rejeter</strong> ou <strong>Marquer comme honoré</strong> depuis la vue détaillée. Chaque demande affiche un tableau des lignes avec des liens vers les articles du catalogue.</p>
+<div class="alert alert-light mb-0">
+    <i class="fas fa-lightbulb me-1 text-warning"></i>
+    <strong>Intra-pays uniquement :</strong> les demandes d\'expédition concernent le trajet siège/entrepôt → site dans un seul pays. Les transferts transfrontaliers suivent un processus distinct.
+</div>',
         ],
         [
             'id' => 'loadout-manifests',

@@ -150,6 +150,39 @@ The request list shows status summary cards at the top. Click a request to view 
 
 ---
 
+## Inventory Dispatch
+
+Navigate to **Requests → Inventory dispatch** in the sidebar to request stockable items (Materials, Consumables, Inventory) dispatched from HQ/warehouse to a field site within your country.
+
+### Submitting a Dispatch Request
+
+1. Confirm your **name and email** (pre-filled from your account)
+2. Click **Add item** to search the inventory catalog by name, asset tag, or description
+3. Set the **quantity** for each item you need — add as many items as required
+4. Choose the **destination site** from the dropdown (filtered to your country)
+5. Set the **estimated dispatch date**
+6. Select the **receiver** from the employee directory — start typing a name and the email auto-fills
+7. Click **Submit request** — the request number follows the `AMW-YYYY-NNNNN` format
+
+### Viewing a Dispatch Request
+
+Open a request from the Service workflows list to see:
+- **Line items table** with quantities and links back to catalog items
+- **Requester info** — who submitted it and when
+- **Destination** — site, country, and dispatch date
+- **Receiver** — name and email confirmed from the employee directory
+
+### Managing Dispatch Requests (Admin/Manager)
+
+Managers and Admins can update the status:
+- **Approve** — confirms the dispatch is authorized
+- **Reject** — declines the request
+- **Mark fulfilled** — records that items have been dispatched
+
+> **Note:** Dispatch requests are within-country only (warehouse/HQ → site). Cross-country transfers between Lesotho, Zambia, and Benin are a separate process.
+
+---
+
 ## Load-out manifests
 
 Use **Load-out manifests** in the sidebar when operations pack goods leaving HQ (or the warehouse) toward a field site. A manifest is a packing list with line items tied to catalog assets where applicable.

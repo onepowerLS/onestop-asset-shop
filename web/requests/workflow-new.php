@@ -10,6 +10,10 @@ require_once __DIR__ . '/../config/request_workflows.php';
 require_login();
 
 $type = preg_replace('/[^a-z0-9_]/', '', strtolower(trim($_GET['type'] ?? 'ready_board')));
+if ($type === 'inventory_dispatch') {
+    header('Location: ' . base_url('requests/dispatch-new.php'));
+    exit;
+}
 $template = am_request_workflow_template($type);
 if (!$template) {
     $_SESSION['flash_error'] = 'Unknown workflow type.';

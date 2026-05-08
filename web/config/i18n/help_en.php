@@ -20,6 +20,7 @@ return [
         'checkout' => 'Check-Out & Check-In',
         'transactions' => 'Transactions',
         'requests' => 'Requests',
+        'inventory-dispatch' => 'Inventory dispatch',
         'loadout-manifests' => 'Load-out manifests',
         'qr-codes' => 'QR Codes',
         'reports' => 'Reports & Export',
@@ -167,7 +168,31 @@ return [
 </ol>
 <p>Admins/Managers can <strong>Approve</strong>, <strong>Reject</strong> (with a note), or <strong>Fulfill</strong>.</p>
 <h5 class="h6 text-uppercase text-muted mt-3">Service workflows</h5>
-<p class="mb-0">Use <strong>Requests → Service workflows</strong> for template-driven AM requests stored in <code>am_core_requests</code> (types vary by template). Managers/Admins update status (Approved, Rejected, Fulfilled, Cancelled) from the list or detail view.</p>',
+<p>Use <strong>Requests → Service workflows</strong> for template-driven AM requests stored in <code>am_core_requests</code> (e.g. ready boards). Managers/Admins update status (Approved, Rejected, Fulfilled, Cancelled) from the list or detail view.</p>
+<h5 class="h6 text-uppercase text-muted mt-3">Inventory dispatch</h5>
+<p class="mb-0">Use <strong>Requests → Inventory dispatch</strong> to request stockable items (Materials, Consumables, Inventory) dispatched from HQ/warehouse to a site within your country. Search and add items from the catalog with quantities, select the destination site, estimated dispatch date, and a receiver from the employee directory. Managers approve, reject, or mark fulfilled from the detail view.</p>',
+        ],
+        [
+            'id' => 'inventory-dispatch',
+            'icon' => 'fa-truck-fast',
+            'title' => 'Inventory Dispatch',
+            'html' => '
+<h5 class="h6 text-uppercase text-muted">Requesting inventory for site dispatch</h5>
+<p>Open <strong>Requests → Inventory dispatch</strong> to request stockable items sent from HQ/warehouse to a field site within your country.</p>
+<ol>
+    <li>Confirm your <strong>name and email</strong> (pre-filled from your account)</li>
+    <li>Click <strong>Add item</strong> to search the catalog — find items by name, asset tag, or description</li>
+    <li>Set the <strong>quantity</strong> for each item you need</li>
+    <li>Choose the <strong>destination site</strong> (filtered to your country)</li>
+    <li>Set the <strong>estimated dispatch date</strong></li>
+    <li>Select the <strong>receiver</strong> from the employee directory — name and email auto-fill</li>
+    <li><strong>Submit</strong> — the request number follows the <code>AMW-YYYY-NNNNN</code> format</li>
+</ol>
+<p>Managers can <strong>Approve</strong>, <strong>Reject</strong>, or <strong>Mark fulfilled</strong> from the detail view. Each request shows a line-item table with links back to the catalog items.</p>
+<div class="alert alert-light mb-0">
+    <i class="fas fa-lightbulb me-1 text-warning"></i>
+    <strong>Within-country only:</strong> dispatch requests are for warehouse/HQ → site within one country. Cross-country transfers are a separate process.
+</div>',
         ],
         [
             'id' => 'loadout-manifests',

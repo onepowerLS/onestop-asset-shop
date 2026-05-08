@@ -67,6 +67,12 @@ function am_request_workflow_templates(): array {
                     'required' => true,
                 ],
             ],
+            'inventory_dispatch' => [
+                'label'       => 'Inventory dispatch request',
+                'description' => 'Request inventory items dispatched from HQ/warehouse to a site within your country. Select items, quantities, site, and receiver.',
+                'country_code' => '',  // resolved dynamically from user scope
+                'fields'      => [],  // custom form — see dispatch-new.php
+            ],
         ],
     ];
 
@@ -84,6 +90,11 @@ function am_workflow_summary_line(string $type, array $payload): string {
         $q = (int)($payload['quantity'] ?? 0);
         $site = (string)($payload['site_code'] ?? '');
         return 'Ready boards ×' . $q . ' → ' . $site;
+    }
+    if ($type === 'inventory_dispatch') {
+        $items = count($payload['line_items'] ?? []);
+        $site = (string)($payload['site_code'] ?? '');
+        return $items . ' item(s) → ' . $site;
     }
     $t = am_request_workflow_template($type);
     return (string)($t['label'] ?? $type);

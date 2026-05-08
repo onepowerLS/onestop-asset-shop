@@ -161,5 +161,19 @@ return [
             'href' => 'inventory/index.php',
             'link_label' => 'Niveaux de stock',
         ],
+        [
+            'id' => 'wf-dispatch',
+            'title' => 'Demander une expédition d\'inventaire (siège → site)',
+            'intro' => 'Demandez des articles en stock expédiés de l\'entrepôt vers un site terrain dans votre pays.',
+            'steps' => [
+                'Ouvrez Demandes → Expédition d\'inventaire.',
+                'Confirmez nom et email, puis cliquez sur Ajouter un article pour chercher dans le catalogue.',
+                'Ajoutez des articles avec quantités, choisissez le site de destination et la date d\'expédition.',
+                'Sélectionnez le réceptionnaire depuis l\'annuaire (nom et email se remplissent automatiquement).',
+                'Envoyez — les managers approuvent, rejettent ou marquent comme honoré.',
+            ],
+            'href' => 'requests/dispatch-new.php',
+            'link_label' => 'Expédition d\'inventaire',
+        ],
     ],
 ];

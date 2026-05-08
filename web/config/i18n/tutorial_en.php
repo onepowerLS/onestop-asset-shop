@@ -161,5 +161,19 @@ return [
             'href' => 'inventory/index.php',
             'link_label' => 'Stock Levels',
         ],
+        [
+            'id' => 'wf-dispatch',
+            'title' => 'Request inventory dispatch (HQ → site)',
+            'intro' => 'Request stockable items sent from the warehouse to a field site within your country.',
+            'steps' => [
+                'Open Requests → Inventory dispatch.',
+                'Confirm your name and email, then click Add item to search the catalog.',
+                'Add items with quantities, select the destination site and dispatch date.',
+                'Pick the receiver from the employee directory (name and email auto-fill).',
+                'Submit — managers approve, reject, or mark fulfilled from the detail view.',
+            ],
+            'href' => 'requests/dispatch-new.php',
+            'link_label' => 'Inventory dispatch',
+        ],
     ],
 ];

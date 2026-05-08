@@ -107,6 +107,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Append-only audit of Firestore writes from AM PHP (actor must match caller).
+    match /am_core_mutation_logs/{docId} {
+      allow read:   if isViewer();
+      allow create: if isAuthenticated()
+        && request.resource.data.actor_uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /am_core_inventory_levels/{docId} {
       allow read:   if isViewer();
       allow create: if isManager();

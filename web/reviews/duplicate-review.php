@@ -182,7 +182,7 @@ include __DIR__ . '/../includes/header.php';
     <h1 class="h2 mb-2">Duplicate review</h1>
     <p class="text-muted mb-4">
         Suspected duplicates share a <strong>tag</strong>, <strong>QR id</strong>, or <strong>legacy id</strong> (case-insensitive). Only records in <strong>your permitted countries</strong> appear here.
-        Use <strong>Edit</strong> to fix tags before merging. <strong>Not a duplicate</strong> hides the group for everyone.
+        Open <strong>Edit</strong> on each row to change <strong>asset tag</strong> or <strong>QR id</strong> so only true duplicates share an identifier, or use <strong>Not a duplicate</strong> to hide the group for everyone.
         <?php if (!$canExecute): ?>
         <span class="d-block mt-2"><strong>Managers</strong> can run merges; you can submit a <strong>merge request</strong> for approval.</span>
         <?php endif; ?>

@@ -240,6 +240,10 @@ function am_firestore_create_document(string $collection, array $data, ?string $
     $parts = explode('/', (string)$docName);
     $createdId = end($parts);
 
+    if (function_exists('am_mutation_log_record')) {
+        am_mutation_log_record('create', $collection, (string)$createdId, $data, $idTokenOverride, array_keys($data));
+    }
+
     return ['ok' => true, 'error' => null, 'id' => $createdId, 'data' => am_firestore_document_to_array($result['json'])];
 }
 
@@ -270,6 +274,13 @@ function am_firestore_update_document(string $collection, string $documentId, ar
         return ['ok' => false, 'error' => $msg];
     }
 
+    if (function_exists('am_mutation_log_record')) {
+        $infer = function_exists('am_mutation_log_merge_row_for_infer')
+            ? am_mutation_log_merge_row_for_infer($collection, $documentId, $data, $idTokenOverride)
+            : $data;
+        am_mutation_log_record('update', $collection, $documentId, $infer, $idTokenOverride, array_keys($data));
+    }
+
     return ['ok' => true, 'error' => null, 'data' => am_firestore_document_to_array($result['json'])];
 }
 
@@ -281,12 +292,21 @@ function am_firestore_delete_document(string $collection, string $documentId, ?s
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
     }
 
+    $prefetch = [];
+    if (function_exists('am_mutation_log_prefetch_before_delete') && am_mutation_log_enabled() && am_mutation_log_should_record($collection)) {
+        $prefetch = am_mutation_log_prefetch_before_delete($collection, $documentId, $idTokenOverride);
+    }
+
     $url = am_firestore_base_url() . '/' . rawurlencode($collection) . '/' . rawurlencode($documentId);
     $result = am_http_request_json('DELETE', $url, null, ['Authorization: Bearer ' . $token]);
 
     if (!$result['ok']) {
         $msg = $result['json']['error']['message'] ?? ($result['error'] ?? 'Delete failed');
         return ['ok' => false, 'error' => $msg];
+    }
+
+    if (function_exists('am_mutation_log_record')) {
+        am_mutation_log_record('delete', $collection, $documentId, is_array($prefetch) ? $prefetch : [], $idTokenOverride, []);
     }
 
     return ['ok' => true, 'error' => null];
@@ -626,3 +646,5 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
         ],
     ];
 }
+
+require_once __DIR__ . '/mutation_log.php';

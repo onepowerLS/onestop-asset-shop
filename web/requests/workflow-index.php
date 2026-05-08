@@ -175,7 +175,8 @@ include __DIR__ . '/../includes/header.php';
                             <td><?php echo htmlspecialchars(($countryById[$cid] ?? [])['country_code'] ?? '—'); ?></td>
                             <td><span class="badge bg-<?php echo $statColors[$status] ?? 'secondary'; ?>"><?php echo htmlspecialchars($status); ?></span></td>
                             <td><?php echo htmlspecialchars(substr((string)($req['requested_date'] ?? ''), 0, 10)); ?></td>
-                            <td><a class="btn btn-sm btn-outline-primary" href="<?php echo base_url('requests/workflow-view.php?id=' . urlencode($docId)); ?>">View</a></td>
+                            <td><?php $isDisp = ($req['workflow_type'] ?? '') === 'inventory_dispatch'; ?>
+                                <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url($isDisp ? 'requests/dispatch-view.php' : 'requests/workflow-view.php'); ?>?id=<?php echo urlencode($docId); ?>">View</a></td>
                             <?php if ($canProcess): ?>
                             <td class="text-end">
                                 <?php if ($status === 'Submitted'): ?>

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/duplicate_assets.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_login();
@@ -56,6 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $purchasePrice = trim($_POST['purchase_price'] ?? '');
         $salvageValue = trim($_POST['salvage_value'] ?? '');
 
+        $assetTag = trim($_POST['asset_tag'] ?? (string)($asset['asset_tag'] ?? ''));
+        $qrCodeId = trim($_POST['qr_code_id'] ?? (string)($asset['qr_code_id'] ?? ''));
+        if ($assetTag === '') {
+            $errors[] = 'Asset tag cannot be empty.';
+        } else {
+            $peerAssets = am_firestore_get_collection('am_core_assets', 8000);
+            $errTag = am_duplicate_uid_field_unique_among_assets($assetId, 'asset_tag', $assetTag, $peerAssets);
+            if ($errTag !== null) {
+                $errors[] = $errTag;
+            }
+            $errQr = am_duplicate_uid_field_unique_among_assets($assetId, 'qr_code_id', $qrCodeId, $peerAssets);
+            if ($errQr !== null) {
+                $errors[] = $errQr;
+            }
+        }
+
         $data = [
             'name' => $name,
             'description' => trim($_POST['description'] ?? ''),
@@ -74,6 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'status' => trim($_POST['status'] ?? ($asset['status'] ?? 'Available')),
             'quantity' => max(1, (int)($_POST['quantity'] ?? 1)),
             'unit_of_measure' => trim($_POST['unit_of_measure'] ?? 'EA'),
+            'asset_tag' => $assetTag,
+            'qr_code_id' => $qrCodeId,
             'legacy_tag' => trim($_POST['legacy_tag'] ?? ($asset['legacy_tag'] ?? '')),
             'notes' => trim($_POST['notes'] ?? ''),
             'updated_at' => date('c'),
@@ -81,12 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         am_require_asset_country_mutate($countryId, $countries);
 
-        $result = am_firestore_update_document('am_core_assets', $assetId, $data);
-        if ($result['ok']) {
-            $_SESSION['flash_success'] = 'Item updated successfully.';
-            header('Location: ' . base_url('assets/view.php?id=' . urlencode($assetId)));
-            exit;
-        } else {
+        if (empty($errors)) {
+            $result = am_firestore_update_document('am_core_assets', $assetId, $data);
+            if ($result['ok']) {
+                $_SESSION['flash_success'] = 'Item updated successfully.';
+                header('Location: ' . base_url('assets/view.php?id=' . urlencode($assetId)));
+                exit;
+            }
             $errors[] = 'Failed to save: ' . ($result['error'] ?? 'Unknown error');
         }
     }
@@ -130,6 +150,35 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 
     <form method="POST" action="" id="editItemForm">
+        <!-- Unique identifiers (fix false-positive duplicate groups) -->
+        <div class="card border-0 shadow mb-4">
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Identifiers &amp; tags</h2></div>
+            <div class="card-body">
+                <p class="small text-gray-600 mb-3">
+                    <strong>Asset tag</strong> and <strong>QR id</strong> must each be unique in the catalog (case-insensitive).
+                    If duplicate review grouped different physical items, give each item its own tag here, or use <strong>Mark as not duplicate</strong> on the review page.
+                </p>
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Document ID</label>
+                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($assetId); ?>" readonly>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Asset tag <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="asset_tag" required
+                            value="<?php echo htmlspecialchars((string)($vals['asset_tag'] ?? '')); ?>"
+                            autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">QR code id</label>
+                        <input type="text" class="form-control" name="qr_code_id"
+                            value="<?php echo htmlspecialchars((string)($vals['qr_code_id'] ?? '')); ?>"
+                            placeholder="Optional; must be unique if set" autocomplete="off" spellcheck="false">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Classification & Status -->
         <div class="card border-0 shadow mb-4">
             <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Classification & Status</h2></div>

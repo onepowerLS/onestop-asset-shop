@@ -76,6 +76,9 @@ Locations are **not** managed in the AM portal. They are read live from the PR p
 
 ## Deployment
 
+> **SSH keys** (e.g. `1pwrAM.pem`) are stored in `/Users/mattmso/Dropbox/AI Projects/Secrets/`.
+> See `SECRETS.md` for the full list.
+
 ```
 # SSH into EC2 (key expires after 60s)
 aws ec2-instance-connect send-ssh-public-key \

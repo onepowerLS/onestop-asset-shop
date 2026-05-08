@@ -126,6 +126,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                                 <span class="sidebar-text">Service workflows</span>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo in_array($current_page, ['dispatch-new', 'dispatch-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/dispatch-new.php'); ?>">
+                                <span class="sidebar-text">Inventory dispatch</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </li>
@@ -218,6 +223,15 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <i class="fas fa-chart-bar"></i>
                     </span>
                     <span class="sidebar-text">Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="<?php echo base_url('reports/mutation-log.php'); ?>" class="nav-link <?php echo $current_page === 'mutation-log' ? 'active' : ''; ?>">
+                    <span class="sidebar-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </span>
+                    <span class="sidebar-text">Mutation log</span>
                 </a>
             </li>
 
