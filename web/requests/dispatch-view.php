@@ -91,7 +91,7 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
         <div>
-            <h1 class="h2"><?php echo htmlspecialchars($req['workflow_label'] ?? 'Inventory dispatch'); ?></h1>
+            <h1 class="h2"><?php echo htmlspecialchars($req['workflow_label'] ?? 'Dispatch request'); ?></h1>
             <p class="mb-0 text-gray-600">
                 <strong><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></strong>
                 · <span class="badge bg-<?php echo match($status) { 'Submitted' => 'primary', 'Approved' => 'success', 'Rejected' => 'danger', 'Fulfilled' => 'info', 'Cancelled' => 'secondary', default => 'secondary' }; ?>"><?php echo htmlspecialchars($status); ?></span>

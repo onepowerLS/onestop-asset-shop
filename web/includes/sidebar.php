@@ -118,7 +118,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <ul class="flex-column nav">
                         <li class="nav-item">
                             <a class="nav-link <?php echo $current_page === 'requests' ? 'active' : ''; ?>" href="<?php echo base_url('requests/index.php'); ?>" data-tutorial="nav-requests-procurement">
-                                <span class="sidebar-text">Procurement</span>
+                                <span class="sidebar-text">Ready board request</span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -128,7 +128,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo in_array($current_page, ['dispatch-new', 'dispatch-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/dispatch-new.php'); ?>">
-                                <span class="sidebar-text">Inventory dispatch</span>
+                                <span class="sidebar-text">Dispatch request</span>
                             </a>
                         </li>
                         <li class="nav-item">

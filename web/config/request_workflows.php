@@ -68,8 +68,8 @@ function am_request_workflow_templates(): array {
                 ],
             ],
             'inventory_dispatch' => [
-                'label'       => 'Inventory dispatch request',
-                'description' => 'Request inventory items dispatched from HQ/warehouse to a site within your country. Select items, quantities, site, and receiver.',
+                'label'       => 'Dispatch request',
+                'description' => 'Request items dispatched from HQ/warehouse to a site within your country. Select items, quantities, site, and receiver.',
                 'country_code' => '',  // resolved dynamically from user scope
                 'fields'      => [],  // custom form — see dispatch-new.php
             ],

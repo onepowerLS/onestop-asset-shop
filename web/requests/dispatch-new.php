@@ -1,7 +1,7 @@
 <?php
 /**
- * Inventory Dispatch Request — custom form.
- * Select items from inventory, specify quantities, site, receiver.
+ * Dispatch Request — custom form.
+ * Select items from catalog, specify quantities, site, receiver.
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
@@ -10,7 +10,7 @@ require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/request_workflows.php';
 require_login();
 
-$page_title = 'Inventory dispatch request';
+$page_title = 'Dispatch request';
 $template = am_request_workflow_template('inventory_dispatch');
 
 // ── Country resolution ───────────────────────────────────────
@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = [
             'request_number'        => $reqNum,
             'workflow_type'         => 'inventory_dispatch',
-            'workflow_label'        => 'Inventory dispatch request',
+            'workflow_label'        => 'Dispatch request',
             'status'                => 'Submitted',
             'requested_by'          => (string)($_SESSION['user_id'] ?? ''),
             'requested_for_country' => $selectedCountryId,
@@ -188,7 +188,7 @@ include __DIR__ . '/../includes/header.php';
                 </ol>
             </nav>
             <h1 class="h2"><?php echo htmlspecialchars($template['label'] ?? 'Inventory dispatch request'); ?></h1>
-            <p class="mb-0 text-gray-600">Request inventory items dispatched from HQ/warehouse to a site within your country.</p>
+            <p class="mb-0 text-gray-600">Request items dispatched from HQ/warehouse to a site within your country.</p>
         </div>
         <a href="<?php echo base_url('requests/workflow-index.php'); ?>" class="btn btn-outline-secondary btn-sm">Back to list</a>
     </div>
@@ -244,7 +244,7 @@ include __DIR__ . '/../includes/header.php';
                     </thead>
                     <tbody id="lineItemsBody">
                         <tr id="noItemsRow">
-                            <td colspan="5" class="text-center text-gray-500 py-4">No items added yet. Click <strong>Add item</strong> to search inventory.</td>
+                            <td colspan="5" class="text-center text-gray-500 py-4">No items added yet. Click <strong>Add item</strong> to search the catalog.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -263,7 +263,7 @@ include __DIR__ . '/../includes/header.php';
                             value="<?php echo htmlspecialchars($userCountries[$selectedCountryId]['country_name'] ?? ''); ?>">
                         <input type="hidden" name="country_id" value="<?php echo htmlspecialchars($selectedCountryId); ?>">
                         <?php else: ?>
-                        <select name="country_id" id="country_id" class="form-select" required onchange="this.form.submit()">
+                        <select name="country_id" id="country_id" class="form-select" required>
                             <?php foreach ($userCountries as $cid => $c): ?>
                             <option value="<?php echo htmlspecialchars($cid); ?>" <?php echo $selectedCountryId === $cid ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars(($c['country_name'] ?? '') . ' (' . ($c['country_code'] ?? '') . ')'); ?>
@@ -276,19 +276,11 @@ include __DIR__ . '/../includes/header.php';
                         <label class="form-label" for="site_code">Site <span class="text-danger">*</span></label>
                         <select name="site_code" id="site_code" class="form-select" required>
                             <option value="">Select site…</option>
-                            <?php
-                            $selCountryCode = '';
-                            foreach ($userCountries as $cid => $c) {
-                                if ($cid === $selectedCountryId) {
-                                    $selCountryCode = strtoupper((string)($c['country_code'] ?? ''));
-                                    break;
-                                }
-                            }
-                            foreach ($sites as $s):
+                            <?php foreach ($sites as $s):
                                 $scc = (string)($s['country_code'] ?? '');
-                                if ($scc !== $selCountryCode && $selCountryCode !== '') continue;
                             ?>
                             <option value="<?php echo htmlspecialchars($s['location_code'] ?? ''); ?>"
+                                data-country="<?php echo htmlspecialchars($scc); ?>"
                                 <?php echo ($_POST['site_code'] ?? '') === ($s['location_code'] ?? '') ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars(($s['location_name'] ?? '') . ' (' . ($s['location_code'] ?? '') . ')'); ?>
                             </option>
@@ -344,7 +336,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title fs-5" id="itemSearchModalLabel">Search inventory</h3>
+                <h3 class="modal-title fs-5" id="itemSearchModalLabel">Search catalog</h3>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -357,7 +349,7 @@ include __DIR__ . '/../includes/header.php';
                             <tr><th>Name</th><th>Tag</th><th>Class</th><th>Category</th><th>Location</th><th>Status</th><th></th></tr>
                         </thead>
                         <tbody id="searchResultsBody">
-                            <tr id="searchLoadingRow"><td colspan="7" class="text-center text-gray-500 py-3">Type to search inventory items in your country…</td></tr>
+                            <tr id="searchLoadingRow"><td colspan="7" class="text-center text-gray-500 py-3">Type to search catalog items in your country…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -439,6 +431,39 @@ function escHtml(s) {
 function syncHiddenField() {
     document.getElementById('lineItemsJson').value = JSON.stringify(lineItems);
 }
+
+// ── Country → site filtering ──────────────────────────────
+var countryToCode = {};
+<?php foreach ($userCountries as $cid => $c):
+    $cc = strtoupper((string)($c['country_code'] ?? ''));
+    if ($cc !== ''):
+?>countryToCode[<?php echo json_encode($cid); ?>] = <?php echo json_encode($cc); ?>;
+<?php endif; endforeach; ?>
+
+function filterSitesByCountry() {
+    var selCountryId = document.getElementById('country_id').value;
+    var targetCode = countryToCode[selCountryId] || '';
+    var siteSelect = document.getElementById('site_code');
+    var currentVal = siteSelect.value;
+    var found = false;
+    for (var i = 0; i < siteSelect.options.length; i++) {
+        var opt = siteSelect.options[i];
+        if (opt.value === '') continue; // placeholder
+        var optCountry = opt.getAttribute('data-country') || '';
+        if (targetCode === '' || optCountry === targetCode) {
+            opt.style.display = '';
+            if (opt.value === currentVal) found = true;
+        } else {
+            opt.style.display = 'none';
+        }
+    }
+    if (!found) siteSelect.value = '';
+    // Keep search API in sync with selected country
+    countryId = selCountryId;
+}
+document.getElementById('country_id').addEventListener('change', filterSitesByCountry);
+// Run once on load to filter to default country
+filterSitesByCountry();
 
 // ── Employee autocomplete ──────────────────────────────────
 document.getElementById('receiver_name').addEventListener('input', function() {
@@ -522,7 +547,7 @@ function doSearch(q) {
 // Reset modal search when opened
 document.getElementById('itemSearchModal').addEventListener('shown.bs.modal', function() {
     document.getElementById('itemSearchInput').value = '';
-    document.getElementById('searchResultsBody').innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">Type to search inventory items in your country…</td></tr>';
+    document.getElementById('searchResultsBody').innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">Type to search catalog items in your country…</td></tr>';
     document.getElementById('itemSearchInput').focus();
 });
 

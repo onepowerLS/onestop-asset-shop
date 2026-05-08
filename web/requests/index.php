@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_login();
 
-$page_title = 'Requests';
+$page_title = 'Ready board requests';
 $errors = [];
 $showForm = isset($_GET['new']) || !empty($errors);
 
@@ -115,8 +115,8 @@ include __DIR__ . '/../includes/header.php';
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center py-4" data-tutorial="tutorial-requests-header">
         <div>
-            <h1 class="h2">Requests</h1>
-            <p class="mb-0"><?php echo count($filtered); ?> procurement requests</p>
+            <h1 class="h2">Ready board requests</h1>
+            <p class="mb-0"><?php echo count($filtered); ?> ready board requests</p>
             <p class="small text-muted mb-0 mt-1">
                 For ready boards and other AM service requests, use
                 <a href="<?php echo base_url('requests/workflow-index.php'); ?>">Service workflows</a>

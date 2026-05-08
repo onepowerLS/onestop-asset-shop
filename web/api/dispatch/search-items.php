@@ -34,12 +34,12 @@ foreach ($locations as $l) {
     if ($lid !== '') $locationById[$lid] = $l;
 }
 
-$stockableClasses = am_inventory_stockable_classes(); // ['Material', 'Consumable', 'Inventory']
 $results = [];
 
 foreach ($assets as $asset) {
     $ic = (string)($asset['item_class'] ?? '');
-    if (!in_array($ic, $stockableClasses, true)) continue;
+    // Allow all item classes: FixedAsset, Material, Consumable, Inventory
+    if (!in_array($ic, ['FixedAsset', 'Material', 'Consumable', 'Inventory'], true)) continue;
 
     if (!am_asset_passes_country_scope($asset, $countries, $locationById)) continue;
 
