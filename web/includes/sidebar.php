@@ -99,7 +99,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             </li>
 
             <?php
-            $requestsPages = ['requests', 'workflow-index', 'workflow-new', 'workflow-view'];
+            $requestsPages = ['requests', 'workflow-index', 'workflow-new', 'workflow-view', 'archived-ret', 'archived-ret-view'];
             $requestsOpen = in_array($current_page, $requestsPages, true);
             ?>
             <li class="nav-item">
@@ -129,6 +129,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link <?php echo in_array($current_page, ['dispatch-new', 'dispatch-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/dispatch-new.php'); ?>">
                                 <span class="sidebar-text">Inventory dispatch</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo in_array($current_page, ['archived-ret', 'archived-ret-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/archived-ret.php'); ?>">
+                                <span class="sidebar-text">RET archives</span>
                             </a>
                         </li>
                     </ul>
