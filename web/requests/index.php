@@ -313,6 +313,8 @@ include __DIR__ . '/../includes/header.php';
 
 <script>
 $(document).ready(function() {
-    $('#requestsTable').DataTable({ pageLength: 25, order: [[6, 'desc']] });
+    var t = $('#requestsTable');
+    if (t.find('tbody td[colspan]').length) return;
+    t.DataTable({ pageLength: 25, order: [[6, 'desc']] });
 });
 </script>

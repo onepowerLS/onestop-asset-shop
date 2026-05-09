@@ -143,6 +143,8 @@ include __DIR__ . '/../includes/header.php';
 
 <script>
 $(document).ready(function() {
-    $('#archivedRetTable').DataTable({ pageLength: 25, order: [[4, 'desc']], dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" });
+    var t = $('#archivedRetTable');
+    if (t.find('tbody td[colspan]').length) return;
+    t.DataTable({ pageLength: 25, order: [[4, 'desc']], dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" });
 });
 </script>

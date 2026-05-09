@@ -216,6 +216,8 @@ include __DIR__ . '/../includes/header.php';
 
 <script>
 $(document).ready(function() {
-    $('#wfTable').DataTable({ pageLength: 25, order: [[5, 'desc']] });
+    var t = $('#wfTable');
+    if (t.find('tbody td[colspan]').length) return;
+    t.DataTable({ pageLength: 25, order: [[5, 'desc']] });
 });
 </script>
