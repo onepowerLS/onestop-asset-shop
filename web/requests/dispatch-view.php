@@ -38,6 +38,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update = ['status' => $newStatus];
             if ($newStatus === 'Fulfilled') {
                 $update['fulfilled_date'] = date('c');
+                // Update inventory levels: deduct from source, add to destination
+                $fulfillPayload = $req['payload'] ?? [];
+                if (!is_array($fulfillPayload)) $fulfillPayload = [];
+                $allInvLevels = am_firestore_get_collection('am_core_inventory_levels', 4000);
+                $allLocations = am_get_pr_sites();
+                $allAssets = am_firestore_get_collection('am_core_assets', 3000);
+
+                $assetById = [];
+                foreach ($allAssets as $a) {
+                    $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
+                    if ($aid !== '') $assetById[$aid] = $a;
+                }
+
+                $locByAnyKey = [];
+                foreach ($allLocations as $l) {
+                    $lid = (string)($l['id'] ?? '');
+                    $lcode = (string)($l['location_code'] ?? '');
+                    if ($lid !== '') $locByAnyKey[$lid] = $l;
+                    if ($lcode !== '' && $lcode !== $lid) $locByAnyKey[$lcode] = $l;
+                }
+
+                $reqCountryId = (string)($req['requested_for_country'] ?? '');
+                $destSiteCode = (string)($fulfillPayload['site_code'] ?? '');
+                $destLoc = $locByAnyKey[$destSiteCode] ?? [];
+                $destLocationCode = (string)($destLoc['location_code'] ?? $destSiteCode);
+
+                $invByKey = [];
+                foreach ($allInvLevels as $inv) {
+                    $iaid = (string)($inv['asset_id'] ?? '');
+                    $iloc = (string)($inv['location_id'] ?? '');
+                    $icid = (string)($inv['country_id'] ?? '');
+                    if ($iaid !== '' && $iloc !== '') {
+                        $invByKey[$iaid . '|' . $iloc . '|' . $icid] = $inv;
+                    }
+                }
+
+                $fulfillItems = $fulfillPayload['line_items'] ?? [];
+                if (!is_array($fulfillItems)) $fulfillItems = [];
+
+                foreach ($fulfillItems as $li) {
+                    $liAssetId = (string)($li['asset_id'] ?? '');
+                    $qty = (int)($li['quantity'] ?? 0);
+                    if ($liAssetId === '' || $qty <= 0) continue;
+
+                    $asset = $assetById[$liAssetId] ?? [];
+                    if (!$asset) continue;
+
+                    $srcLocId = (string)($asset['location_id'] ?? '');
+                    $srcLoc = $locByAnyKey[$srcLocId] ?? [];
+                    $srcLocationCode = (string)($srcLoc['location_code'] ?? $srcLocId);
+                    if ($srcLocationCode === '' || $srcLocationCode === $destLocationCode) continue;
+
+                    // Source: deduct
+                    $srcKey = $liAssetId . '|' . $srcLocationCode . '|' . $reqCountryId;
+                    $srcInv = $invByKey[$srcKey] ?? null;
+                    if ($srcInv) {
+                        $srcQoh = max(0, (int)($srcInv['quantity_on_hand'] ?? 0) - $qty);
+                        am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
+                            'quantity_on_hand' => $srcQoh,
+                            'updated_at' => date('c'),
+                        ]);
+                    } else {
+                        $srcQoh = max(0, (int)($asset['quantity'] ?? 0) - $qty);
+                        am_firestore_create_document('am_core_inventory_levels', [
+                            'asset_id' => $liAssetId,
+                            'location_id' => $srcLocationCode,
+                            'country_id' => $reqCountryId,
+                            'quantity_on_hand' => $srcQoh,
+                            'quantity_allocated' => 0,
+                            'created_at' => date('c'),
+                            'updated_at' => date('c'),
+                        ]);
+                    }
+
+                    // Destination: add
+                    $destKey = $liAssetId . '|' . $destLocationCode . '|' . $reqCountryId;
+                    $destInv = $invByKey[$destKey] ?? null;
+                    if ($destInv) {
+                        $destQoh = (int)($destInv['quantity_on_hand'] ?? 0) + $qty;
+                        am_firestore_update_document('am_core_inventory_levels', (string)$destInv['id'], [
+                            'quantity_on_hand' => $destQoh,
+                            'updated_at' => date('c'),
+                        ]);
+                    } else {
+                        am_firestore_create_document('am_core_inventory_levels', [
+                            'asset_id' => $liAssetId,
+                            'location_id' => $destLocationCode,
+                            'country_id' => $reqCountryId,
+                            'quantity_on_hand' => $qty,
+                            'quantity_allocated' => 0,
+                            'created_at' => date('c'),
+                            'updated_at' => date('c'),
+                        ]);
+                    }
+                }
+
+                // Update asset location for all line items (critical for FixedAssets)
+                $destLocName = (string)($destLoc['location_name'] ?? $destSiteCode);
+                foreach ($fulfillItems as $li) {
+                    $liAssetId = (string)($li['asset_id'] ?? '');
+                    if ($liAssetId === '') continue;
+                    $la = $assetById[$liAssetId] ?? [];
+                    if (!$la) continue;
+                    $currentLocId = (string)($la['location_id'] ?? '');
+                    if ($currentLocId === $destLocationCode) continue;
+                    am_firestore_update_document('am_core_assets', $liAssetId, [
+                        'location_id' => $destLocationCode,
+                        'location_name' => $destLocName,
+                        'updated_at' => date('c'),
+                    ]);
+                }
             }
             am_firestore_update_document('am_core_requests', $docId, $update);
             $_SESSION['flash_success'] = 'Status updated to ' . $newStatus . '.';

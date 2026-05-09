@@ -63,7 +63,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <i class="fas fa-chevron-right"></i>
                     </span>
                 </span>
-                <div class="multi-level collapse <?php echo in_array($current_page, ['assets', 'index']) && $classParam ? 'show' : ''; ?>" id="submenu-catalog">
+                <div class="multi-level collapse <?php echo in_array($current_page, ['assets', 'index', 'view', 'edit', 'add', 'assemble']) ? 'show' : ''; ?>" id="submenu-catalog">
                     <ul class="flex-column nav">
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('assets/index.php'); ?>" data-tutorial="nav-assets-all">
@@ -92,6 +92,12 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                             <a class="nav-link <?php echo $classParam === 'Inventory' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Inventory'); ?>">
                                 <i class="fas fa-boxes-stacked me-1 text-success"></i>
                                 <span class="sidebar-text">Inventory</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $current_page === 'assemble' ? 'active' : ''; ?>" href="<?php echo base_url('assets/assemble.php'); ?>">
+                                <i class="fas fa-wrench me-1"></i>
+                                <span class="sidebar-text">Assemble asset</span>
                             </a>
                         </li>
                     </ul>

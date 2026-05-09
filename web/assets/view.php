@@ -226,6 +226,57 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
             </div>
+            <?php
+            $builtFrom = $asset['built_from'] ?? [];
+            if ($cls === 'FixedAsset' && is_array($builtFrom) && !empty($builtFrom)):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header">
+                    <h2 class="fs-5 fw-bold mb-0">
+                        <i class="fas fa-microchip me-2 text-purple"></i>Assembly Lineage
+                    </h2>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Material</th><th>Tag</th><th class="text-end">Qty Consumed</th><th>Unit</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($builtFrom as $component):
+                                    $compId = (string)($component['asset_id'] ?? '');
+                                ?>
+                                <tr>
+                                    <td>
+                                        <?php if ($compId !== ''): ?>
+                                        <a href="<?php echo base_url('assets/view.php?id=' . urlencode($compId)); ?>">
+                                            <?php echo htmlspecialchars($component['name'] ?? 'Unknown'); ?>
+                                        </a>
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($component['name'] ?? 'Unknown'); ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><code class="text-muted"><?php echo htmlspecialchars($component['asset_tag'] ?? '—'); ?></code></td>
+                                    <td class="text-end"><?php echo (int)($component['quantity'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($component['unit'] ?? 'EA'); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php if (!empty($asset['assembled_at']) || !empty($asset['assembled_by'])): ?>
+                <div class="card-footer">
+                    <small class="text-gray-500">
+                        Assembled <?php echo htmlspecialchars(substr((string)($asset['assembled_at'] ?? ''), 0, 10)); ?>
+                        <?php if (!empty($asset['assembled_by'])): ?>
+                            by <?php echo htmlspecialchars($asset['assembled_by']); ?>
+                        <?php endif; ?>
+                    </small>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <?php endif; ?>
         </div>
 

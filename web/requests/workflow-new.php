@@ -14,6 +14,10 @@ if ($type === 'inventory_dispatch') {
     header('Location: ' . base_url('requests/dispatch-new.php'));
     exit;
 }
+if ($type === 'ready_board') {
+    header('Location: ' . base_url('requests/index.php?new=1'));
+    exit;
+}
 $template = am_request_workflow_template($type);
 if (!$template) {
     $_SESSION['flash_error'] = 'Unknown workflow type.';

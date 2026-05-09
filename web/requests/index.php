@@ -8,7 +8,8 @@ $page_title = 'Ready board requests';
 $errors = [];
 $showForm = isset($_GET['new']) || !empty($errors);
 
-$requests = am_firestore_get_collection('pr_master_requests', 2000);
+$requests = am_firestore_get_collection('am_core_requests', 2000);
+$requests = array_values(array_filter($requests, fn($r) => ($r['workflow_type'] ?? '') === 'ready_board'));
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $locations = am_get_pr_sites();
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
@@ -38,8 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             $reqNum = 'REQ-' . date('Y') . '-' . str_pad((string)(count($requests) + 1), 4, '0', STR_PAD_LEFT);
 
+            $payload = [
+                'item_class' => $itemClass,
+                'department_scope' => $deptScope,
+                'description' => $description,
+                'priority' => $priority,
+                'required_date' => $_POST['required_date'] ?? '',
+                'notes' => trim($_POST['notes'] ?? ''),
+                'location_id' => trim($_POST['location_id'] ?? ''),
+            ];
+
+            $summary = $classLabels[$itemClass] . ' — ' . substr($description, 0, 100);
+
             $data = [
                 'request_number' => $reqNum,
+                'workflow_type' => 'ready_board',
+                'workflow_label' => 'Ready board request',
                 'item_class' => $itemClass,
                 'department_scope' => $deptScope,
                 'requested_by' => $_SESSION['user_id'] ?? '',
@@ -48,12 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'priority' => $priority,
                 'status' => 'Submitted',
                 'description' => $description,
+                'summary' => $summary,
                 'requested_date' => date('c'),
                 'required_date' => $_POST['required_date'] ?? '',
                 'notes' => trim($_POST['notes'] ?? ''),
+                'payload' => $payload,
             ];
 
-            $result = am_firestore_create_document('pr_master_requests', $data);
+            $result = am_firestore_create_document('am_core_requests', $data);
             if ($result['ok']) {
                 $_SESSION['flash_success'] = 'Request ' . $reqNum . ' submitted.';
                 header('Location: ' . base_url('requests/index.php'));
@@ -72,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newStatus === 'Fulfilled') {
                 $updateData['fulfilled_date'] = date('c');
             }
-            am_firestore_update_document('pr_master_requests', $docId, $updateData);
+            am_firestore_update_document('am_core_requests', $docId, $updateData);
             $_SESSION['flash_success'] = 'Request status updated to ' . $newStatus . '.';
         }
         header('Location: ' . base_url('requests/index.php'));
@@ -250,7 +267,7 @@ include __DIR__ . '/../includes/header.php';
                             $statColors = ['Draft' => 'secondary', 'Submitted' => 'primary', 'Approved' => 'success', 'Rejected' => 'danger', 'Fulfilled' => 'info', 'Cancelled' => 'secondary'];
                         ?>
                         <tr>
-                            <td><strong><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></strong></td>
+                            <td><a href="<?php echo base_url('requests/workflow-view.php?id=' . urlencode($docId)); ?>" class="fw-bold"><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></a></td>
                             <td><span class="badge bg-<?php echo $classColors[$cls] ?? 'secondary'; ?>"><?php echo htmlspecialchars($classLabels[$cls] ?? $cls); ?></span></td>
                             <td><?php echo htmlspecialchars(substr((string)($req['description'] ?? ''), 0, 80)); ?></td>
                             <td><?php echo htmlspecialchars(($countryById[(string)($req['requested_for_country'] ?? '')] ?? [])['country_code'] ?? '—'); ?></td>
@@ -292,10 +309,10 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
 <script>
 $(document).ready(function() {
     $('#requestsTable').DataTable({ pageLength: 25, order: [[6, 'desc']] });
 });
 </script>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>

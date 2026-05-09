@@ -26,6 +26,7 @@ am_require_asset_visible($asset, $countries);
 
 $page_title = 'Edit: ' . ($asset['name'] ?? 'Item');
 $errors = [];
+$warnings = [];
 
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
@@ -53,11 +54,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'You cannot assign items to that country.';
     }
 
+    // Class-specific validation
+    $catId = trim($_POST['category_id'] ?? '');
+    $uom = trim($_POST['unit_of_measure'] ?? 'EA');
+    $qty = (int)($_POST['quantity'] ?? 1);
+    if ($itemClass === 'FixedAsset') {
+        if ($catId === '') {
+            $errors[] = 'Category is required for Fixed Assets.';
+        }
+    } elseif (in_array($itemClass, ['Material', 'Consumable', 'Inventory'])) {
+        if ($catId === '') {
+            $errors[] = 'Category is required.';
+        }
+        if ($uom === '') {
+            $errors[] = 'Unit of measure is required.';
+        }
+        if ($qty < 1) {
+            $errors[] = 'Quantity must be at least 1.';
+        }
+    }
+
     if (empty($errors)) {
         $purchasePrice = trim($_POST['purchase_price'] ?? '');
         $salvageValue = trim($_POST['salvage_value'] ?? '');
 
-        $assetTag = trim($_POST['asset_tag'] ?? (string)($asset['asset_tag'] ?? ''));
+        // Detect class change and handle side effects
+        $storedClass = (string)($asset['item_class'] ?? '');
+        $classChanged = ($itemClass !== '' && $itemClass !== $storedClass);
+
+        if ($classChanged) {
+            // Regenerate tag since the class prefix changes
+            $ccode = '';
+            foreach ($countries as $c) {
+                if ((string)($c['country_id'] ?? $c['id'] ?? '') === $countryId) {
+                    $ccode = (string)($c['country_code'] ?? 'UNK');
+                    break;
+                }
+            }
+            $peerAssets = am_firestore_get_collection('am_core_assets', 8000);
+            $assetTag = am_generate_asset_tag($itemClass, $ccode, $peerAssets);
+            $warnings[] = 'Class changed from ' . $storedClass . ' to ' . $itemClass
+                . '. Asset tag regenerated to ' . $assetTag . '.';
+
+            if (in_array($storedClass, ['Material', 'Consumable', 'Inventory']) && $itemClass === 'FixedAsset') {
+                $warnings[] = 'Previous inventory level records for this item are now orphaned '
+                    . 'and will no longer appear in stock level views.';
+            }
+            if ($storedClass === 'FixedAsset' && in_array($itemClass, ['Material', 'Consumable', 'Inventory'])) {
+                $warnings[] = 'This item will now participate in inventory level tracking. '
+                    . 'Initial stock quantities must be added through inventory adjustment.';
+            }
+        } else {
+            $assetTag = trim($_POST['asset_tag'] ?? (string)($asset['asset_tag'] ?? ''));
+        }
         $qrCodeId = trim($_POST['qr_code_id'] ?? (string)($asset['qr_code_id'] ?? ''));
         if ($assetTag === '') {
             $errors[] = 'Asset tag cannot be empty.';
@@ -144,6 +193,15 @@ include __DIR__ . '/../includes/header.php';
         <ul class="mb-0">
             <?php foreach ($errors as $err): ?>
             <li><?php echo htmlspecialchars($err); ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
+    <?php if (!empty($warnings)): ?>
+    <div class="alert alert-warning">
+        <ul class="mb-0">
+            <?php foreach ($warnings as $warn): ?>
+            <li><?php echo htmlspecialchars($warn); ?></li>
             <?php endforeach; ?>
         </ul>
     </div>

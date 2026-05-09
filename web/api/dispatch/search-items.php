@@ -27,11 +27,22 @@ if (!am_user_may_access_country_id($countryId, am_firestore_get_collection('pr_m
 $assets = am_firestore_get_collection('am_core_assets', 3000);
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $locations = am_get_pr_sites();
+$inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 4000);
 
 $locationById = [];
 foreach ($locations as $l) {
     $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
     if ($lid !== '') $locationById[$lid] = $l;
+}
+
+// Build stock index: asset_id => total qoh in any location
+$stockByAsset = [];
+foreach ($inventoryLevels as $inv) {
+    $aid = (string)($inv['asset_id'] ?? '');
+    if ($aid === '') continue;
+    $qoh = (int)($inv['quantity_on_hand'] ?? 0);
+    if ($qoh <= 0) continue;
+    $stockByAsset[$aid] = ($stockByAsset[$aid] ?? 0) + $qoh;
 }
 
 $results = [];
@@ -59,16 +70,18 @@ foreach ($assets as $asset) {
         if (!str_contains($blob, $q)) continue;
     }
 
+    $aid = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
     $results[] = [
-        'asset_id'      => (string)($asset['asset_id'] ?? $asset['id'] ?? ''),
-        'name'          => (string)($asset['name'] ?? ''),
-        'asset_tag'     => (string)($asset['asset_tag'] ?? ''),
-        'legacy_tag'    => (string)($asset['legacy_tag'] ?? ''),
-        'item_class'    => $ic,
-        'category_name' => (string)($asset['category_name'] ?? ''),
+        'asset_id'       => $aid,
+        'name'           => (string)($asset['name'] ?? ''),
+        'asset_tag'      => (string)($asset['asset_tag'] ?? ''),
+        'legacy_tag'     => (string)($asset['legacy_tag'] ?? ''),
+        'item_class'     => $ic,
+        'category_name'  => (string)($asset['category_name'] ?? ''),
         'unit_of_measure'=> (string)($asset['unit_of_measure'] ?? 'EA'),
-        'location_name' => (string)($asset['location_name'] ?? ''),
-        'status'        => (string)($asset['status'] ?? ''),
+        'location_name'  => (string)($asset['location_name'] ?? ''),
+        'status'         => (string)($asset['status'] ?? ''),
+        'quantity_on_hand' => $stockByAsset[$aid] ?? 0,
     ];
 
     if (count($results) >= 100) break;

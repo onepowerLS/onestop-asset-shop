@@ -54,6 +54,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'You cannot create items for that country.';
     }
 
+    // Class-specific validation
+    if ($itemClass === 'FixedAsset') {
+        if ($categoryId === '') {
+            $errors[] = 'Category is required for Fixed Assets.';
+        }
+    } elseif (in_array($itemClass, ['Material', 'Consumable', 'Inventory'])) {
+        if ($categoryId === '') {
+            $errors[] = 'Category is required.';
+        }
+        if ($unitOfMeasure === '') {
+            $errors[] = 'Unit of measure is required.';
+        }
+        if ($quantity < 1) {
+            $errors[] = 'Quantity must be at least 1.';
+        }
+    }
+
     if (empty($errors)) {
         $countryCode = '';
         foreach ($countries as $c) {

@@ -346,7 +346,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="table-responsive" style="max-height:50vh;">
                     <table class="table table-sm table-hover mb-0" id="searchResultsTable">
                         <thead>
-                            <tr><th>Name</th><th>Tag</th><th>Class</th><th>Category</th><th>Location</th><th>Status</th><th></th></tr>
+                            <tr><th>Name</th><th>Tag</th><th>Class</th><th>Location</th><th>Stock</th><th>Status</th><th></th></tr>
                         </thead>
                         <tbody id="searchResultsBody">
                             <tr id="searchLoadingRow"><td colspan="7" class="text-center text-gray-500 py-3">Type to search catalog items in your country…</td></tr>
@@ -504,14 +504,17 @@ function doSearch(q) {
                 var clsBadge = {
                     'Material': 'warning', 'Consumable': 'info', 'Inventory': 'success', 'FixedAsset': 'primary'
                 };
+                var stockDisplay = item.quantity_on_hand > 0
+                    ? '<span class="fw-bold text-success">' + item.quantity_on_hand + '</span>'
+                    : '<span class="text-muted">0</span>';
                 var tr = document.createElement('tr');
                 if (already) tr.classList.add('table-secondary');
                 tr.innerHTML =
                     '<td><strong>' + escHtml(item.name) + '</strong></td>' +
                     '<td><code>' + escHtml(item.asset_tag || item.legacy_tag || '—') + '</code></td>' +
                     '<td><span class="badge bg-' + (clsBadge[item.item_class] || 'secondary') + '">' + escHtml(item.item_class) + '</span></td>' +
-                    '<td>' + escHtml(item.category_name || '—') + '</td>' +
                     '<td>' + escHtml(item.location_name || '—') + '</td>' +
+                    '<td>' + stockDisplay + '</td>' +
                     '<td><span class="badge bg-light text-dark">' + escHtml(item.status) + '</span></td>' +
                     '<td>' + (already
                         ? '<span class="text-muted small">Added</span>'

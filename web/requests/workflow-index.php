@@ -212,10 +212,10 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
 <script>
 $(document).ready(function() {
     $('#wfTable').DataTable({ pageLength: 25, order: [[5, 'desc']] });
 });
 </script>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>

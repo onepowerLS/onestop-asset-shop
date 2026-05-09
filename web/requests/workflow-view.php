@@ -26,7 +26,8 @@ if (!is_array($payload)) {
     $payload = [];
 }
 
-$template = am_request_workflow_template((string)($req['workflow_type'] ?? ''));
+$wfType = (string)($req['workflow_type'] ?? '');
+$template = am_request_workflow_template($wfType);
 $fieldLabels = [];
 if ($template) {
     foreach ($template['fields'] ?? [] as $f) {
@@ -47,6 +48,10 @@ foreach ($countries as $c) {
         break;
     }
 }
+
+$classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+$classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
+$priColors = ['Low' => 'secondary', 'Normal' => 'primary', 'High' => 'warning', 'Urgent' => 'danger'];
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -85,6 +90,38 @@ include __DIR__ . '/../includes/header.php';
                         <dd class="col-sm-8"><?php echo htmlspecialchars(substr((string)$req['fulfilled_date'], 0, 19)); ?></dd>
                         <?php endif; ?>
                     </dl>
+
+                    <?php if ($wfType === 'ready_board'): ?>
+                    <hr>
+                    <h3 class="h6 text-gray-600">Request details</h3>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-gray-600">Item class</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-<?php echo $classColors[(string)($req['item_class'] ?? '')] ?? 'secondary'; ?>">
+                                <?php echo htmlspecialchars($classLabels[(string)($req['item_class'] ?? '')] ?? ($req['item_class'] ?? '—')); ?>
+                            </span>
+                        </dd>
+                        <dt class="col-sm-4 text-gray-600">Department</dt>
+                        <dd class="col-sm-8"><?php echo htmlspecialchars((string)($req['department_scope'] ?? '—')); ?></dd>
+                        <dt class="col-sm-4 text-gray-600">Priority</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-<?php echo $priColors[(string)($req['priority'] ?? '')] ?? 'secondary'; ?>">
+                                <?php echo htmlspecialchars((string)($req['priority'] ?? '—')); ?>
+                            </span>
+                        </dd>
+                        <dt class="col-sm-4 text-gray-600">Description</dt>
+                        <dd class="col-sm-8"><?php echo nl2br(htmlspecialchars((string)($req['description'] ?? '—'))); ?></dd>
+                        <?php if (!empty($req['required_date'])): ?>
+                        <dt class="col-sm-4 text-gray-600">Required by</dt>
+                        <dd class="col-sm-8"><?php echo htmlspecialchars((string)$req['required_date']); ?></dd>
+                        <?php endif; ?>
+                        <?php if (!empty($req['notes'])): ?>
+                        <dt class="col-sm-4 text-gray-600">Notes</dt>
+                        <dd class="col-sm-8"><?php echo nl2br(htmlspecialchars((string)$req['notes'])); ?></dd>
+                        <?php endif; ?>
+                    </dl>
+                    <?php else: ?>
+                    <?php if (!empty($payload)): ?>
                     <hr>
                     <h3 class="h6 text-gray-600">Submitted fields</h3>
                     <dl class="row mb-0">
@@ -93,6 +130,8 @@ include __DIR__ . '/../includes/header.php';
                         <dd class="col-sm-8"><?php echo htmlspecialchars(is_scalar($val) ? (string)$val : json_encode($val)); ?></dd>
                         <?php endforeach; ?>
                     </dl>
+                    <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

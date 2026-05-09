@@ -139,10 +139,10 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
 <script>
 $(document).ready(function() {
     $('#archivedRetTable').DataTable({ pageLength: 25, order: [[4, 'desc']], dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" });
 });
 </script>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>
