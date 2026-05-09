@@ -478,10 +478,14 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
 <script>
 // Initialize DataTables
 $(document).ready(function() {
-    $('#assetsTable').DataTable({
+    var t = $('#assetsTable');
+    if (t.find('tbody td[colspan]').length) return;
+    t.DataTable({
         pageLength: 25,
         order: [[1, 'desc']], // Sort by Asset Tag descending
         language: {
@@ -496,7 +500,7 @@ async function generateQR(assetId) {
     try {
         const response = await fetch('<?php echo base_url('api/qr/generate.php'); ?>?asset_id=' + assetId);
         const result = await response.json();
-        
+
         if (result.success) {
             alert('QR Code generated: ' + result.qr_code_id);
             location.reload();
@@ -508,5 +512,3 @@ async function generateQR(assetId) {
     }
 }
 </script>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>
