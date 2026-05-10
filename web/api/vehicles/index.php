@@ -67,7 +67,11 @@ foreach ($assets as $a) {
         'organization'       => (string)($country['country_code'] ?? ''),
         'location'           => (string)($loc['location_name'] ?? '') ?: null,
         'vehicleType'        => (string)($a['vehicle_type'] ?? '') ?: null,
-        'notes'              => (string)($a['notes'] ?? '') ?: null,
+        'odometerFirstKm'   => isset($a['odometer_first_km']) ? (int)$a['odometer_first_km'] : null,
+        'odometerFirstDate' => (string)($a['odometer_first_date'] ?? '') ?: null,
+        'odometerLastKm'    => isset($a['odometer_last_km']) ? (int)$a['odometer_last_km'] : null,
+        'odometerLastDate'  => (string)($a['odometer_last_date'] ?? '') ?: null,
+        'notes'             => (string)($a['notes'] ?? '') ?: null,
         'qrCode'             => (string)($a['qr_code_id'] ?? '') ?: null,
         'assetTag'           => (string)($a['asset_tag'] ?? ''),
     ];

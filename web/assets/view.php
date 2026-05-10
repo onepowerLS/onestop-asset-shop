@@ -60,7 +60,6 @@ $page_title = (string)($asset['name'] ?? 'Item Detail');
 
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 $transactions = am_firestore_get_collection('am_core_transactions', 2000);
-$odometerReadings = am_firestore_get_collection('am_core_odometer_readings', 2000);
 
 $itemAllocations = array_filter($allocations, fn($a) => (string)($a['asset_id'] ?? '') === $assetId);
 $itemTransactions = array_filter($transactions, fn($t) => (string)($t['asset_id'] ?? '') === $assetId);
@@ -68,9 +67,6 @@ usort($itemTransactions, function ($a, $b) {
     return strtotime((string)($b['transaction_date'] ?? $b['created_at'] ?? '1970-01-01'))
         <=> strtotime((string)($a['transaction_date'] ?? $a['created_at'] ?? '1970-01-01'));
 });
-
-$itemOdometerReadings = array_filter($odometerReadings, fn($r) => (string)($r['asset_id'] ?? '') === $assetId);
-usort($itemOdometerReadings, fn($a, $b) => strcmp((string)($b['reading_date'] ?? ''), (string)($a['reading_date'] ?? '')));
 
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
@@ -267,36 +263,35 @@ include __DIR__ . '/../includes/header.php';
                 </div>
             </div>
             <?php endif; ?>
-            <?php if ($cls === 'FixedAsset' && $isVehicle && !empty($itemOdometerReadings)): ?>
+            <?php
+            $hasOdo = !empty($asset['odometer_first_km']) || !empty($asset['odometer_last_km']);
+            if ($cls === 'FixedAsset' && $isVehicle && $hasOdo):
+            ?>
             <div class="card border-0 shadow mt-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="fs-5 fw-bold mb-0"><i class="fas fa-tachometer-alt me-2 text-success"></i>Odometer Readings</h2>
-                    <span class="badge bg-success"><?php echo count($itemOdometerReadings); ?> readings</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm mb-0">
-                            <thead><tr><th>Date</th><th>Reading</th><th>Notes</th></tr></thead>
-                            <tbody>
-                                <?php foreach ($itemOdometerReadings as $rd):
-                                    $prevKm = isset($prevKm) ? $prevKm : null;
-                                    $currKm = (int)($rd['reading_km'] ?? 0);
-                                    $delta = $prevKm !== null ? $currKm - $prevKm : null;
-                                    $prevKm = $currKm;
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-tachometer-alt me-2 text-success"></i>Odometer</h2></div>
+                <div class="card-body">
+                    <p class="small text-gray-500 mb-3">Detailed readings are managed in FM. AM stores first/last summary.</p>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">First Reading</small>
+                            <p class="fw-bold mb-0"><?php echo number_format((int)($asset['odometer_first_km'] ?? 0)); ?> km</p>
+                            <small class="text-gray-400"><?php echo htmlspecialchars((string)($asset['odometer_first_date'] ?? '—')); ?></small>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Last Reading</small>
+                            <p class="fw-bold mb-0"><?php echo number_format((int)($asset['odometer_last_km'] ?? 0)); ?> km</p>
+                            <small class="text-gray-400"><?php echo htmlspecialchars((string)($asset['odometer_last_date'] ?? '—')); ?></small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Total Distance</small>
+                            <p class="fw-bold mb-0">
+                                <?php
+                                $firstKm = (int)($asset['odometer_first_km'] ?? 0);
+                                $lastKm = (int)($asset['odometer_last_km'] ?? 0);
+                                echo ($lastKm > $firstKm) ? number_format($lastKm - $firstKm) . ' km' : '—';
                                 ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars((string)($rd['reading_date'] ?? '—')); ?></td>
-                                    <td>
-                                        <?php echo number_format($currKm); ?> km
-                                        <?php if ($delta !== null && $delta > 0): ?>
-                                            <small class="text-success ms-1">(+<?php echo number_format($delta); ?>)</small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-gray-500 small"><?php echo htmlspecialchars((string)($rd['notes'] ?? '—')); ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

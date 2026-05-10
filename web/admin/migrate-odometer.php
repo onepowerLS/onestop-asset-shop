@@ -1,6 +1,10 @@
 <?php
 /**
- * MySQL → Firestore Odometer Readings Migration
+ * MySQL → Firestore Odometer Summary Migration
+ *
+ * FM owns detailed odometer history. AM stores only first/last readings
+ * per vehicle directly on the am_core_assets document.
+ *
  * Requires Admin. One-time operation.
  */
 require_once __DIR__ . '/../config/app.php';
@@ -31,15 +35,13 @@ if ($pdo) {
                     r.reading_id,
                     r.reading_km,
                     r.reading_date,
-                    r.notes AS reading_notes,
-                    r.created_at,
                     a.asset_id,
                     a.name AS vehicle_name,
                     a.asset_tag AS registration
                 FROM odometer_readings r
                 JOIN assets a ON r.asset_id = a.asset_id
                 WHERE a.category_id = ?
-                ORDER BY a.name, r.reading_date DESC
+                ORDER BY a.name, r.reading_date ASC
             ");
             $stmt->execute([$vcId]);
             $mysqlReadings = $stmt->fetchAll();
@@ -51,88 +53,100 @@ if ($pdo) {
     $mysqlError = 'No MySQL connection. Check database.php / .env.';
 }
 
-// Build preview by vehicle
+// Build preview: first/last per vehicle
 $preview = [];
 foreach ($mysqlReadings as $r) {
     $vname = (string)($r['vehicle_name'] ?? '');
-    $preview[$vname][] = [
-        'reading_id'     => $r['reading_id'],
-        'reading_km'     => (int)$r['reading_km'],
-        'reading_date'   => (string)($r['reading_date'] ?? ''),
-        'notes'          => (string)($r['reading_notes'] ?? ''),
-        'asset_id'       => $r['asset_id'],
-        'registration'   => (string)($r['registration'] ?? ''),
+    if (!isset($preview[$vname])) {
+        $preview[$vname] = [
+            'registration'  => (string)($r['registration'] ?? ''),
+            'readings'      => [],
+        ];
+    }
+    $preview[$vname]['readings'][] = [
+        'reading_km'   => (int)$r['reading_km'],
+        'reading_date' => (string)($r['reading_date'] ?? ''),
     ];
 }
 
-// ---- POST: run migration ----
-$results = [];
-$stats = ['imported' => 0, 'skipped' => 0, 'errors' => 0, 'no_vehicle' => 0];
+// Compute first/last per vehicle
+$previewSummary = [];
+foreach ($preview as $vname => $data) {
+    $readings = $data['readings'];
+    usort($readings, fn($a, $b) => strcmp($a['reading_date'], $b['reading_date']));
+    $first = $readings[0];
+    $last  = $readings[count($readings) - 1];
+    $previewSummary[$vname] = [
+        'registration'   => $data['registration'],
+        'total_readings' => count($readings),
+        'first_km'       => $first['reading_km'],
+        'first_date'     => $first['reading_date'],
+        'last_km'        => $last['reading_km'],
+        'last_date'      => $last['reading_date'],
+    ];
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlReadings)) {
-    // Build Firestore vehicle name-to-ID lookup
+// ---- POST: write first/last to vehicle documents ----
+$results = [];
+$stats = ['updated' => 0, 'skipped' => 0, 'errors' => 0, 'no_vehicle' => 0];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($previewSummary)) {
     $fsAssets = am_firestore_get_collection('am_core_assets', 2000);
     $vehicleCatCodes = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-TRAILER', 'FA-VEH-EQUIP'];
-    $nameToFirestoreId = [];
+    $nameToFs = [];
     foreach ($fsAssets as $a) {
         $cat = (string)($a['category_id'] ?? '');
         $cls = (string)($a['item_class'] ?? '');
         if ($cls === 'FixedAsset' && in_array($cat, $vehicleCatCodes, true)) {
             $aname = strtolower(trim((string)($a['name'] ?? '')));
             if ($aname !== '') {
-                $nameToFirestoreId[$aname] = (string)($a['id'] ?? '');
+                $nameToFs[$aname] = ['id' => (string)($a['id'] ?? ''), 'name' => (string)($a['name'] ?? '')];
             }
         }
     }
 
-    // Existing readings in Firestore for dedup
-    $existingReadings = am_firestore_get_collection('am_core_odometer_readings', 2000);
-    $existingKeys = [];
-    foreach ($existingReadings as $er) {
-        $aid = (string)($er['asset_id'] ?? '');
-        $km = (int)($er['reading_km'] ?? 0);
-        $dt = (string)($er['reading_date'] ?? '');
-        if ($aid !== '' && $km > 0 && $dt !== '') {
-            $existingKeys[$aid . '|' . $km . '|' . $dt] = true;
+    foreach ($previewSummary as $vehicleName => $s) {
+        $fs = $nameToFs[strtolower(trim($vehicleName))] ?? null;
+        if (!$fs) {
+            $results[] = ['vehicle' => $vehicleName, 'status' => 'no_vehicle', 'detail' => 'Vehicle not found in Firestore'];
+            $stats['no_vehicle']++;
+            continue;
         }
-    }
 
-    foreach ($preview as $vehicleName => $readings) {
-        $fsId = $nameToFirestoreId[strtolower(trim($vehicleName))] ?? null;
-
-        foreach ($readings as $r) {
-            if (!$fsId) {
-                $results[] = ['vehicle' => $vehicleName, 'status' => 'no_vehicle', 'detail' => 'Vehicle not found in Firestore'];
-                $stats['no_vehicle']++;
-                continue;
+        // Check if already has odometer data
+        $existing = $fsAssets;
+        $alreadyHas = false;
+        foreach ($existing as $ea) {
+            if ((string)($ea['id'] ?? '') === $fs['id']) {
+                if (!empty($ea['odometer_first_km']) || !empty($ea['odometer_last_km'])) {
+                    $alreadyHas = true;
+                }
+                break;
             }
+        }
 
-            $key = $fsId . '|' . $r['reading_km'] . '|' . $r['reading_date'];
-            if (isset($existingKeys[$key])) {
-                $results[] = ['vehicle' => $vehicleName, 'status' => 'skipped', 'detail' => $r['reading_km'] . ' km @ ' . $r['reading_date'] . ' (already exists)'];
-                $stats['skipped']++;
-                continue;
-            }
+        if ($alreadyHas) {
+            $results[] = ['vehicle' => $vehicleName, 'status' => 'skipped', 'detail' => 'Already has odometer summary'];
+            $stats['skipped']++;
+            continue;
+        }
 
-            $data = [
-                'asset_id'     => $fsId,
-                'vehicle_name' => $vehicleName,
-                'reading_km'   => $r['reading_km'],
-                'reading_date' => $r['reading_date'],
-                'notes'        => $r['notes'],
-                'created_at'   => (string)($r['reading_date'] ?? date('c')),
-                'migrated_at'  => date('c'),
-            ];
+        $update = [
+            'odometer_first_km'   => $s['first_km'],
+            'odometer_first_date' => $s['first_date'],
+            'odometer_last_km'    => $s['last_km'],
+            'odometer_last_date'  => $s['last_date'],
+            'updated_at'          => date('c'),
+        ];
 
-            $result = am_firestore_create_document('am_core_odometer_readings', $data);
-            if ($result['ok']) {
-                $results[] = ['vehicle' => $vehicleName, 'status' => 'imported', 'detail' => $r['reading_km'] . ' km @ ' . $r['reading_date']];
-                $stats['imported']++;
-                $existingKeys[$key] = true;
-            } else {
-                $results[] = ['vehicle' => $vehicleName, 'status' => 'error', 'detail' => $result['error'] ?? 'Unknown error'];
-                $stats['errors']++;
-            }
+        $result = am_firestore_update_document('am_core_assets', $fs['id'], $update);
+        if ($result['ok']) {
+            $results[] = ['vehicle' => $vehicleName, 'status' => 'updated', 'detail' =>
+                number_format($s['first_km']) . ' km → ' . number_format($s['last_km']) . ' km (' . $s['total_readings'] . ' readings)'];
+            $stats['updated']++;
+        } else {
+            $results[] = ['vehicle' => $vehicleName, 'status' => 'error', 'detail' => $result['error'] ?? 'Unknown error'];
+            $stats['errors']++;
         }
     }
 }
@@ -149,14 +163,17 @@ include __DIR__ . '/../includes/header.php';
     </nav>
 
     <h1 class="h2 mb-2">Migrate Odometer Readings: MySQL → Firestore</h1>
-    <p class="text-gray-600 mb-4">Reads odometer readings from the MySQL <code>odometer_readings</code> table (joined to <code>assets</code> for vehicle context) and creates them in Firestore <code>am_core_odometer_readings</code>.</p>
+    <p class="text-gray-600 mb-4">
+        Computes <strong>first</strong> (oldest) and <strong>last</strong> (newest) odometer readings per vehicle from MySQL
+        and stores them directly on the vehicle's <code>am_core_assets</code> document.
+        Detailed reading history stays in FM.
+    </p>
 
     <?php if ($mysqlError): ?>
     <div class="alert alert-danger">
-        <strong>MySQL connection failed:</strong> <?php echo htmlspecialchars($mysqlError); ?><br>
-        The MySQL database must be accessible to read existing odometer readings.
+        <strong>MySQL connection failed:</strong> <?php echo htmlspecialchars($mysqlError); ?>
     </div>
-    <?php elseif (empty($mysqlReadings)): ?>
+    <?php elseif (empty($previewSummary)): ?>
     <div class="alert alert-info">No odometer readings found in MySQL for vehicles. Nothing to migrate.</div>
     <?php endif; ?>
 
@@ -165,9 +182,9 @@ include __DIR__ . '/../includes/header.php';
         <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Migration Results</h2></div>
         <div class="card-body">
             <div class="mb-3">
-                <span class="badge bg-success me-2"><?php echo $stats['imported']; ?> imported</span>
+                <span class="badge bg-success me-2"><?php echo $stats['updated']; ?> updated</span>
                 <span class="badge bg-secondary me-2"><?php echo $stats['skipped']; ?> skipped</span>
-                <?php if ($stats['no_vehicle']): ?><span class="badge bg-warning text-dark me-2"><?php echo $stats['no_vehicle']; ?> no vehicle match</span><?php endif; ?>
+                <?php if ($stats['no_vehicle']): ?><span class="badge bg-warning text-dark me-2"><?php echo $stats['no_vehicle']; ?> no match</span><?php endif; ?>
                 <?php if ($stats['errors']): ?><span class="badge bg-danger me-2"><?php echo $stats['errors']; ?> errors</span><?php endif; ?>
             </div>
             <table class="table table-sm">
@@ -177,7 +194,7 @@ include __DIR__ . '/../includes/header.php';
                     <tr>
                         <td><?php echo htmlspecialchars($r['vehicle']); ?></td>
                         <td>
-                            <?php if ($r['status'] === 'imported'): ?><span class="badge bg-success">Imported</span>
+                            <?php if ($r['status'] === 'updated'): ?><span class="badge bg-success">Updated</span>
                             <?php elseif ($r['status'] === 'skipped'): ?><span class="badge bg-secondary">Skipped</span>
                             <?php elseif ($r['status'] === 'no_vehicle'): ?><span class="badge bg-warning text-dark">No Match</span>
                             <?php else: ?><span class="badge bg-danger">Error</span><?php endif; ?>
@@ -191,43 +208,44 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
-    <?php if (!$mysqlError && !empty($preview) && empty($results)): ?>
+    <?php if (!$mysqlError && !empty($previewSummary) && empty($results)): ?>
     <div class="card border-0 shadow">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="fs-5 fw-bold mb-0">Preview — <?php
-                $totalReadings = 0;
-                foreach ($preview as $rs) $totalReadings += count($rs);
-                echo count($preview) . ' vehicles, ' . $totalReadings . ' readings';
-            ?></h2>
+            <h2 class="fs-5 fw-bold mb-0">Preview — <?php echo count($previewSummary); ?> vehicles</h2>
+            <span class="small text-gray-500">Fields written to <code>am_core_assets</code>: odometer_first_km, odometer_first_date, odometer_last_km, odometer_last_date</span>
         </div>
         <div class="card-body p-0">
-            <?php foreach ($preview as $vehicleName => $readings): ?>
-            <div class="border-bottom">
-                <div class="px-3 py-2 bg-light fw-bold">
-                    <?php echo htmlspecialchars($vehicleName); ?>
-                    <?php if (!empty($readings[0]['registration'])): ?>
-                        <code class="ms-2 small"><?php echo htmlspecialchars($readings[0]['registration']); ?></code>
-                    <?php endif; ?>
-                    <span class="badge bg-secondary ms-2"><?php echo count($readings); ?> readings</span>
-                </div>
+            <div class="table-responsive">
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>Reading (km)</th><th>Date</th><th>Notes</th></tr></thead>
-                    <tbody>
-                        <?php foreach ($readings as $rd): ?>
+                    <thead>
                         <tr>
-                            <td><?php echo number_format($rd['reading_km']); ?> km</td>
-                            <td><?php echo htmlspecialchars($rd['reading_date']); ?></td>
-                            <td class="text-gray-500"><?php echo htmlspecialchars($rd['notes'] ?: '—'); ?></td>
+                            <th>Vehicle</th>
+                            <th>Registration</th>
+                            <th>Readings</th>
+                            <th>First</th>
+                            <th>Last</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($previewSummary as $vehicleName => $s): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars($vehicleName); ?></strong></td>
+                            <td><code><?php echo htmlspecialchars($s['registration'] ?: '—'); ?></code></td>
+                            <td><span class="badge bg-secondary"><?php echo $s['total_readings']; ?></span></td>
+                            <td><?php echo number_format($s['first_km']); ?> km<br><small class="text-gray-500"><?php echo htmlspecialchars($s['first_date']); ?></small></td>
+                            <td><?php echo number_format($s['last_km']); ?> km<br><small class="text-gray-500"><?php echo htmlspecialchars($s['last_date']); ?></small></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-            <?php endforeach; ?>
             <div class="card-footer d-flex justify-content-between align-items-center">
-                <p class="mb-0 small text-gray-500">Readings are matched to Firestore vehicles by name and stored in <code>am_core_odometer_readings</code>.</p>
+                <p class="mb-0 small text-gray-500">
+                    Each vehicle gets <code>odometer_first_km</code>, <code>odometer_first_date</code>,
+                    <code>odometer_last_km</code>, <code>odometer_last_date</code> written to its Firestore document.
+                </p>
                 <form method="post">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-rocket me-2"></i>Import All to Firestore</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-rocket me-2"></i>Write Summaries to Firestore</button>
                 </form>
             </div>
         </div>
