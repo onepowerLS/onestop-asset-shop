@@ -356,6 +356,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/migrate-odometer.php'); ?>">
+                                <span class="sidebar-text">Migrate odometer</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/provision-auditor.php'); ?>">
                                 <span class="sidebar-text">Provision auditor</span>
                             </a>

@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$vehicleCategories = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-EQUIP'];
+$vehicleCategories = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-TRAILER', 'FA-VEH-EQUIP'];
 
 // Fetch all assets and filter to vehicles
 $assets = am_firestore_get_collection('am_core_assets', 2000);

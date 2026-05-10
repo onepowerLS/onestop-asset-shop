@@ -28,13 +28,21 @@ function classify_vehicle_type(string $name, string $make, string $model): array
                       'suv', '4x4', '4wd', 'double cab', 'pickup', 'bakkie'];
     $truckKeywords  = ['truck', 'lorry', 'canter', 'fuso', 'hino', 'actros', 'fh', 'fm',
                        'cargo', 'tipper', 'dump', 'tanker', 'rigid', 'artic'];
+    $trailerKeywords = ['trailer', 'semi-trailer', 'semi trailer', 'lowboy', 'low bed',
+                       'flatbed', 'flat bed', 'step deck', 'tanker trailer', 'curtainsider',
+                       'tautliner', 'drop side', 'drop deck', 'skeletal', 'container trailer'];
+    $truckKeywords  = ['truck', 'lorry', 'canter', 'fuso', 'hino', 'actros', 'fh', 'fm',
+                       'cargo', 'tipper', 'dump', 'tanker', 'rigid', 'artic'];
     $equipKeywords  = ['compressor', 'drill rig', 'drillrig', 'telehandler', 'tractors',
-                       'tractor', 'trailer', 'generator', 'bowser', 'forklift', 'fork lift',
+                       'tractor', 'generator', 'bowser', 'forklift', 'fork lift',
                        'crane', 'excavator', 'grader', 'dozer', 'bulldozer', 'loader',
                        'backhoe', 'roller', 'compactor', 'skid steer', 'skidsteer',
                        'concrete mixer', 'tower light', 'welder', 'pump', 'crusher',
                        'screener', 'equipment', 'plant', 'harrow', 'plough'];
 
+    foreach ($trailerKeywords as $kw) {
+        if (str_contains($blob, $kw)) return ['trailer', 'FA-VEH-TRAILER'];
+    }
     foreach ($equipKeywords as $kw) {
         if (str_contains($blob, $kw)) return ['equipment', 'FA-VEH-EQUIP'];
     }
@@ -57,9 +65,10 @@ function seed_vehicle_categories(): array {
     }
 
     $needed = [
-        'FA-VEH-4X4'   => 'Vehicles - 4x4 / SUV',
-        'FA-VEH-TRUCK' => 'Vehicles - Truck',
-        'FA-VEH-EQUIP' => 'Vehicles - Equipment',
+        'FA-VEH-4X4'     => 'Vehicles - 4x4 / SUV',
+        'FA-VEH-TRUCK'   => 'Vehicles - Truck',
+        'FA-VEH-TRAILER' => 'Vehicles - Trailer',
+        'FA-VEH-EQUIP'   => 'Vehicles - Equipment',
     ];
 
     $seeded = [];
@@ -136,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlVehicl
     // Existing Firestore vehicles for dedup + tag generation
     $existingAssets = am_firestore_get_collection('am_core_assets', 2000);
     $existingVehicleNames = [];
-    $vehicleCatCodes = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-EQUIP'];
+    $vehicleCatCodes = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-TRAILER', 'FA-VEH-EQUIP'];
     foreach ($existingAssets as $ea) {
         $ecid = (string)($ea['category_id'] ?? '');
         if (in_array($ecid, $vehicleCatCodes, true)) {
@@ -263,7 +272,7 @@ include __DIR__ . '/../includes/header.php';
     </nav>
 
     <h1 class="h2 mb-2">Migrate Vehicles: MySQL → Firestore</h1>
-    <p class="text-gray-600 mb-4">Reads vehicles from the MySQL <code>assets</code> table and creates them in Firestore <code>am_core_assets</code> with FM-aligned subcategories (4x4/SUV, Truck, Equipment).</p>
+    <p class="text-gray-600 mb-4">Reads vehicles from the MySQL <code>assets</code> table and creates them in Firestore <code>am_core_assets</code> with FM-aligned subcategories (4x4/SUV, Truck, Trailer, Equipment).</p>
 
     <?php if ($mysqlError): ?>
     <div class="alert alert-danger">
@@ -338,6 +347,7 @@ include __DIR__ . '/../includes/header.php';
                                     <select class="form-select form-select-sm" name="override_cat[<?php echo $pv['asset_id']; ?>]" style="width:auto;">
                                         <option value="FA-VEH-4X4" <?php echo $pv['detected_cat'] === 'FA-VEH-4X4' ? 'selected' : ''; ?>>4x4 / SUV</option>
                                         <option value="FA-VEH-TRUCK" <?php echo $pv['detected_cat'] === 'FA-VEH-TRUCK' ? 'selected' : ''; ?>>Truck</option>
+                                        <option value="FA-VEH-TRAILER" <?php echo $pv['detected_cat'] === 'FA-VEH-TRAILER' ? 'selected' : ''; ?>>Trailer</option>
                                         <option value="FA-VEH-EQUIP" <?php echo $pv['detected_cat'] === 'FA-VEH-EQUIP' ? 'selected' : ''; ?>>Equipment</option>
                                     </select>
                                 </td>
@@ -347,7 +357,7 @@ include __DIR__ . '/../includes/header.php';
                     </table>
                 </div>
                 <div class="card-footer d-flex justify-content-between align-items-center">
-                    <p class="mb-0 small text-gray-500">Categories FA-VEH-4X4, FA-VEH-TRUCK, FA-VEH-EQUIP will be seeded into <code>pr_master_categories</code> if missing.</p>
+                    <p class="mb-0 small text-gray-500">Categories FA-VEH-4X4, FA-VEH-TRUCK, FA-VEH-TRAILER, FA-VEH-EQUIP will be seeded into <code>pr_master_categories</code> if missing.</p>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-rocket me-2"></i>Import All to Firestore</button>
                 </div>
             </form>

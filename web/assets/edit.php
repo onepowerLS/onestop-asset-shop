@@ -397,6 +397,7 @@ include __DIR__ . '/../includes/header.php';
                             <option value="">Select…</option>
                             <option value="4x4" <?php echo (string)($vals['vehicle_type'] ?? '') === '4x4' ? 'selected' : ''; ?>>4x4 / SUV</option>
                             <option value="truck" <?php echo (string)($vals['vehicle_type'] ?? '') === 'truck' ? 'selected' : ''; ?>>Truck</option>
+                            <option value="trailer" <?php echo (string)($vals['vehicle_type'] ?? '') === 'trailer' ? 'selected' : ''; ?>>Trailer</option>
                             <option value="equipment" <?php echo (string)($vals['vehicle_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment</option>
                         </select>
                     </div>
