@@ -351,8 +351,8 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo base_url('admin/import-vehicles.php'); ?>">
-                                <span class="sidebar-text">Import vehicles</span>
+                            <a class="nav-link" href="<?php echo base_url('admin/migrate-vehicles.php'); ?>">
+                                <span class="sidebar-text">Migrate vehicles</span>
                             </a>
                         </li>
                         <li class="nav-item">

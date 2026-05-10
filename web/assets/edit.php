@@ -77,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         $purchasePrice = trim($_POST['purchase_price'] ?? '');
         $salvageValue = trim($_POST['salvage_value'] ?? '');
+        $vehicleYear = trim($_POST['vehicle_year'] ?? (string)($asset['vehicle_year'] ?? ''));
 
         // Detect class change and handle side effects
         $storedClass = (string)($asset['item_class'] ?? '');
@@ -145,6 +146,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'legacy_tag' => trim($_POST['legacy_tag'] ?? ($asset['legacy_tag'] ?? '')),
             'notes' => trim($_POST['notes'] ?? ''),
             'updated_at' => date('c'),
+            // Vehicle-specific fields
+            'vehicle_type'       => trim($_POST['vehicle_type'] ?? (string)($asset['vehicle_type'] ?? '')),
+            'vehicle_year'       => $vehicleYear !== '' ? (int)$vehicleYear : ($asset['vehicle_year'] ?? null),
+            'engine_number'      => trim($_POST['engine_number'] ?? (string)($asset['engine_number'] ?? '')),
+            'transmission_type'  => trim($_POST['transmission_type'] ?? (string)($asset['transmission_type'] ?? '')),
+            'fuel_type'          => trim($_POST['fuel_type'] ?? (string)($asset['fuel_type'] ?? '')),
+            'drive_type'         => trim($_POST['drive_type'] ?? (string)($asset['drive_type'] ?? '')),
         ];
 
         am_require_asset_country_mutate($countryId, $countries);
@@ -378,6 +386,57 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
+        <!-- Vehicle fields (shown when a vehicle category is selected) -->
+        <div class="card border-0 shadow mb-4" id="vehicleFields" style="display:none;">
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Vehicle Details</h2></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Vehicle Type</label>
+                        <select class="form-select" name="vehicle_type">
+                            <option value="">Select…</option>
+                            <option value="4x4" <?php echo (string)($vals['vehicle_type'] ?? '') === '4x4' ? 'selected' : ''; ?>>4x4 / SUV</option>
+                            <option value="truck" <?php echo (string)($vals['vehicle_type'] ?? '') === 'truck' ? 'selected' : ''; ?>>Truck</option>
+                            <option value="equipment" <?php echo (string)($vals['vehicle_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Year</label>
+                        <input type="number" class="form-control" name="vehicle_year" min="1980" max="2099" value="<?php echo htmlspecialchars((string)($vals['vehicle_year'] ?? '')); ?>">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Engine Number</label>
+                        <input type="text" class="form-control" name="engine_number" value="<?php echo htmlspecialchars((string)($vals['engine_number'] ?? '')); ?>">
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Transmission</label>
+                        <select class="form-select" name="transmission_type">
+                            <option value="">—</option>
+                            <option value="MT" <?php echo (string)($vals['transmission_type'] ?? '') === 'MT' ? 'selected' : ''; ?>>Manual (MT)</option>
+                            <option value="AT" <?php echo (string)($vals['transmission_type'] ?? '') === 'AT' ? 'selected' : ''; ?>>Automatic (AT)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Fuel Type</label>
+                        <select class="form-select" name="fuel_type">
+                            <option value="">—</option>
+                            <option value="Petrol" <?php echo (string)($vals['fuel_type'] ?? '') === 'Petrol' ? 'selected' : ''; ?>>Petrol</option>
+                            <option value="Diesel" <?php echo (string)($vals['fuel_type'] ?? '') === 'Diesel' ? 'selected' : ''; ?>>Diesel</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Drive Type</label>
+                        <select class="form-select" name="drive_type">
+                            <option value="">—</option>
+                            <option value="2WD" <?php echo (string)($vals['drive_type'] ?? '') === '2WD' ? 'selected' : ''; ?>>2WD</option>
+                            <option value="4WD" <?php echo (string)($vals['drive_type'] ?? '') === '4WD' ? 'selected' : ''; ?>>4WD</option>
+                            <option value="6WD" <?php echo (string)($vals['drive_type'] ?? '') === '6WD' ? 'selected' : ''; ?>>6WD</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Quantity fields -->
         <div class="card border-0 shadow mb-4" id="quantityFields" style="display:none;">
             <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Quantity & Units</h2></div>
@@ -429,8 +488,17 @@ function onClassChange() {
         opt.style.display = (!cls || opt.dataset.itemClass === cls) ? '' : 'none';
         if (opt.style.display === 'none' && opt.selected) { opt.selected = false; catSelect.value = ''; }
     });
+    updateVehicleFields();
 }
-document.addEventListener('DOMContentLoaded', onClassChange);
+function updateVehicleFields() {
+    var catVal = document.getElementById('categorySelect').value || '';
+    var isVehicle = /^FA-VEH/.test(catVal);
+    document.getElementById('vehicleFields').style.display = isVehicle ? '' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function() {
+    onClassChange();
+    document.getElementById('categorySelect').addEventListener('change', updateVehicleFields);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

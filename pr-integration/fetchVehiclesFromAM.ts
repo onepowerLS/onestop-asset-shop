@@ -21,6 +21,7 @@ interface AMVehicle {
   make: string | null;
   model: string | null;
   registrationNumber: string | null;
+  vehicleType: string | null;
   status: string;
   isActive: number;
   organization: string;
@@ -45,6 +46,7 @@ interface PRVehicle {
   model?: string;
   vinNumber?: string;
   engineNumber?: string;
+  vehicleType?: string;
   isActive: boolean;
   organization?: {
     id: string;
@@ -81,6 +83,7 @@ export async function fetchVehiclesFromAM(): Promise<PRVehicle[]> {
       make: v.make || undefined,
       model: v.model || undefined,
       vinNumber: v.vinNumber || undefined,
+      vehicleType: v.vehicleType || undefined,
       isActive: v.isActive === 1 && v.status === 'Available',
       // Map organization code to PR organization
       organizationId: mapOrganizationCode(v.organization),

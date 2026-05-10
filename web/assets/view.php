@@ -227,6 +227,43 @@ include __DIR__ . '/../includes/header.php';
                 </div>
             </div>
             <?php
+            $catId = (string)($asset['category_id'] ?? '');
+            $isVehicle = (bool)preg_match('/^FA-VEH/', $catId);
+            if ($cls === 'FixedAsset' && $isVehicle):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-car me-2 text-primary"></i>Vehicle Details</h2></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Vehicle Type</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['vehicle_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Year</small>
+                            <p class="fw-bold mb-0"><?php echo !empty($asset['vehicle_year']) ? htmlspecialchars((string)$asset['vehicle_year']) : '—'; ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Engine Number</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['engine_number'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Transmission</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['transmission_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Fuel Type</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['fuel_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <small class="text-gray-500">Drive</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['drive_type'] ?? '—')); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php
             $builtFrom = $asset['built_from'] ?? [];
             if ($cls === 'FixedAsset' && is_array($builtFrom) && !empty($builtFrom)):
             ?>
