@@ -123,6 +123,119 @@ if ($pdo) {
     $mysqlError = 'No MySQL connection. Check database.php / .env.';
 }
 
+// ---- Merge duplicates: group by normalized name, combine complementary fields ----
+function merge_vehicles(array $rows): array {
+    $groups = [];
+    foreach ($rows as $r) {
+        $key = strtolower(trim((string)($r['name'] ?? '')));
+        if ($key === '') continue;
+        $groups[$key][] = $r;
+    }
+
+    $merged = [];
+    $mergeStats = ['total_rows' => count($rows), 'merged_groups' => 0, 'merged_rows_absorbed' => 0];
+
+    // Mergeable text fields — pick first non-empty across group
+    $mergeFields = [
+        'registration_number' => 'asset_tag',
+        'vin_number'          => 'serial_number',
+        'manufacturer'        => 'manufacturer',
+        'model'               => 'model',
+        'engine_number'       => 'engine_number',
+        'transmission_type'   => 'transmission_type',
+        'fuel_type'           => 'fuel_type',
+        'drive_type'          => 'drive_type',
+        'purchase_date'       => 'purchase_date',
+        'notes'               => 'notes',
+    ];
+
+    foreach ($groups as $key => $group) {
+        if (count($group) === 1) {
+            $merged[] = ['source_rows' => $group, 'enriched_fields' => [], '_row_count' => 1];
+            continue;
+        }
+
+        $mergeStats['merged_groups']++;
+        $mergeStats['merged_rows_absorbed'] += count($group) - 1;
+
+        // Primary row = first in group; enrich it with missing fields from siblings
+        $enriched = [];
+
+        foreach ($mergeFields as $alias => $col) {
+            $primaryVal = trim((string)($group[0][$alias] ?? $group[0][$col] ?? ''));
+            if ($primaryVal !== '') continue; // already has a value
+
+            foreach ($group as $i => $row) {
+                if ($i === 0) continue;
+                $val = trim((string)($row[$alias] ?? $row[$col] ?? ''));
+                if ($val !== '') {
+                    $group[0][$alias] = $val;
+                    $group[0][$col] = $val;
+                    $enriched[] = $alias;
+                    break; // take first non-empty from siblings
+                }
+            }
+        }
+
+        // Year: pick first non-null from siblings if primary is null
+        if (empty($group[0]['vehicle_year'])) {
+            foreach ($group as $i => $row) {
+                if ($i === 0) continue;
+                if (!empty($row['vehicle_year'])) {
+                    $group[0]['vehicle_year'] = $row['vehicle_year'];
+                    $enriched[] = 'vehicle_year';
+                    break;
+                }
+            }
+        }
+
+        // Purchase price: pick first non-null
+        if (empty($group[0]['purchase_price'])) {
+            foreach ($group as $i => $row) {
+                if ($i === 0) continue;
+                if (!empty($row['purchase_price'])) {
+                    $group[0]['purchase_price'] = $row['purchase_price'];
+                    $enriched[] = 'purchase_price';
+                    break;
+                }
+            }
+        }
+
+        // Country: prefer non-null from any row
+        if (empty($group[0]['country_id'])) {
+            foreach ($group as $i => $row) {
+                if ($i === 0) continue;
+                if (!empty($row['country_id'])) {
+                    $group[0]['country_id'] = $row['country_id'];
+                    $enriched[] = 'country_id';
+                    break;
+                }
+            }
+        }
+
+        // Location: same
+        if (empty($group[0]['location_id'])) {
+            foreach ($group as $i => $row) {
+                if ($i === 0) continue;
+                if (!empty($row['location_id'])) {
+                    $group[0]['location_id'] = $row['location_id'];
+                    $enriched[] = 'location_id';
+                    break;
+                }
+            }
+        }
+
+        $merged[] = ['source_rows' => $group, 'enriched_fields' => $enriched, '_row_count' => count($group)];
+    }
+
+    $merged['_stats'] = $mergeStats;
+    return $merged;
+}
+
+$mergedVehicles = merge_vehicles($mysqlVehicles);
+$mergeStats = $mergedVehicles['_stats'] ?? ['total_rows' => 0, 'merged_groups' => 0, 'merged_rows_absorbed' => 0];
+unset($mergedVehicles['_stats']);
+
 // ---- POST: run migration ----
 $results = [];
 $stats = ['imported' => 0, 'skipped' => 0, 'errors' => 0];
@@ -156,9 +269,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlVehicl
     $overrides = $_POST['override_type'] ?? [];
     $overrideCat = $_POST['override_cat'] ?? [];
 
-    foreach ($mysqlVehicles as $mv) {
-        $name = (string)($mv['name'] ?? '');
-        $assetId = $mv['asset_id'];
+    foreach ($mergedVehicles as $mv) {
+        $primary = $mv['source_rows'][0];
+        $assetId = $primary['asset_id'];
+        $name = (string)($primary['name'] ?? '');
 
         if (in_array(strtolower($name), $existingVehicleNames, true)) {
             $results[] = ['name' => $name, 'status' => 'skipped', 'detail' => 'Already in Firestore'];
@@ -172,16 +286,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlVehicl
             $catCode = $overrideCat[$assetId];
         } else {
             [$vtype, $catCode] = classify_vehicle_type($name,
-                (string)($mv['manufacturer'] ?? ''), (string)($mv['model'] ?? ''));
+                (string)($primary['manufacturer'] ?? ''), (string)($primary['model'] ?? ''));
         }
 
         // Resolve country
-        $cid = (string)($mv['country_id'] ?? '');
+        $cid = (string)($primary['country_id'] ?? '');
         $country = $countryById[$cid] ?? [];
         $countryCode = (string)($country['country_code'] ?? 'LSO');
 
         // Resolve location
-        $lid = (string)($mv['location_id'] ?? '');
+        $lid = (string)($primary['location_id'] ?? '');
         $loc = $locById[$lid] ?? [];
         $locName = (string)($loc['location_name'] ?? '');
         $locCode = (string)($loc['location_code'] ?? '');
@@ -189,37 +303,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlVehicl
         // Generate asset tag
         $assetTag = am_generate_asset_tag('FixedAsset', $countryCode, $existingAssets);
 
-        // Map MySQL fields to Firestore
+        // Build notes: mention if merged
+        $mergeNote = '';
+        if ($mv['_row_count'] > 1) {
+            $mergeNote = 'Merged from ' . $mv['_row_count'] . ' MySQL rows. ';
+            if (!empty($mv['enriched_fields'])) {
+                $mergeNote .= 'Enriched fields: ' . implode(', ', $mv['enriched_fields']) . '. ';
+            }
+        }
+
+        // Map MySQL fields to Firestore (using merged/enriched primary row)
         $data = [
             'name'               => $name,
-            'description'        => (string)($mv['manufacturer'] ?? '') . ' ' . (string)($mv['model'] ?? '') . ($mv['registration_number'] ? ' — ' . $mv['registration_number'] : ''),
+            'description'        => (string)($primary['manufacturer'] ?? '') . ' ' . (string)($primary['model'] ?? '') . ($primary['registration_number'] ? ' — ' . $primary['registration_number'] : ''),
             'item_class'         => 'FixedAsset',
             'category_id'        => $catCode,
             'country_id'         => $cid,
             'location_id'        => $lid,
             'location_name'      => $locName,
             'location_code'      => $locCode,
-            'serial_number'      => (string)($mv['vin_number'] ?? ''),
-            'manufacturer'       => (string)($mv['manufacturer'] ?? ''),
-            'model'              => (string)($mv['model'] ?? ''),
-            'purchase_date'      => (string)($mv['purchase_date'] ?? ''),
-            'purchase_price'     => $mv['purchase_price'] ? (float)$mv['purchase_price'] : null,
+            'serial_number'      => (string)($primary['vin_number'] ?? ''),
+            'manufacturer'       => (string)($primary['manufacturer'] ?? ''),
+            'model'              => (string)($primary['model'] ?? ''),
+            'purchase_date'      => (string)($primary['purchase_date'] ?? ''),
+            'purchase_price'     => $primary['purchase_price'] ? (float)$primary['purchase_price'] : null,
             'salvage_value'      => null,
             'warranty_expiry'    => '',
-            'condition_status'   => (string)($mv['condition_status'] ?? 'Good'),
-            'status'             => (string)($mv['status'] ?? 'Available'),
+            'condition_status'   => (string)($primary['condition_status'] ?? 'Good'),
+            'status'             => (string)($primary['status'] ?? 'Available'),
             'quantity'           => 1,
             'unit_of_measure'    => 'EA',
             'asset_tag'          => $assetTag,
-            'legacy_tag'         => (string)($mv['registration_number'] ?? ''),
-            'qr_code_id'         => (string)($mv['qr_code_id'] ?? ''),
-            'notes'              => 'Migrated from MySQL — ' . (string)($mv['notes'] ?? ''),
+            'legacy_tag'         => (string)($primary['registration_number'] ?? ''),
+            'qr_code_id'         => (string)($primary['qr_code_id'] ?? ''),
+            'notes'              => $mergeNote . 'Migrated from MySQL — ' . (string)($primary['notes'] ?? ''),
             'vehicle_type'       => $vtype,
-            'vehicle_year'       => $mv['vehicle_year'] ? (int)$mv['vehicle_year'] : null,
-            'engine_number'      => (string)($mv['engine_number'] ?? ''),
-            'transmission_type'  => (string)($mv['transmission_type'] ?? ''),
-            'fuel_type'          => (string)($mv['fuel_type'] ?? ''),
-            'drive_type'         => (string)($mv['drive_type'] ?? ''),
+            'vehicle_year'       => $primary['vehicle_year'] ? (int)$primary['vehicle_year'] : null,
+            'engine_number'      => (string)($primary['engine_number'] ?? ''),
+            'transmission_type'  => (string)($primary['transmission_type'] ?? ''),
+            'fuel_type'          => (string)($primary['fuel_type'] ?? ''),
+            'drive_type'         => (string)($primary['drive_type'] ?? ''),
             'created_at'         => date('c'),
             'updated_at'         => date('c'),
             'created_by'         => $_SESSION['user_id'] ?? '',
@@ -238,25 +361,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlVehicl
     }
 }
 
-// ---- For preview: classify each vehicle ----
+// ---- For preview: classify each merged vehicle ----
 $preview = [];
-foreach ($mysqlVehicles as $mv) {
+foreach ($mergedVehicles as $mv) {
+    $primary = $mv['source_rows'][0];
     [$vtype, $catCode] = classify_vehicle_type(
-        (string)($mv['name'] ?? ''),
-        (string)($mv['manufacturer'] ?? ''),
-        (string)($mv['model'] ?? '')
+        (string)($primary['name'] ?? ''),
+        (string)($primary['manufacturer'] ?? ''),
+        (string)($primary['model'] ?? '')
     );
     $preview[] = [
-        'asset_id'             => $mv['asset_id'],
-        'name'                 => (string)($mv['name'] ?? ''),
-        'registration_number'  => (string)($mv['registration_number'] ?? ''),
-        'make'                 => (string)($mv['manufacturer'] ?? ''),
-        'model'                => (string)($mv['model'] ?? ''),
-        'year'                 => $mv['vehicle_year'] ?? '',
-        'vin'                  => (string)($mv['vin_number'] ?? ''),
-        'status'               => (string)($mv['status'] ?? ''),
+        'asset_id'             => $primary['asset_id'],
+        'name'                 => (string)($primary['name'] ?? ''),
+        'registration_number'  => (string)($primary['registration_number'] ?? ''),
+        'make'                 => (string)($primary['manufacturer'] ?? ''),
+        'model'                => (string)($primary['model'] ?? ''),
+        'year'                 => $primary['vehicle_year'] ?? '',
+        'vin'                  => (string)($primary['vin_number'] ?? ''),
+        'status'               => (string)($primary['status'] ?? ''),
         'detected_type'        => $vtype,
         'detected_cat'         => $catCode,
+        'row_count'            => $mv['_row_count'],
+        'enriched_fields'      => $mv['enriched_fields'],
     ];
 }
 
@@ -312,11 +438,17 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
-    <?php if (!$mysqlError && !empty($mysqlVehicles) && empty($results)): ?>
+    <?php if (!$mysqlError && !empty($preview) && empty($results)): ?>
     <div class="card border-0 shadow">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h2 class="fs-5 fw-bold mb-0">Preview — <?php echo count($preview); ?> vehicles</h2>
-            <span class="small text-gray-500">Adjust types before importing</span>
+            <div>
+                <?php if ($mergeStats['merged_groups'] > 0): ?>
+                <span class="badge bg-info me-2"><?php echo $mergeStats['merged_groups']; ?> groups merged</span>
+                <span class="badge bg-secondary"><?php echo $mergeStats['merged_rows_absorbed']; ?> duplicate rows absorbed</span>
+                <?php endif; ?>
+                <span class="small text-gray-500 ms-2">Adjust types before importing</span>
+            </div>
         </div>
         <div class="card-body p-0">
             <form method="post">
@@ -330,18 +462,36 @@ include __DIR__ . '/../includes/header.php';
                                 <th>Year</th>
                                 <th>VIN</th>
                                 <th>Status</th>
+                                <th>Sources</th>
                                 <th>Detected Type</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($preview as $pv): ?>
-                            <tr>
+                            <tr class="<?php echo $pv['row_count'] > 1 ? 'table-info' : ''; ?>">
                                 <td><strong><?php echo htmlspecialchars($pv['name']); ?></strong></td>
                                 <td><code><?php echo htmlspecialchars($pv['registration_number'] ?: '—'); ?></code></td>
                                 <td><?php echo htmlspecialchars(trim($pv['make'] . ' ' . $pv['model']) ?: '—'); ?></td>
                                 <td><?php echo htmlspecialchars($pv['year'] ?: '—'); ?></td>
                                 <td><small><code><?php echo htmlspecialchars($pv['vin'] ?: '—'); ?></code></small></td>
                                 <td><span class="badge bg-<?php echo $pv['status'] === 'Available' ? 'success' : 'secondary'; ?>"><?php echo htmlspecialchars($pv['status']); ?></span></td>
+                                <td>
+                                    <?php if ($pv['row_count'] > 1): ?>
+                                        <span class="badge bg-info"><?php echo $pv['row_count']; ?> rows merged</span>
+                                        <?php if (!empty($pv['enriched_fields'])): ?>
+                                            <br><small class="text-success">+<?php echo implode(', ', array_map(function($f) {
+                                                $labels = ['registration_number' => 'Reg#', 'vin_number' => 'VIN', 'manufacturer' => 'Make',
+                                                    'model' => 'Model', 'engine_number' => 'Engine', 'transmission_type' => 'Trans',
+                                                    'fuel_type' => 'Fuel', 'drive_type' => 'Drive', 'purchase_date' => 'PurchDate',
+                                                    'purchase_price' => 'Price', 'vehicle_year' => 'Year', 'notes' => 'Notes',
+                                                    'country_id' => 'Country', 'location_id' => 'Location'];
+                                                return $labels[$f] ?? $f;
+                                            }, $pv['enriched_fields'])); ?></small>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-gray-400">—</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <input type="hidden" name="override_type[<?php echo $pv['asset_id']; ?>]" value="<?php echo htmlspecialchars($pv['detected_type']); ?>">
                                     <select class="form-select form-select-sm" name="override_cat[<?php echo $pv['asset_id']; ?>]" style="width:auto;">
@@ -357,7 +507,7 @@ include __DIR__ . '/../includes/header.php';
                     </table>
                 </div>
                 <div class="card-footer d-flex justify-content-between align-items-center">
-                    <p class="mb-0 small text-gray-500">Categories FA-VEH-4X4, FA-VEH-TRUCK, FA-VEH-TRAILER, FA-VEH-EQUIP will be seeded into <code>pr_master_categories</code> if missing.</p>
+                    <p class="mb-0 small text-gray-500">Duplicate names are merged — complementary fields (VIN, registration, year, etc.) are combined into one record. Categories FA-VEH-4X4, FA-VEH-TRUCK, FA-VEH-TRAILER, FA-VEH-EQUIP will be seeded into <code>pr_master_categories</code> if missing.</p>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-rocket me-2"></i>Import All to Firestore</button>
                 </div>
             </form>
