@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/duplicate_assets.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_login();
@@ -86,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $existingAssets = am_firestore_get_collection('am_core_assets', 2000);
-        $assetTag = am_generate_asset_tag($itemClass, $countryCode, $existingAssets);
+        $existingAssets = am_firestore_get_collection('am_core_assets', 10000);
+        $assetTag = am_generate_unique_asset_tag($itemClass, $countryCode, $existingAssets);
 
         am_require_asset_country_mutate($countryId, $countries);
 

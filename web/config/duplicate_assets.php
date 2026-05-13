@@ -25,7 +25,7 @@ function am_duplicate_uid_normalize(string $s): string {
  * @param list<array<string, mixed>> $assets
  */
 function am_duplicate_uid_field_unique_among_assets(
-    string $excludeDocId,
+    ?string $excludeDocId,
     string $field,
     string $raw,
     array $assets,
@@ -42,7 +42,10 @@ function am_duplicate_uid_field_unique_among_assets(
     }
     foreach ($assets as $a) {
         $id = (string)($a['id'] ?? $a['asset_id'] ?? '');
-        if ($id === '' || $id === $excludeDocId) {
+        if ($id === '') {
+            continue;
+        }
+        if ($excludeDocId !== null && $excludeDocId !== '' && $id === $excludeDocId) {
             continue;
         }
         if (am_duplicate_uid_normalize((string)($a[$field] ?? '')) === $norm) {
@@ -50,6 +53,25 @@ function am_duplicate_uid_field_unique_among_assets(
         }
     }
     return null;
+}
+
+/**
+ * Next sequential asset tag that does not collide with any row in $existingAssets (create flow).
+ * Bumps the numeric suffix if the first candidate is already taken (race / partial scan / manual tags).
+ */
+function am_generate_unique_asset_tag(string $itemClass, string $countryCode, array $existingAssets): string {
+    $tag = am_generate_asset_tag($itemClass, $countryCode, $existingAssets);
+    for ($i = 0; $i < 5000; $i++) {
+        if (am_duplicate_uid_field_unique_among_assets(null, 'asset_tag', $tag, $existingAssets) === null) {
+            return $tag;
+        }
+        if (preg_match('/^(.+-)(\d{6})$/', $tag, $m)) {
+            $tag = $m[1] . str_pad((string)((int)$m[2] + 1), 6, '0', STR_PAD_LEFT);
+        } else {
+            $tag .= 'X';
+        }
+    }
+    return $tag . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
 }
 
 /**

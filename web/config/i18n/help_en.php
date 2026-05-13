@@ -170,7 +170,7 @@ return [
 <h5 class="h6 text-uppercase text-muted mt-3">Service workflows</h5>
 <p>Use <strong>Requests → Service workflows</strong> for template-driven AM requests stored in <code>am_core_requests</code> (e.g. ready boards). Managers/Admins update status (Approved, Rejected, Fulfilled, Cancelled) from the list or detail view.</p>
 <h5 class="h6 text-uppercase text-muted mt-3">Inventory dispatch</h5>
-<p class="mb-0">Use <strong>Requests → Inventory dispatch</strong> to request stockable items (Materials, Consumables, Inventory) dispatched from HQ/warehouse to a site within your country. Search and add items from the catalog with quantities, select the destination site, estimated dispatch date, and a receiver from the employee directory. Managers approve, reject, or mark fulfilled from the detail view.</p>',
+<p class="mb-0">Use <strong>Requests → Inventory dispatch</strong> to request stockable items (Materials, Consumables, Inventory) dispatched from HQ/warehouse to a site within your country. Set <strong>Request country</strong> before searching: the <strong>Add item</strong> catalog search only returns items for that country (same country rules as the main <strong>Assets</strong> list). Search covers name, tags, description, manufacturer, model, notes, category, and location. Then add quantities, destination site, estimated dispatch date, and a receiver from the employee directory. Managers approve, reject, or mark fulfilled from the detail view.</p>',
         ],
         [
             'id' => 'inventory-dispatch',
@@ -181,7 +181,8 @@ return [
 <p>Open <strong>Requests → Inventory dispatch</strong> to request stockable items sent from HQ/warehouse to a field site within your country.</p>
 <ol>
     <li>Confirm your <strong>name and email</strong> (pre-filled from your account)</li>
-    <li>Click <strong>Add item</strong> to search the catalog — find items by name, asset tag, or description</li>
+    <li>Set <strong>Request country</strong> to the country where stock should be sourced — the search dialog shows this scope; wrong country means <strong>no matches</strong> even if the item exists elsewhere in the catalog</li>
+    <li>Click <strong>Add item</strong> to search — at least two characters; matches name, asset tag, legacy tag, description, manufacturer, model, notes, UGP part id, category name, and location</li>
     <li>Set the <strong>quantity</strong> for each item you need</li>
     <li>Choose the <strong>destination site</strong> (filtered to your country)</li>
     <li>Set the <strong>estimated dispatch date</strong></li>

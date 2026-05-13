@@ -51,6 +51,8 @@ This project shares `pr-system-4ea55` with the PR System, Job Cards, and other 1
 | `web/config/firestore.php` | Firestore CRUD, `am_get_pr_sites()` for location sync |
 | `web/login.php` | Login page (form posts to `/auth/firebase-login.php`) |
 | `web/assets/index.php` | Main asset catalog with search/filters |
+| `web/api/dispatch/search-items.php` | JSON catalog search for **Inventory dispatch** line items; `country_id` + `q`; country filter aligned with catalog (`am_resolve_asset_country_id` + `am_asset_effective_org_country_code` fallback) |
+| `web/requests/dispatch-new.php` | New inventory dispatch request (Add item modal calls `search-items.php`) |
 | `web/assets/add.php` | Add new item form |
 | `web/assets/edit.php` | Edit existing item |
 | `web/assets/view.php` | Single item detail view |
@@ -113,6 +115,10 @@ Migrated items carry a `legacy_tag` field with their original UID from the pre-m
 - Populated by the ETL migration (`migration/etl.py`); can also be entered manually on new items
 
 The `source` field records migration origin (e.g. `AssetSpreadsheetDB`).
+
+## Dispatch “Search catalog” vs main catalog
+
+The dispatch modal calls `web/api/dispatch/search-items.php` with the form’s **Request country**. Country matching intentionally mirrors listing logic so items visible under a country in **Assets** do not disappear in dispatch search solely because `country_id` on the document was unset. Text search fields are kept broadly aligned with `web/assets/index.php` (name, tags, description, manufacturer, model, notes, UGP id, category, location).
 
 ## Known Quirks
 

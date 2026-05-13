@@ -341,7 +341,10 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <input type="text" id="itemSearchInput" class="form-control" placeholder="Search by name, asset tag, description…" autocomplete="off">
+                    <input type="text" id="itemSearchInput" class="form-control" placeholder="Name, tag, manufacturer, model, notes, category…" autocomplete="off">
+                    <p class="form-text small mb-0 mt-1" id="itemSearchCountryHint">
+                        Searching in <strong id="itemSearchCountryLabel">—</strong> (same as <strong>Request country</strong> above). Wrong country = no matches even if the item exists in the catalog.
+                    </p>
                 </div>
                 <div class="table-responsive" style="max-height:50vh;">
                     <table class="table table-sm table-hover mb-0" id="searchResultsTable">
@@ -460,6 +463,10 @@ function filterSitesByCountry() {
     if (!found) siteSelect.value = '';
     // Keep search API in sync with selected country
     countryId = selCountryId;
+    var sel = document.getElementById('country_id');
+    var selOpt = sel.options[sel.selectedIndex];
+    var lab = document.getElementById('itemSearchCountryLabel');
+    if (lab) lab.textContent = selOpt ? (selOpt.text || sel.value || '—') : '—';
 }
 document.getElementById('country_id').addEventListener('change', filterSitesByCountry);
 // Run once on load to filter to default country

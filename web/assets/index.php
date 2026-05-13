@@ -35,7 +35,7 @@ $page_title = $itemClassFilter && isset($itemClassLabels[$itemClassFilter])
     : 'All Items';
 
 // Firestore collections (split sources of truth)
-$assetsRaw = am_firestore_get_collection('am_core_assets', 2000);
+$assetsRaw = am_firestore_get_collection('am_core_assets', 10000);
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
@@ -81,7 +81,8 @@ foreach ($allocations as $al) {
 
 // Join and filter in memory
 $assets = [];
-$needle = strtolower(trim($searchTerm));
+$needleRaw = trim($searchTerm);
+$needle = $needleRaw === '' ? '' : (function_exists('mb_strtolower') ? mb_strtolower($needleRaw, 'UTF-8') : strtolower($needleRaw));
 foreach ($assetsRaw as $asset) {
     if (!am_asset_passes_country_scope($asset, $countries, $locationById)) {
         continue;
@@ -108,14 +109,28 @@ foreach ($assetsRaw as $asset) {
         continue;
     }
     if ($needle !== '') {
-        $searchBlob = strtolower(implode(' ', [
+        $cat = $categoryById[$categoryId] ?? [];
+        $loc = $locationById[$locationId] ?? [];
+        $blobParts = [
             (string)($asset['name'] ?? ''),
             (string)($asset['description'] ?? ''),
             (string)($asset['serial_number'] ?? ''),
             (string)($asset['qr_code_id'] ?? ''),
             (string)($asset['asset_tag'] ?? ''),
             (string)($asset['legacy_tag'] ?? ''),
-        ]));
+            (string)($asset['manufacturer'] ?? ''),
+            (string)($asset['model'] ?? ''),
+            (string)($asset['notes'] ?? ''),
+            (string)($asset['ugp_part_id'] ?? ''),
+            (string)($asset['vehicle_type'] ?? ''),
+            (string)($asset['engine_number'] ?? ''),
+            (string)($asset['fuel_type'] ?? ''),
+            (string)($cat['category_name'] ?? ''),
+            (string)($loc['location_name'] ?? ''),
+            (string)($loc['location_code'] ?? ''),
+        ];
+        $searchBlob = implode(' ', $blobParts);
+        $searchBlob = function_exists('mb_strtolower') ? mb_strtolower($searchBlob, 'UTF-8') : strtolower($searchBlob);
         if (!str_contains($searchBlob, $needle)) {
             continue;
         }
@@ -208,7 +223,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php endif; ?>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Search</label>
-                    <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="Name, Serial, QR Code...">
+                    <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="Name, manufacturer, model, notes, serial, tag, QR…">
                 </div>
                 <div class="col-12 col-md-2">
                     <label class="form-label">Classification</label>
@@ -481,15 +496,16 @@ include __DIR__ . '/../includes/header.php';
 <?php include __DIR__ . '/../includes/footer.php'; ?>
 
 <script>
-// Initialize DataTables
+// Initialize DataTables (server-side filters already applied; disable client "search" — it only saw visible columns and missed manufacturer/notes.)
 $(document).ready(function() {
     var t = $('#assetsTable');
     if (t.find('tbody td[colspan]').length) return;
+    var flat = <?php echo $catalogGrouped === null ? 'true' : 'false'; ?>;
     t.DataTable({
         pageLength: 25,
-        order: [[1, 'desc']], // Sort by Asset Tag descending
+        order: flat ? [[1, 'desc']] : [[0, 'asc']],
+        searching: false,
         language: {
-            search: "Search:",
             lengthMenu: "Show _MENU_ entries"
         }
     });

@@ -164,10 +164,11 @@ return [
         [
             'id' => 'wf-dispatch',
             'title' => 'Request inventory dispatch (HQ → site)',
-            'intro' => 'Request stockable items sent from the warehouse to a field site within your country.',
+            'intro' => 'Request stockable items sent from the warehouse to a field site within your country. Catalog search uses the same country rules as the main Assets list.',
             'steps' => [
                 'Open Requests → Inventory dispatch.',
-                'Confirm your name and email, then click Add item to search the catalog.',
+                'Set Request country first (search is scoped to that country; the Add item dialog reminds you).',
+                'Click Add item — type at least two characters; search includes manufacturer, model, notes, category, and location.',
                 'Add items with quantities, select the destination site and dispatch date.',
                 'Pick the receiver from the employee directory (name and email auto-fill).',
                 'Submit — managers approve, reject, or mark fulfilled from the detail view.',

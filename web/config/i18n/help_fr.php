@@ -170,7 +170,7 @@ return [
 <h5 class="h6 text-uppercase text-muted mt-3">Flux de service</h5>
 <p>Utilisez <strong>Demandes → Flux de service</strong> pour les demandes AM basées sur modèles (collection <code>am_core_requests</code>). Les managers/administrateurs mettent à jour le statut (Approuvé, Rejeté, Honoré, Annulé) depuis la liste ou le détail.</p>
 <h5 class="h6 text-uppercase text-muted mt-3">Expédition d\'inventaire</h5>
-<p class="mb-0">Utilisez <strong>Demandes → Expédition d\'inventaire</strong> pour demander des articles en stock (matériaux, consommables, inventaire) expédiés du siège/entrepôt vers un site dans votre pays. Recherchez et ajoutez des articles du catalogue avec quantités, sélectionnez le site de destination, la date d\'expédition estimée et un réceptionnaire de l\'annuaire. Les managers approuvent, rejettent ou marquent comme honoré.</p>',
+<p class="mb-0">Utilisez <strong>Demandes → Expédition d\'inventaire</strong> pour demander des articles en stock (matériaux, consommables, inventaire) expédiés du siège/entrepôt vers un site dans votre pays. Définissez d\'abord le <strong>pays de la demande</strong> : la recherche du catalogue (<strong>Ajouter un article</strong>) ne renvoie que les articles de ce pays (mêmes règles que la liste <strong>Actifs</strong>). La recherche porte sur le nom, les étiquettes, la description, le fabricant, le modèle, les notes, la catégorie et le lieu. Ajoutez les quantités, le site de destination, la date d\'expédition estimée et un réceptionnaire de l\'annuaire. Les managers approuvent, rejettent ou marquent comme honoré.</p>',
         ],
         [
             'id' => 'inventory-dispatch',
@@ -181,7 +181,8 @@ return [
 <p>Ouvrez <strong>Demandes → Expédition d\'inventaire</strong> pour demander des articles en stock envoyés du siège/entrepôt vers un site terrain dans votre pays.</p>
 <ol>
     <li>Confirmez votre <strong>nom et email</strong> (pré-remplis depuis votre compte)</li>
-    <li>Cliquez sur <strong>Ajouter un article</strong> pour chercher dans le catalogue — recherchez par nom, étiquette ou description</li>
+    <li>Définissez le <strong>pays de la demande</strong> (pays d\'où provient le stock) — la boîte de recherche indique ce périmètre ; un mauvais pays donne <strong>aucun résultat</strong> même si l\'article existe ailleurs dans le catalogue</li>
+    <li>Cliquez sur <strong>Ajouter un article</strong> pour chercher — au moins deux caractères ; recherche sur nom, étiquette, étiquette héritée, description, fabricant, modèle, notes, id pièce UGP, nom de catégorie et lieu</li>
     <li>Définissez la <strong>quantité</strong> pour chaque article</li>
     <li>Choisissez le <strong>site de destination</strong> (filtré par pays)</li>
     <li>Définissez la <strong>date d\'expédition estimée</strong></li>

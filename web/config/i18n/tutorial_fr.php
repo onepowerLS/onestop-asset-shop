@@ -164,10 +164,11 @@ return [
         [
             'id' => 'wf-dispatch',
             'title' => 'Demander une expédition d\'inventaire (siège → site)',
-            'intro' => 'Demandez des articles en stock expédiés de l\'entrepôt vers un site terrain dans votre pays.',
+            'intro' => 'Demandez des articles en stock expédiés de l\'entrepôt vers un site terrain dans votre pays. La recherche catalogue suit les mêmes règles de pays que la liste Actifs.',
             'steps' => [
                 'Ouvrez Demandes → Expédition d\'inventaire.',
-                'Confirmez nom et email, puis cliquez sur Ajouter un article pour chercher dans le catalogue.',
+                'Définissez d\'abord le pays de la demande (la recherche est limitée à ce pays ; le dialogue Ajouter un article l\'indique).',
+                'Cliquez sur Ajouter un article — au moins deux caractères ; recherche fabricant, modèle, notes, catégorie et lieu.',
                 'Ajoutez des articles avec quantités, choisissez le site de destination et la date d\'expédition.',
                 'Sélectionnez le réceptionnaire depuis l\'annuaire (nom et email se remplissent automatiquement).',
                 'Envoyez — les managers approuvent, rejettent ou marquent comme honoré.',

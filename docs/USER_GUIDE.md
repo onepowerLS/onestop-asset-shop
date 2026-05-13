@@ -157,12 +157,16 @@ Navigate to **Requests → Inventory dispatch** in the sidebar to request stocka
 ### Submitting a Dispatch Request
 
 1. Confirm your **name and email** (pre-filled from your account)
-2. Click **Add item** to search the inventory catalog by name, asset tag, or description
-3. Set the **quantity** for each item you need — add as many items as required
-4. Choose the **destination site** from the dropdown (filtered to your country)
-5. Set the **estimated dispatch date**
-6. Select the **receiver** from the employee directory — start typing a name and the email auto-fills
-7. Click **Submit request** — the request number follows the `AMW-YYYY-NNNNN` format
+2. Set **Request country** first. The **Add item → Search catalog** dialog only shows items whose **country** matches this field (same rules as the main catalog: master `country_id` when present, otherwise inferred from location and tags). If you pick the wrong country, you may see **no results** even though the item appears when you browse the catalog with “All countries” or a different filter.
+3. Click **Add item** to open **Search catalog**. The form shows which country is being searched; it always tracks **Request country** when you change it.
+4. Search matches **name**, **asset tag**, **legacy tag**, **description**, **manufacturer**, **model**, **notes**, **UGP part id**, **category name**, and **location name/code** (type at least two characters).
+5. Set the **quantity** for each item you need — add as many items as required
+6. Choose the **destination site** from the dropdown (filtered to your country)
+7. Set the **estimated dispatch date**
+8. Select the **receiver** from the employee directory — start typing a name and the email auto-fills
+9. Click **Submit request** — the request number follows the `AMW-YYYY-NNNNN` format
+
+**If an item does not appear in Search catalog:** confirm **Request country** matches where the stock is held (for example Lesotho HQ for LSO-tagged warehouse items), then try a shorter search term (e.g. part of the name or the asset tag).
 
 ### Viewing a Dispatch Request
 
