@@ -163,7 +163,7 @@ Navigate to **Requests → Inventory dispatch** in the sidebar to request stocka
 5. Set the **quantity** for each item you need — add as many items as required
 6. Choose the **destination site** from the dropdown (filtered to your country)
 7. Set the **estimated dispatch date**
-8. Select the **receiver** from the employee directory — start typing a name and the email auto-fills
+8. Select the **receiver** from the employee directory — start typing a name and pick a suggestion so the **email matches HR** (`pr_master_employees`). If you type an address by hand, it must be exactly the one on file (including `work_email` when that is the primary contact field). If someone is missing, ask IT/HR to add them to the directory before dispatching to them.
 9. Click **Submit request** — the request number follows the `AMW-YYYY-NNNNN` format
 
 **If an item does not appear in Search catalog:** confirm **Request country** matches where the stock is held (for example Lesotho HQ for LSO-tagged warehouse items), then try a shorter search term (e.g. part of the name or the asset tag).

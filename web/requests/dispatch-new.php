@@ -10,6 +10,149 @@ require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/request_workflows.php';
 require_login();
 
+/**
+ * Strip mobile/browser junk from datalist (e.g. "Name <email@x.com>") for name matching.
+ */
+function am_dispatch_normalize_receiver_display_name(string $raw): string {
+    $s = preg_replace('/\s+/u', ' ', trim($raw));
+    if ($s === '') {
+        return '';
+    }
+    if (preg_match('/^(.+?)\s*<([^>]+@[^>]+)>$/u', $s, $m)) {
+        return trim($m[1]);
+    }
+    return $s;
+}
+
+function am_dispatch_receiver_name_key(string $displayName): string {
+    $s = am_dispatch_normalize_receiver_display_name($displayName);
+    if ($s === '') {
+        return '';
+    }
+    return function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s);
+}
+
+/** Canonical email for an HR row (first valid field wins). */
+function am_dispatch_employee_canonical_email(array $emp): string {
+    foreach (['email', 'work_email', 'workEmail'] as $k) {
+        $raw = trim((string)($emp[$k] ?? ''));
+        if ($raw !== '' && filter_var($raw, FILTER_VALIDATE_EMAIL)) {
+            return $raw;
+        }
+    }
+    return '';
+}
+
+/** Distinct valid emails on the row (lowercase), for matching alternate fields. */
+function am_dispatch_employee_emails_lower(array $emp): array {
+    $out = [];
+    foreach (['email', 'work_email', 'workEmail'] as $k) {
+        $raw = trim((string)($emp[$k] ?? ''));
+        if ($raw === '' || !filter_var($raw, FILTER_VALIDATE_EMAIL)) {
+            continue;
+        }
+        $out[strtolower($raw)] = true;
+    }
+    return array_keys($out);
+}
+
+/**
+ * @param list<array<string, mixed>> $employees
+ * @return array{byEmail: array<string, array<string, mixed>>, byNameKey: array<string, list<array<string, mixed>>>}
+ */
+function am_dispatch_build_employee_indexes(array $employees): array {
+    $byEmail = [];
+    $byNameKey = [];
+    foreach ($employees as $emp) {
+        if (!is_array($emp)) {
+            continue;
+        }
+        if (am_dispatch_employee_canonical_email($emp) === '') {
+            continue;
+        }
+        foreach (am_dispatch_employee_emails_lower($emp) as $el) {
+            $byEmail[$el] = $emp;
+        }
+        $fn = trim((string)($emp['first_name'] ?? ''));
+        $ln = trim((string)($emp['last_name'] ?? ''));
+        $full = trim($fn . ' ' . $ln);
+        if ($full === '') {
+            continue;
+        }
+        $nk = am_dispatch_receiver_name_key($full);
+        if ($nk === '') {
+            continue;
+        }
+        if (!isset($byNameKey[$nk])) {
+            $byNameKey[$nk] = [];
+        }
+        $dedupe = strtolower(am_dispatch_employee_canonical_email($emp));
+        $already = false;
+        foreach ($byNameKey[$nk] as $row) {
+            if (strtolower(am_dispatch_employee_canonical_email($row)) === $dedupe) {
+                $already = true;
+                break;
+            }
+        }
+        if (!$already) {
+            $byNameKey[$nk][] = $emp;
+        }
+    }
+    return ['byEmail' => $byEmail, 'byNameKey' => $byNameKey];
+}
+
+/**
+ * @param array<string, array<string, mixed>> $byEmail
+ * @param array<string, list<array<string, mixed>>> $byNameKey
+ * @return array{ok: bool, email: string, name: string, error: string}
+ */
+function am_dispatch_resolve_receiver(
+    array $byEmail,
+    array $byNameKey,
+    string $receiverNameRaw,
+    string $receiverEmailRaw
+): array {
+    $nameIn = am_dispatch_normalize_receiver_display_name($receiverNameRaw);
+    $emailIn = trim($receiverEmailRaw);
+    if ($emailIn === '' || !filter_var($emailIn, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'email' => '', 'name' => $nameIn, 'error' => ''];
+    }
+    $el = strtolower($emailIn);
+    if (isset($byEmail[$el])) {
+        $emp = $byEmail[$el];
+        $nm = trim(trim((string)($emp['first_name'] ?? '')) . ' ' . trim((string)($emp['last_name'] ?? '')));
+        $nm = preg_replace('/\s+/u', ' ', trim($nm));
+
+        return ['ok' => true, 'email' => am_dispatch_employee_canonical_email($emp), 'name' => $nm, 'error' => ''];
+    }
+    $nk = am_dispatch_receiver_name_key($nameIn);
+    if ($nk === '') {
+        return ['ok' => false, 'email' => '', 'name' => $nameIn, 'error' => 'Receiver email not found in the employee directory. Choose a name from the suggestions so the email auto-fills, or ask IT/HR to add or update this person in the HR directory.'];
+    }
+    $bucket = $byNameKey[$nk] ?? [];
+    if (count($bucket) === 1) {
+        $emp = $bucket[0];
+        $nm = trim(trim((string)($emp['first_name'] ?? '')) . ' ' . trim((string)($emp['last_name'] ?? '')));
+
+        return ['ok' => true, 'email' => am_dispatch_employee_canonical_email($emp), 'name' => preg_replace('/\s+/u', ' ', trim($nm)), 'error' => ''];
+    }
+    if (count($bucket) > 1) {
+        foreach ($bucket as $emp) {
+            foreach (am_dispatch_employee_emails_lower($emp) as $candLower) {
+                if ($candLower === $el) {
+                    $nm = trim(trim((string)($emp['first_name'] ?? '')) . ' ' . trim((string)($emp['last_name'] ?? '')));
+
+                    return ['ok' => true, 'email' => am_dispatch_employee_canonical_email($emp), 'name' => preg_replace('/\s+/u', ' ', trim($nm)), 'error' => ''];
+                }
+            }
+        }
+
+        return ['ok' => false, 'email' => '', 'name' => $nameIn, 'error' => 'Multiple employees share this name in the directory. Pick the suggestion with the correct email, or open Admin → Employees to copy the exact address.'];
+    }
+
+    return ['ok' => false, 'email' => '', 'name' => $nameIn, 'error' => 'Receiver email not found in the employee directory. Choose a name from the suggestions so the email auto-fills, or ask IT/HR to add this person to the HR directory.'];
+}
+
 $page_title = 'Dispatch request';
 $template = am_request_workflow_template('inventory_dispatch');
 
@@ -49,14 +192,7 @@ $employees = am_firestore_get_collection('pr_master_employees', 2000);
 if (empty($employees)) {
     $employees = am_firestore_get_collection('am_core_employees', 2000);
 }
-// Index employees by email for quick lookup
-$employeeByEmail = [];
-foreach ($employees as $emp) {
-    $email = strtolower(trim((string)($emp['email'] ?? '')));
-    if ($email !== '') {
-        $employeeByEmail[$email] = $emp;
-    }
-}
+$dispatchEmpIndexes = am_dispatch_build_employee_indexes($employees);
 
 // ── POST handling ─────────────────────────────────────────────
 $errors = [];
@@ -110,10 +246,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
     }
 
-    // Verify receiver against employee directory
-    $recvEmailLower = strtolower($receiverEmail);
-    if (!isset($employeeByEmail[$recvEmailLower])) {
-        $errors[] = 'Receiver email not found in the employee directory. Please select a valid employee.';
+    // Verify receiver against HR directory (email + alternate work_email; name fallback for typos / mobile datalist)
+    if ($receiverEmail !== '' && filter_var($receiverEmail, FILTER_VALIDATE_EMAIL)) {
+        $recvRes = am_dispatch_resolve_receiver(
+            $dispatchEmpIndexes['byEmail'],
+            $dispatchEmpIndexes['byNameKey'],
+            $receiverName,
+            $receiverEmail
+        );
+        if (!$recvRes['ok']) {
+            if ($recvRes['error'] !== '') {
+                $errors[] = $recvRes['error'];
+            }
+        } else {
+            $receiverEmail = $recvRes['email'];
+            $receiverName = $recvRes['name'];
+        }
     }
 
     // Verify site is in user's country scope
@@ -300,16 +448,20 @@ include __DIR__ . '/../includes/header.php';
                             list="employeeList" autocomplete="off">
                         <datalist id="employeeList">
                             <?php foreach ($employees as $emp):
+                                if (!is_array($emp)) {
+                                    continue;
+                                }
                                 $eName = trim(((string)($emp['first_name'] ?? '') . ' ' . (string)($emp['last_name'] ?? '')));
-                                $eEmail = (string)($emp['email'] ?? '');
-                                if ($eName === '' || $eEmail === '') continue;
+                                $eName = preg_replace('/\s+/u', ' ', $eName);
+                                $eEmail = am_dispatch_employee_canonical_email($emp);
+                                if ($eName === '' || $eEmail === '') {
+                                    continue;
+                                }
                             ?>
-                            <option value="<?php echo htmlspecialchars($eName); ?>" data-email="<?php echo htmlspecialchars($eEmail); ?>">
-                                <?php echo htmlspecialchars($eName . ' <' . $eEmail . '>'); ?>
-                            </option>
+                            <option value="<?php echo htmlspecialchars($eName); ?>"><?php echo htmlspecialchars($eEmail); ?></option>
                             <?php endforeach; ?>
                         </datalist>
-                        <div class="form-text">Select from the employee directory. Email will auto-fill.</div>
+                        <div class="form-text">Pick a name from the suggestions (same as Admin → Employees). The email must match the HR directory — if someone is missing, ask IT/HR to add them to <code>pr_master_employees</code>.</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="receiver_email">Receiver email <span class="text-danger">*</span></label>
@@ -370,13 +522,62 @@ include __DIR__ . '/../includes/header.php';
 var lineItems = [];
 var countryId = <?php echo json_encode($selectedCountryId); ?>;
 var searchApiUrl = <?php echo json_encode(base_url('api/dispatch/search-items.php')); ?>;
-var employeeMap = {};
-<?php foreach ($employees as $emp):
+var employeeRows = <?php
+$erows = [];
+foreach ($employees as $emp) {
+    if (!is_array($emp)) {
+        continue;
+    }
     $eName = trim(((string)($emp['first_name'] ?? '') . ' ' . (string)($emp['last_name'] ?? '')));
-    $eEmail = (string)($emp['email'] ?? '');
-    if ($eName !== '' && $eEmail !== ''):
-?>employeeMap[<?php echo json_encode($eName); ?>] = <?php echo json_encode($eEmail); ?>;
-<?php endif; endforeach; ?>
+    $eName = preg_replace('/\s+/u', ' ', $eName);
+    $canon = am_dispatch_employee_canonical_email($emp);
+    if ($eName !== '' && $canon !== '') {
+        $erows[] = ['name' => $eName, 'email' => $canon];
+    }
+}
+echo json_encode($erows, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+?>;
+
+function dispatchNormNameKey(s) {
+    s = (s || '').replace(/\s+/g, ' ').trim();
+    var m = s.match(/^(.+?)\s*<([^>]+@[^>]+)>$/);
+    if (m) {
+        s = m[1].trim();
+    }
+    return s.toLowerCase();
+}
+
+function dispatchResolveReceiverEmail(rawName) {
+    rawName = (rawName || '').replace(/\s+/g, ' ').trim();
+    var m = rawName.match(/^(.+?)\s*<([^>]+@[^>]+)>$/);
+    if (m) {
+        var parsedEmail = m[2].trim().toLowerCase();
+        for (var p = 0; p < employeeRows.length; p++) {
+            if (employeeRows[p].email.toLowerCase() === parsedEmail) {
+                return employeeRows[p].email;
+            }
+        }
+        return '';
+    }
+    for (var i = 0; i < employeeRows.length; i++) {
+        if (employeeRows[i].name === rawName) {
+            return employeeRows[i].email;
+        }
+    }
+    var nk = dispatchNormNameKey(rawName);
+    for (var j = 0; j < employeeRows.length; j++) {
+        if (dispatchNormNameKey(employeeRows[j].name) === nk) {
+            return employeeRows[j].email;
+        }
+    }
+    return '';
+}
+
+function syncReceiverEmailField() {
+    var nameEl = document.getElementById('receiver_name');
+    var emailEl = document.getElementById('receiver_email');
+    emailEl.value = dispatchResolveReceiverEmail(nameEl.value) || '';
+}
 
 function renderLineItems() {
     var tbody = document.getElementById('lineItemsBody');
@@ -473,11 +674,8 @@ document.getElementById('country_id').addEventListener('change', filterSitesByCo
 filterSitesByCountry();
 
 // ── Employee autocomplete ──────────────────────────────────
-document.getElementById('receiver_name').addEventListener('input', function() {
-    var name = this.value.trim();
-    var email = employeeMap[name] || '';
-    document.getElementById('receiver_email').value = email;
-});
+document.getElementById('receiver_name').addEventListener('input', syncReceiverEmailField);
+document.getElementById('receiver_name').addEventListener('change', syncReceiverEmailField);
 
 // ── Item search modal ──────────────────────────────────────
 var searchTimer = null;
