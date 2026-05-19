@@ -75,7 +75,7 @@ See [`docs/SOP-ITEM-CLASSIFICATION.md`](docs/SOP-ITEM-CLASSIFICATION.md) for the
 - [x] Stock levels dashboard with reorder alerts
 - [x] Transaction history with filtering
 - [x] Check-out/check-in workflow
-- [x] Request management with approval flow
+- [x] Request management with approval flow (including inventory dispatch; catalog search scoped to **Request country**, aligned with main asset list country rules — see `docs/USER_GUIDE.md`)
 - [x] QR code generation via Firestore (API + batch admin)
 - [x] Data migration ETL (Python) -- 2,874 items from 9 sources, classified and deduplicated
 - [x] Legacy category_type → item_class mapping (built into ETL)

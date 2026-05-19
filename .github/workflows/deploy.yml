@@ -37,10 +37,17 @@ jobs:
             sudo git config --global --add safe.directory /var/www/onestop-asset-shop
             sudo git fetch origin
             sudo git reset --hard origin/main
+            # Write VERSION stamp (readable by PHP/health.php & header.php)
+            DEPLOY_COMMIT=$(sudo git rev-parse HEAD)
+            DEPLOY_BRANCH=$(sudo git rev-parse --abbrev-ref HEAD)
+            DEPLOY_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            printf '{"commit":"%s","branch":"%s","built_at":"%s","source":"deploy"}\n' \
+              "$DEPLOY_COMMIT" "$DEPLOY_BRANCH" "$DEPLOY_AT" \
+              | sudo tee /var/www/onestop-asset-shop/VERSION > /dev/null
             sudo chown -R apache:apache /var/www/onestop-asset-shop
             sudo chmod -R 755 /var/www/onestop-asset-shop
             sudo systemctl reload httpd || true
-            echo "Deployment completed successfully"
+            echo "Deployment completed: $DEPLOY_COMMIT @ $DEPLOY_AT"
             # Run vehicle import if CSV exists
             if [ -f /var/www/onestop-asset-shop/database/vehicles_unique.csv ]; then
               echo "Running vehicle import..."

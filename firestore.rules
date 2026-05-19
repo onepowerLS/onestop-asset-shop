@@ -33,6 +33,57 @@ service cloud.firestore {
       return isAuthenticated();
     }
 
+    function capDuplicateReview() {
+      return isAuthenticated()
+        && userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.duplicate_review == true;
+    }
+
+    function capAmOpsQueue() {
+      return isAuthenticated()
+        && userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.am_ops_queue_manage == true;
+    }
+
+    // Optional map on users/{uid}: capabilities.sim_team_assign, capabilities.sim_phone_link
+    function capSimTeamAssign() {
+      return userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.sim_team_assign == true;
+    }
+
+    function capSimPhoneLink() {
+      return userDoc().keys().hasAll(['capabilities'])
+        && userDoc().capabilities is map
+        && userDoc().capabilities.sim_phone_link == true;
+    }
+
+    function canWriteSimCard() {
+      return isAdmin() || capSimTeamAssign() || capSimPhoneLink();
+    }
+
+    function canWriteSimAssignment() {
+      return isAdmin() ||
+        (request.resource.data.assignment_type == 'team' && capSimTeamAssign()) ||
+        (request.resource.data.assignment_type == 'phone_asset' && capSimPhoneLink()) ||
+        ((request.resource.data.assignment_type == 'vehicle_tracker' ||
+          request.resource.data.assignment_type == 'site_gateway' ||
+          request.resource.data.assignment_type == 'other') &&
+         (capSimTeamAssign() || capSimPhoneLink()));
+    }
+
+    function canUpdateSimAssignment() {
+      return isAdmin() ||
+        (request.resource.data.assignment_type == 'team' && capSimTeamAssign()) ||
+        (request.resource.data.assignment_type == 'phone_asset' && capSimPhoneLink()) ||
+        ((request.resource.data.assignment_type == 'vehicle_tracker' ||
+          request.resource.data.assignment_type == 'site_gateway' ||
+          request.resource.data.assignment_type == 'other') &&
+         (capSimTeamAssign() || capSimPhoneLink()));
+    }
+
     // ── AM core collections ─────────────────────────────────────
 
     match /am_core_assets/{docId} {
@@ -56,10 +107,92 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Historical RET request archives (imported from Google Forms, read-only).
+    match /am_core_archived_requests/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Append-only audit of Firestore writes from AM PHP (actor must match caller).
+    match /am_core_mutation_logs/{docId} {
+      allow read:   if isViewer();
+      allow create: if isAuthenticated()
+        && request.resource.data.actor_uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /am_core_inventory_levels/{docId} {
       allow read:   if isViewer();
       allow create: if isManager();
       allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    // Duplicate merge snapshots; Managers create; Admin cron deletes expired.
+    match /am_core_asset_purgatory/{docId} {
+      allow read:   if isManager();
+      allow create: if isManager();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // "Not duplicates" dismissals (review workspace)
+    match /am_core_duplicate_dismissals/{docId} {
+      allow read:   if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow create: if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Pending merge requests (reviewer → Manager executes)
+    match /am_core_duplicate_merge_requests/{docId} {
+      allow read:   if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow create: if isManager() || capDuplicateReview() || capAmOpsQueue();
+      allow update: if isManager();
+      allow delete: if isManager() || isAdmin();
+    }
+
+    // Template-driven service requests (Ready boards, future types)
+    match /am_core_requests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    // HQ → site packing lists; trip_id links to Fleet Management trips (fm.1pwrafrica.com)
+    match /am_core_loadout_manifests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isManager();
+      allow update: if isManager();
+      allow delete: if isManager();
+    }
+
+    match /am_core_sim_cards/{docId} {
+      allow read:   if isViewer();
+      allow create, update: if canWriteSimCard();
+      allow delete: if isAdmin();
+    }
+
+    match /am_core_sim_assignments/{docId} {
+      allow read:   if isViewer();
+      allow create: if canWriteSimAssignment();
+      allow update: if canUpdateSimAssignment();
+      allow delete: if isAdmin();
+    }
+
+    match /am_core_phone_requests/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();
+      allow update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    match /it_support_tickets/{docId} {
+      allow read:   if isViewer();
+      allow create: if isViewer();
+      allow update: if isAdmin() || isManager() ||
+        resource.data.requester_uid == request.auth.uid;
       allow delete: if isAdmin();
     }
 

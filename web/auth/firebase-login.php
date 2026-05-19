@@ -9,6 +9,9 @@
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firebase.php';
+require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/locale.php';
 
 header('Content-Type: application/json');
 
@@ -26,6 +29,7 @@ if (!is_array($input)) {
 $idToken = trim((string)($input['id_token'] ?? ''));
 $uid     = trim((string)($input['uid'] ?? ''));
 $email   = trim((string)($input['email'] ?? ''));
+$refreshToken = trim((string)($input['refresh_token'] ?? ''));
 
 // Legacy form-post support (non-JS fallback)
 $identifier = trim((string)($input['identifier'] ?? ''));
@@ -46,6 +50,7 @@ if ($idToken !== '' && $uid !== '') {
     $displayName = trim($firstName . ' ' . $lastName) ?: $email;
 
     $_SESSION['user_id']               = $uid;
+    $_SESSION['firebase_uid']          = $uid;
     $_SESSION['username']              = $displayName;
     $_SESSION['email']                 = $email;
     $_SESSION['role']                  = am_map_pr_role_to_am(
@@ -55,10 +60,19 @@ if ($idToken !== '' && $uid !== '') {
     $_SESSION['employee_id']           = null;
     $_SESSION['auth_source']           = 'firebase';
     $_SESSION['firebase_id_token']     = $idToken;
-    $_SESSION['firebase_refresh_token'] = '';
+    $_SESSION['firebase_refresh_token'] = $refreshToken;
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
+    $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
+
+    $allow = $profileData['amCountryAccess'] ?? [];
+    if (!is_array($allow)) {
+        $allow = [];
+    }
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $_SESSION['am_country_filter'] = 'all';
+    am_locale_bootstrap();
 
     echo json_encode(['ok' => true, 'redirect' => '/index.php']);
     exit;
@@ -107,6 +121,7 @@ if ($identifier !== '' && $password !== '') {
     $displayName = trim($firstName . ' ' . $lastName) ?: (string)$identifier;
 
     $_SESSION['user_id']               = (string)($signIn['uid'] ?? '');
+    $_SESSION['firebase_uid']          = (string)($signIn['uid'] ?? '');
     $_SESSION['username']              = $displayName;
     $_SESSION['email']                 = (string)($signIn['email'] ?? $signInEmail);
     $_SESSION['role']                  = am_map_pr_role_to_am(
@@ -120,6 +135,15 @@ if ($identifier !== '' && $password !== '') {
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
+    $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
+
+    $allow = $profileData['amCountryAccess'] ?? [];
+    if (!is_array($allow)) {
+        $allow = [];
+    }
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $_SESSION['am_country_filter'] = 'all';
+    am_locale_bootstrap();
 
     header('Location: /index.php');
     exit;

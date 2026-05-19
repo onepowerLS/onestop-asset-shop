@@ -40,13 +40,38 @@ Feature Branch → develop → main (production)
 
 ### GitHub Secrets Configuration
 
-Add these secrets to your GitHub repository (`Settings > Secrets and variables > Actions`):
+The workflow in `.github/workflows/deploy.yml` uses:
 
-1. **`AWS_ACCESS_KEY_ID`** - AWS IAM user access key
-2. **`AWS_SECRET_ACCESS_KEY`** - AWS IAM user secret key
-3. **`AWS_EC2_INSTANCE_ID`** - Your EC2 instance ID (e.g., `i-0123456789abcdef0`)
-4. **`EC2_HOST`** - EC2 instance public IP or domain
-5. **`EC2_SSH_KEY`** - Private SSH key for EC2 access
+1. **`EC2_HOST`** — Public hostname or IP of the EC2 instance (e.g. `16.28.64.221` or `assets.1pwrafrica.com`).
+2. **`EC2_SSH_KEY`** — **Private** PEM contents for `ec2-user` (the full key, including `-----BEGIN` / `END` lines).
+
+Optional / older docs may mention AWS keys for other automation; **this repo’s deploy job only needs the two above** for `appleboy/ssh-action`.
+
+### Access and credentials the operator needs (checklist)
+
+| What | Why you need it |
+|------|-----------------|
+| **GitHub** — push to `main`, or `workflow_dispatch` on “Deploy to EC2” | Triggers CI deploy; merge your branch first. |
+| **`EC2_HOST` + `EC2_SSH_KEY` secrets** (or manual SSH) | GitHub Actions runs `git reset --hard origin/main` on the server. |
+| **SSH as `ec2-user`** (e.g. EC2 Instance Connect + same key, or `.pem`) | Manual pulls, Apache edits, `certbot`, `chown` for `apache`. |
+| **DNS** — A/AAAA for `it.1pwrafrica.com` → same host as `am.1pwrafrica.com` | Points the IT helpdesk hostname at the app (same `DocumentRoot`). |
+| **Let’s Encrypt** — expand cert to include `it.1pwrafrica.com` | Browsers require HTTPS SAN to match; see `deployment/onestop-asset-shop-ssl.conf`. |
+| **Firebase CLI** — `firebase login` and project **`pr-system-4ea55`** | Deploy **`firestore.rules`** after schema/rule changes (shared with PR portal — coordinate). |
+| **Firestore** | Rules deploy; no separate “DB password” for Firestore (uses CLI token). |
+| **`.env` on EC2** (not in git) | `FIREBASE_WEB_API_KEY`, `FIREBASE_PROJECT_ID`, etc.; already required for AM. |
+
+The EC2 workflow only updates application code from `main`. **Firestore rules** must be deployed separately (`firebase deploy --only firestore:rules`) whenever `firestore.rules` changes, using a Firebase account with access to project `pr-system-4ea55` (coordinate with PR portal owners — shared project).
+
+### IT subdomain (`it.1pwrafrica.com`)
+
+The PHP app is path-based (`web/it/`); no second deploy is required. On the **same** EC2 host:
+
+1. Add **`it.1pwrafrica.com`** DNS (A record) to the same IP as Asset Management.
+2. Install the Apache snippets under `deployment/` (SSL + HTTP) so `ServerAlias` includes `it.1pwrafrica.com` (see `onestop-asset-shop-ssl.conf`).
+3. Expand TLS: e.g. `sudo certbot certonly --apache -d am.1pwrafrica.com -d it.1pwrafrica.com` (adjust domains to match what you already use).
+4. `sudo systemctl reload httpd`
+
+HTTP config uses mod_rewrite to send each host to **HTTPS on the same host** (so `http://it.…` becomes `https://it.…`).
 
 ### AWS IAM User Setup
 

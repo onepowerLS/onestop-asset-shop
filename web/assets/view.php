@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $assetId = $_GET['id'] ?? '';
 $qrCode = $_GET['qr'] ?? '';
@@ -33,11 +36,15 @@ if ($assetId !== '') {
 } elseif ($qrCode !== '') {
     $allAssets = am_firestore_get_collection('am_core_assets', 2000);
     foreach ($allAssets as $a) {
-        if ((string)($a['qr_code_id'] ?? '') === $qrCode) {
-            $asset = $a;
-            $assetId = (string)($a['id'] ?? '');
-            break;
+        if ((string)($a['qr_code_id'] ?? '') !== $qrCode) {
+            continue;
         }
+        if (!am_asset_passes_country_scope($a, $countries, $locationById)) {
+            continue;
+        }
+        $asset = $a;
+        $assetId = (string)($a['id'] ?? '');
+        break;
     }
 }
 
@@ -46,6 +53,8 @@ if (!$asset) {
     header('Location: ' . base_url('assets/index.php'));
     exit;
 }
+
+am_require_asset_visible($asset, $countries);
 
 $page_title = (string)($asset['name'] ?? 'Item Detail');
 
@@ -63,7 +72,8 @@ $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable'
 $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
 $cls = (string)($asset['item_class'] ?? '');
 
-$country = $countryById[(string)($asset['country_id'] ?? '')] ?? [];
+$resolvedCountryId = am_resolve_asset_country_id($asset, $countries);
+$country = $countryById[$resolvedCountryId] ?? [];
 $category = $categoryById[(string)($asset['category_id'] ?? '')] ?? [];
 $location = $locationById[(string)($asset['location_id'] ?? '')] ?? [];
 
@@ -91,9 +101,11 @@ include __DIR__ . '/../includes/header.php';
             </h1>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
+            <?php if (!am_is_auditor_readonly()): ?>
             <a href="<?php echo base_url('assets/edit.php?id=' . urlencode($assetId)); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
                 <i class="fas fa-edit me-2"></i>Edit
             </a>
+            <?php endif; ?>
             <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-sm btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to List
             </a>
@@ -122,6 +134,12 @@ include __DIR__ . '/../includes/header.php';
                         <div class="col-6 col-md-4">
                             <small class="text-gray-500">Legacy ID</small>
                             <p class="fw-bold mb-0"><code><?php echo htmlspecialchars($asset['legacy_tag']); ?></code></p>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (trim((string)($asset['ugp_part_id'] ?? '')) !== ''): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">UGP part ID</small>
+                            <p class="fw-bold mb-0"><code><?php echo htmlspecialchars((string)$asset['ugp_part_id']); ?></code></p>
                         </div>
                         <?php endif; ?>
                         <div class="col-6 col-md-4">
@@ -208,6 +226,127 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
             </div>
+            <?php
+            $catId = (string)($asset['category_id'] ?? '');
+            $isVehicle = (bool)preg_match('/^FA-VEH/', $catId);
+            if ($cls === 'FixedAsset' && $isVehicle):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-car me-2 text-primary"></i>Vehicle Details</h2></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Vehicle Type</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['vehicle_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Year</small>
+                            <p class="fw-bold mb-0"><?php echo !empty($asset['vehicle_year']) ? htmlspecialchars((string)$asset['vehicle_year']) : '—'; ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Engine Number</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['engine_number'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Transmission</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['transmission_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Fuel Type</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['fuel_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <small class="text-gray-500">Drive</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['drive_type'] ?? '—')); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php
+            $hasOdo = !empty($asset['odometer_first_km']) || !empty($asset['odometer_last_km']);
+            if ($cls === 'FixedAsset' && $isVehicle && $hasOdo):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-tachometer-alt me-2 text-success"></i>Odometer</h2></div>
+                <div class="card-body">
+                    <p class="small text-gray-500 mb-3">Detailed readings are managed in FM. AM stores first/last summary.</p>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">First Reading</small>
+                            <p class="fw-bold mb-0"><?php echo number_format((int)($asset['odometer_first_km'] ?? 0)); ?> km</p>
+                            <small class="text-gray-400"><?php echo htmlspecialchars((string)($asset['odometer_first_date'] ?? '—')); ?></small>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Last Reading</small>
+                            <p class="fw-bold mb-0"><?php echo number_format((int)($asset['odometer_last_km'] ?? 0)); ?> km</p>
+                            <small class="text-gray-400"><?php echo htmlspecialchars((string)($asset['odometer_last_date'] ?? '—')); ?></small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Total Distance</small>
+                            <p class="fw-bold mb-0">
+                                <?php
+                                $firstKm = (int)($asset['odometer_first_km'] ?? 0);
+                                $lastKm = (int)($asset['odometer_last_km'] ?? 0);
+                                echo ($lastKm > $firstKm) ? number_format($lastKm - $firstKm) . ' km' : '—';
+                                ?>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php
+            $builtFrom = $asset['built_from'] ?? [];
+            if ($cls === 'FixedAsset' && is_array($builtFrom) && !empty($builtFrom)):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header">
+                    <h2 class="fs-5 fw-bold mb-0">
+                        <i class="fas fa-microchip me-2 text-purple"></i>Assembly Lineage
+                    </h2>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Material</th><th>Tag</th><th class="text-end">Qty Consumed</th><th>Unit</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($builtFrom as $component):
+                                    $compId = (string)($component['asset_id'] ?? '');
+                                ?>
+                                <tr>
+                                    <td>
+                                        <?php if ($compId !== ''): ?>
+                                        <a href="<?php echo base_url('assets/view.php?id=' . urlencode($compId)); ?>">
+                                            <?php echo htmlspecialchars($component['name'] ?? 'Unknown'); ?>
+                                        </a>
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($component['name'] ?? 'Unknown'); ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><code class="text-muted"><?php echo htmlspecialchars($component['asset_tag'] ?? '—'); ?></code></td>
+                                    <td class="text-end"><?php echo (int)($component['quantity'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($component['unit'] ?? 'EA'); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php if (!empty($asset['assembled_at']) || !empty($asset['assembled_by'])): ?>
+                <div class="card-footer">
+                    <small class="text-gray-500">
+                        Assembled <?php echo htmlspecialchars(substr((string)($asset['assembled_at'] ?? ''), 0, 10)); ?>
+                        <?php if (!empty($asset['assembled_by'])): ?>
+                            by <?php echo htmlspecialchars($asset['assembled_by']); ?>
+                        <?php endif; ?>
+                    </small>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <?php endif; ?>
         </div>
 

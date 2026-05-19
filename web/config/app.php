@@ -32,7 +32,10 @@ ini_set('log_errors', '1');
 // Helper function to get base URL
 function base_url($path = '') {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if ($host === '') {
+        $host = 'localhost';
+    }
     $base = trim(BASE_URL, '/');
     $prefix = $base === '' ? '' : '/' . $base;
     return $protocol . '://' . $host . $prefix . '/' . ltrim($path, '/');

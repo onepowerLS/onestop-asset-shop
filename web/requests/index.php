@@ -1,13 +1,15 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
 
-$page_title = 'Requests';
+$page_title = 'Ready board requests';
 $errors = [];
 $showForm = isset($_GET['new']) || !empty($errors);
 
-$requests = am_firestore_get_collection('pr_master_requests', 2000);
+$requests = am_firestore_get_collection('am_core_requests', 2000);
+$requests = array_values(array_filter($requests, fn($r) => ($r['workflow_type'] ?? '') === 'ready_board'));
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $locations = am_get_pr_sites();
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
@@ -20,6 +22,7 @@ foreach ($countries as $c) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    am_require_can_mutate();
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create') {
@@ -36,8 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             $reqNum = 'REQ-' . date('Y') . '-' . str_pad((string)(count($requests) + 1), 4, '0', STR_PAD_LEFT);
 
+            $payload = [
+                'item_class' => $itemClass,
+                'department_scope' => $deptScope,
+                'description' => $description,
+                'priority' => $priority,
+                'required_date' => $_POST['required_date'] ?? '',
+                'notes' => trim($_POST['notes'] ?? ''),
+                'location_id' => trim($_POST['location_id'] ?? ''),
+            ];
+
+            $summary = $classLabels[$itemClass] . ' — ' . substr($description, 0, 100);
+
             $data = [
                 'request_number' => $reqNum,
+                'workflow_type' => 'ready_board',
+                'workflow_label' => 'Ready board request',
                 'item_class' => $itemClass,
                 'department_scope' => $deptScope,
                 'requested_by' => $_SESSION['user_id'] ?? '',
@@ -46,12 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'priority' => $priority,
                 'status' => 'Submitted',
                 'description' => $description,
+                'summary' => $summary,
                 'requested_date' => date('c'),
                 'required_date' => $_POST['required_date'] ?? '',
                 'notes' => trim($_POST['notes'] ?? ''),
+                'payload' => $payload,
             ];
 
-            $result = am_firestore_create_document('pr_master_requests', $data);
+            $result = am_firestore_create_document('am_core_requests', $data);
             if ($result['ok']) {
                 $_SESSION['flash_success'] = 'Request ' . $reqNum . ' submitted.';
                 header('Location: ' . base_url('requests/index.php'));
@@ -70,12 +89,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newStatus === 'Fulfilled') {
                 $updateData['fulfilled_date'] = date('c');
             }
-            am_firestore_update_document('pr_master_requests', $docId, $updateData);
+            am_firestore_update_document('am_core_requests', $docId, $updateData);
             $_SESSION['flash_success'] = 'Request status updated to ' . $newStatus . '.';
         }
         header('Location: ' . base_url('requests/index.php'));
         exit;
     }
+}
+
+if (am_is_auditor_readonly()) {
+    $showForm = false;
 }
 
 $statusFilter = $_GET['status'] ?? '';
@@ -107,14 +130,21 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <div class="d-flex justify-content-between align-items-center py-4">
+    <div class="d-flex justify-content-between align-items-center py-4" data-tutorial="tutorial-requests-header">
         <div>
-            <h1 class="h2">Requests</h1>
-            <p class="mb-0"><?php echo count($filtered); ?> requests</p>
+            <h1 class="h2">Ready board requests</h1>
+            <p class="mb-0"><?php echo count($filtered); ?> ready board requests</p>
+            <p class="small text-muted mb-0 mt-1">
+                For ready boards and other AM service requests, use
+                <a href="<?php echo base_url('requests/workflow-index.php'); ?>">Service workflows</a>
+                (replaces the <a href="https://docs.google.com/forms/d/1F-Hfa_HdRidRd3BOPEiG-6f4Zha-AWdTdGFG8-6iTUI/viewform" target="_blank" rel="noopener">legacy Google Form</a>).
+            </p>
         </div>
+        <?php if (!am_is_auditor_readonly()): ?>
         <a href="<?php echo base_url('requests/index.php?new=1'); ?>" class="btn btn-sm btn-gray-800">
             <i class="fas fa-plus me-2"></i>New Request
         </a>
+        <?php endif; ?>
     </div>
 
     <?php if ($flash): ?>
@@ -237,7 +267,7 @@ include __DIR__ . '/../includes/header.php';
                             $statColors = ['Draft' => 'secondary', 'Submitted' => 'primary', 'Approved' => 'success', 'Rejected' => 'danger', 'Fulfilled' => 'info', 'Cancelled' => 'secondary'];
                         ?>
                         <tr>
-                            <td><strong><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></strong></td>
+                            <td><a href="<?php echo base_url('requests/workflow-view.php?id=' . urlencode($docId)); ?>" class="fw-bold"><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></a></td>
                             <td><span class="badge bg-<?php echo $classColors[$cls] ?? 'secondary'; ?>"><?php echo htmlspecialchars($classLabels[$cls] ?? $cls); ?></span></td>
                             <td><?php echo htmlspecialchars(substr((string)($req['description'] ?? ''), 0, 80)); ?></td>
                             <td><?php echo htmlspecialchars(($countryById[(string)($req['requested_for_country'] ?? '')] ?? [])['country_code'] ?? '—'); ?></td>
@@ -279,10 +309,12 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
 <script>
 $(document).ready(function() {
-    $('#requestsTable').DataTable({ pageLength: 25, order: [[6, 'desc']] });
+    var t = $('#requestsTable');
+    if (t.find('tbody td[colspan]').length) return;
+    t.DataTable({ pageLength: 25, order: [[6, 'desc']] });
 });
 </script>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>
