@@ -157,6 +157,21 @@ Snapshots of duplicate `am_core_assets` rows removed by merge when mode is **Pur
 | `merged_at` | string | ISO timestamp |
 | `merged_by_uid` | string | Firebase uid |
 
+### am_core_deleted_assets
+
+Archive of items deleted from the catalog via **Assets → View → Delete** (Manager/Admin only). The active `am_core_assets` row is removed only *after* the archive row is written.
+
+| Field | Type | Description |
+|---|---|---|
+| `asset_id` | string | Original `am_core_assets` doc id |
+| `archived_asset` | map | Full snapshot of the deleted asset |
+| `deleted_at` | string | ISO timestamp |
+| `deleted_by_uid` | string | Firebase uid |
+| `deleted_by_email` | string | Actor email from session |
+| `deleted_by_display_name` | string | Actor display name from session |
+| `delete_reason` | string | Optional reason captured at delete time |
+| `status` | string | `archived` |
+
 ### pr_master_categories
 
 Reference data for item categories. AM reads these; Procurement manages them.

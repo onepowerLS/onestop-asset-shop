@@ -79,6 +79,8 @@ $location = $locationById[(string)($asset['location_id'] ?? '')] ?? [];
 
 $flash = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_success']);
+$flashError = $_SESSION['flash_error'] ?? '';
+unset($_SESSION['flash_error']);
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -106,6 +108,15 @@ include __DIR__ . '/../includes/header.php';
                 <i class="fas fa-edit me-2"></i>Edit
             </a>
             <?php endif; ?>
+            <?php if (am_is_manager_role()): ?>
+            <form method="POST" action="<?php echo base_url('assets/delete.php'); ?>" class="d-inline-flex align-items-center me-2" id="deleteAssetForm">
+                <input type="hidden" name="asset_id" value="<?php echo htmlspecialchars($assetId); ?>">
+                <input type="hidden" name="delete_reason" id="deleteReasonField" value="">
+                <button type="submit" class="btn btn-sm btn-danger d-inline-flex align-items-center">
+                    <i class="fas fa-trash me-2"></i>Delete
+                </button>
+            </form>
+            <?php endif; ?>
             <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-sm btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to List
             </a>
@@ -115,6 +126,12 @@ include __DIR__ . '/../includes/header.php';
     <?php if ($flash): ?>
     <div class="alert alert-success alert-dismissible fade show">
         <?php echo htmlspecialchars($flash); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php endif; ?>
+    <?php if ($flashError): ?>
+    <div class="alert alert-danger alert-dismissible fade show">
+        <?php echo htmlspecialchars($flashError); ?>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <?php endif; ?>
@@ -427,5 +444,28 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    var form = document.getElementById('deleteAssetForm');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+        var ok = confirm('Delete this item from active catalog? A full snapshot will be archived.');
+        if (!ok) {
+            e.preventDefault();
+            return;
+        }
+        var reason = prompt('Reason for deleting this item (optional):', 'No longer needed');
+        if (reason === null) {
+            e.preventDefault();
+            return;
+        }
+        var reasonField = document.getElementById('deleteReasonField');
+        if (reasonField) {
+            reasonField.value = reason.trim();
+        }
+    });
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
