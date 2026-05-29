@@ -50,6 +50,7 @@ foreach ($assets as $a) {
     }
 }
 $statuses = am_loadout_statuses();
+$lineOperations = am_loadout_line_operations();
 
 $errors = [];
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
@@ -186,10 +187,24 @@ $fv = [
     'notes' => (string)($manifest['notes'] ?? ''),
     'trip_id' => (string)($manifest['trip_id'] ?? ''),
     'trip_label' => (string)($manifest['trip_label'] ?? ''),
-    'lines' => $manifest['lines'] ?? [['asset_id' => '', 'quantity' => 1, 'notes' => '']],
+    'lines' => $manifest['lines'] ?? [[
+        'asset_id' => '',
+        'quantity' => 1,
+        'operation' => 'carry',
+        'stop_number' => '',
+        'stop_id' => '',
+        'notes' => '',
+    ]],
 ];
 if (!is_array($fv['lines']) || empty($fv['lines'])) {
-    $fv['lines'] = [['asset_id' => '', 'quantity' => 1, 'notes' => '']];
+    $fv['lines'] = [[
+        'asset_id' => '',
+        'quantity' => 1,
+        'operation' => 'carry',
+        'stop_number' => '',
+        'stop_id' => '',
+        'notes' => '',
+    ]];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($errors) && ($_POST['form_action'] ?? '') === 'save') {
@@ -203,7 +218,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($errors) && ($_POST['form_ac
         }
     }
     if (empty($postLines)) {
-        $postLines = [['asset_id' => '', 'quantity' => 1, 'notes' => '']];
+        $postLines = [[
+            'asset_id' => '',
+            'quantity' => 1,
+            'operation' => 'carry',
+            'stop_number' => '',
+            'stop_id' => '',
+            'notes' => '',
+        ]];
     }
     $fv = [
         'title' => trim((string)($_POST['title'] ?? '')),
@@ -303,14 +325,17 @@ include __DIR__ . '/../includes/header.php';
 
             <hr class="my-4">
             <h2 class="h6 text-uppercase text-muted">Line items</h2>
-            <p class="small text-muted">Enter asset document IDs (from the catalog) and quantities.</p>
+            <p class="small text-muted">Enter asset document IDs, quantities, and optional stop mapping for multi-stop Fleet trips.</p>
 
             <div class="table-responsive">
                 <table class="table table-sm" id="lines-table">
                     <thead>
                         <tr>
-                            <th style="width:40%">Asset ID</th>
+                            <th style="width:24%">Asset ID</th>
                             <th style="width:12%">Qty</th>
+                            <th style="width:14%">Operation</th>
+                            <th style="width:11%">Stop #</th>
+                            <th style="width:16%">Stop ID (FM)</th>
                             <th>Line notes</th>
                             <th style="width:48px"></th>
                         </tr>
@@ -324,6 +349,25 @@ include __DIR__ . '/../includes/header.php';
                             </td>
                             <td>
                                 <input type="number" name="lines[<?php echo (int)$idx; ?>][quantity]" class="form-control form-control-sm" min="1" value="<?php echo (int)($line['quantity'] ?? 1); ?>">
+                            </td>
+                            <td>
+                                <select name="lines[<?php echo (int)$idx; ?>][operation]" class="form-select form-select-sm">
+                                    <?php
+                                      $opValue = strtolower((string)($line['operation'] ?? 'carry'));
+                                      if (!in_array($opValue, $lineOperations, true)) { $opValue = 'carry'; }
+                                    ?>
+                                    <?php foreach ($lineOperations as $op): ?>
+                                    <option value="<?php echo htmlspecialchars($op); ?>" <?php echo $opValue === $op ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($op); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" name="lines[<?php echo (int)$idx; ?>][stop_number]" class="form-control form-control-sm" min="1" value="<?php echo htmlspecialchars((string)($line['stop_number'] ?? '')); ?>" placeholder="e.g. 2">
+                            </td>
+                            <td>
+                                <input type="text" name="lines[<?php echo (int)$idx; ?>][stop_id]" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string)($line['stop_id'] ?? '')); ?>" placeholder="trip_stops.id">
                             </td>
                             <td>
                                 <input type="text" name="lines[<?php echo (int)$idx; ?>][notes]" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string)($line['notes'] ?? '')); ?>">
@@ -377,6 +421,13 @@ include __DIR__ . '/../includes/header.php';
         tr.className = 'line-row';
         tr.innerHTML = '<td><input type="text" name="lines[' + idx + '][asset_id]" class="form-control form-control-sm" list="asset-id-list" placeholder="Asset doc id"></td>' +
             '<td><input type="number" name="lines[' + idx + '][quantity]" class="form-control form-control-sm" min="1" value="1"></td>' +
+            '<td><select name="lines[' + idx + '][operation]" class="form-select form-select-sm">' +
+              '<option value="drop">drop</option>' +
+              '<option value="pickup">pickup</option>' +
+              '<option value="carry" selected>carry</option>' +
+            '</select></td>' +
+            '<td><input type="number" name="lines[' + idx + '][stop_number]" class="form-control form-control-sm" min="1" placeholder="Stop #"></td>' +
+            '<td><input type="text" name="lines[' + idx + '][stop_id]" class="form-control form-control-sm" placeholder="trip_stops.id"></td>' +
             '<td><input type="text" name="lines[' + idx + '][notes]" class="form-control form-control-sm"></td>' +
             '<td><button type="button" class="btn btn-sm btn-outline-danger btn-remove-line">&times;</button></td>';
         tbody.appendChild(tr);

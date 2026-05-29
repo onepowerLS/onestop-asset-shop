@@ -242,7 +242,7 @@ Load-out / packing manifests for items leaving HQ toward a field site. Optional 
 | `country_id` | string | no | `pr_master_countries` id |
 | `trip_id` | string | no | Fleet trip document id (set from FM or AM UI) |
 | `trip_label` | string | no | Optional display name for the trip |
-| `lines` | array | no | Line items: `line_no`, `asset_id`, `quantity`, `notes`, `name_snapshot`, `tag_snapshot` |
+| `lines` | array | no | Line items: `line_no`, `asset_id`, `quantity`, `notes`, `name_snapshot`, `tag_snapshot`, and optional Fleet-routing metadata `operation` (`drop`\|`pickup`\|`carry`), `stop_number`, `stop_id` |
 | `notes` | string | no | Manifest-level notes |
 | `source_system` | string | no | e.g. `am.1pwrafrica.com` |
 | `linked_from_fm` | boolean | no | Set when linked via FM API |

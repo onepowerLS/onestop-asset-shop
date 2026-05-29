@@ -118,12 +118,15 @@ include __DIR__ . '/../includes/header.php';
                             <th>Description (snapshot)</th>
                             <th>Tag / QR</th>
                             <th class="text-end">Qty</th>
+                            <th>Operation</th>
+                            <th>Stop #</th>
+                            <th>Stop ID</th>
                             <th>Notes</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($lines)): ?>
-                        <tr><td colspan="6" class="text-muted">No line items.</td></tr>
+                        <tr><td colspan="9" class="text-muted">No line items.</td></tr>
                         <?php else: ?>
                         <?php foreach ($lines as $line): ?>
                         <?php if (!is_array($line)) { continue; } ?>
@@ -133,6 +136,9 @@ include __DIR__ . '/../includes/header.php';
                             <td><?php echo htmlspecialchars((string)($line['name_snapshot'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars((string)($line['tag_snapshot'] ?? '')); ?></td>
                             <td class="text-end"><?php echo (int)($line['quantity'] ?? 1); ?></td>
+                            <td><?php echo htmlspecialchars((string)($line['operation'] ?? 'carry')); ?></td>
+                            <td><?php echo htmlspecialchars((string)($line['stop_number'] ?? '')); ?></td>
+                            <td><code><?php echo htmlspecialchars((string)($line['stop_id'] ?? '')); ?></code></td>
                             <td><?php echo htmlspecialchars((string)($line['notes'] ?? '')); ?></td>
                         </tr>
                         <?php endforeach; ?>
