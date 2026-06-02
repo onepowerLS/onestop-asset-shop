@@ -28,6 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $docId = trim($_POST['doc_id'] ?? '');
         $newStatus = trim($_POST['new_status'] ?? '');
         if ($docId !== '' && in_array($newStatus, ['Approved', 'Rejected', 'Fulfilled', 'Cancelled'], true)) {
+            $existing = am_firestore_get_document('am_core_requests', $docId);
+            $wfType = (string)($existing['workflow_type'] ?? '');
+            if ($wfType === 'inventory_dispatch') {
+                $_SESSION['flash_error'] = 'Process inventory dispatch statuses from the dispatch detail page so stock apportionment is applied.';
+                header('Location: ' . base_url('requests/dispatch-view.php?id=' . urlencode($docId)));
+                exit;
+            }
             $update = ['status' => $newStatus];
             if ($newStatus === 'Fulfilled') {
                 $update['fulfilled_date'] = date('c');
@@ -179,7 +186,11 @@ include __DIR__ . '/../includes/header.php';
                                 <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url($isDisp ? 'requests/dispatch-view.php' : 'requests/workflow-view.php'); ?>?id=<?php echo urlencode($docId); ?>">View</a></td>
                             <?php if ($canProcess): ?>
                             <td class="text-end">
-                                <?php if ($status === 'Submitted'): ?>
+                                <?php if ($isDisp): ?>
+                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo base_url('requests/dispatch-view.php?id=' . urlencode($docId)); ?>" title="Open dispatch">
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                </a>
+                                <?php elseif ($status === 'Submitted'): ?>
                                 <form method="post" class="d-inline">
                                     <input type="hidden" name="action" value="update_status">
                                     <input type="hidden" name="doc_id" value="<?php echo htmlspecialchars($docId); ?>">

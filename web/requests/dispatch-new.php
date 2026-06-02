@@ -562,8 +562,9 @@ function doSearch(q) {
                 var clsBadge = {
                     'Material': 'warning', 'Consumable': 'info', 'Inventory': 'success', 'FixedAsset': 'primary'
                 };
-                var stockDisplay = item.quantity_on_hand > 0
-                    ? '<span class="fw-bold text-success">' + item.quantity_on_hand + '</span>'
+                var availableQty = (typeof item.quantity_available === 'number') ? item.quantity_available : (item.quantity_on_hand || 0);
+                var stockDisplay = availableQty > 0
+                    ? '<span class="fw-bold text-success">' + availableQty + '</span>'
                     : '<span class="text-muted">0</span>';
                 var tr = document.createElement('tr');
                 if (already) tr.classList.add('table-secondary');

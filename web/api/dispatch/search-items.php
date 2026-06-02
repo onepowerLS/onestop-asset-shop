@@ -50,7 +50,7 @@ foreach ($categories as $c) {
     }
 }
 
-// Build stock index: asset_id => total qoh in any location
+// Build stock index: asset_id => totals across locations
 $stockByAsset = [];
 foreach ($inventoryLevels as $inv) {
     $aid = (string)($inv['asset_id'] ?? '');
@@ -58,10 +58,12 @@ foreach ($inventoryLevels as $inv) {
         continue;
     }
     $qoh = (int)($inv['quantity_on_hand'] ?? 0);
-    if ($qoh <= 0) {
-        continue;
+    $alloc = (int)($inv['quantity_allocated'] ?? 0);
+    if (!isset($stockByAsset[$aid])) {
+        $stockByAsset[$aid] = ['qoh' => 0, 'alloc' => 0];
     }
-    $stockByAsset[$aid] = ($stockByAsset[$aid] ?? 0) + $qoh;
+    $stockByAsset[$aid]['qoh'] += $qoh;
+    $stockByAsset[$aid]['alloc'] += $alloc;
 }
 
 /**
@@ -153,7 +155,12 @@ foreach ($assets as $asset) {
         'unit_of_measure' => (string)($asset['unit_of_measure'] ?? 'EA'),
         'location_name' => (string)($loc['location_name'] ?? ''),
         'status' => (string)($asset['status'] ?? ''),
-        'quantity_on_hand' => $stockByAsset[$aid] ?? 0,
+        'quantity_on_hand' => (int)(($stockByAsset[$aid]['qoh'] ?? 0)),
+        'quantity_allocated' => (int)(($stockByAsset[$aid]['alloc'] ?? 0)),
+        'quantity_available' => max(
+            0,
+            (int)(($stockByAsset[$aid]['qoh'] ?? 0)) - (int)(($stockByAsset[$aid]['alloc'] ?? 0))
+        ),
     ];
 
     if (count($results) >= 100) {

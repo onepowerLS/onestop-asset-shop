@@ -36,31 +36,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newStatus = trim($_POST['new_status'] ?? '');
         if (in_array($newStatus, ['Approved', 'Rejected', 'Fulfilled', 'Cancelled'], true)) {
             $update = ['status' => $newStatus];
-            if ($newStatus === 'Fulfilled') {
-                $update['fulfilled_date'] = date('c');
-                // Update inventory levels: deduct from source, add to destination
-                $fulfillPayload = $req['payload'] ?? [];
-                if (!is_array($fulfillPayload)) $fulfillPayload = [];
-                $allInvLevels = am_firestore_get_collection('am_core_inventory_levels', 4000);
+            $workPayload = $req['payload'] ?? [];
+            if (!is_array($workPayload)) {
+                $workPayload = [];
+            }
+
+            // For Approved/Fulfilled, apportion against available stock at source location.
+            if ($newStatus === 'Approved' || $newStatus === 'Fulfilled') {
+                $allInvLevels = am_firestore_get_collection('am_core_inventory_levels', 5000);
                 $allLocations = am_get_pr_sites();
-                $allAssets = am_firestore_get_collection('am_core_assets', 3000);
+                $allAssets = am_firestore_get_collection('am_core_assets', 10000);
 
                 $assetById = [];
                 foreach ($allAssets as $a) {
                     $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
-                    if ($aid !== '') $assetById[$aid] = $a;
+                    if ($aid !== '') {
+                        $assetById[$aid] = $a;
+                    }
                 }
 
                 $locByAnyKey = [];
                 foreach ($allLocations as $l) {
-                    $lid = (string)($l['id'] ?? '');
+                    $lid = (string)($l['id'] ?? $l['location_id'] ?? '');
                     $lcode = (string)($l['location_code'] ?? '');
-                    if ($lid !== '') $locByAnyKey[$lid] = $l;
-                    if ($lcode !== '' && $lcode !== $lid) $locByAnyKey[$lcode] = $l;
+                    if ($lid !== '') {
+                        $locByAnyKey[$lid] = $l;
+                    }
+                    if ($lcode !== '' && $lcode !== $lid) {
+                        $locByAnyKey[$lcode] = $l;
+                    }
                 }
 
                 $reqCountryId = (string)($req['requested_for_country'] ?? '');
-                $destSiteCode = (string)($fulfillPayload['site_code'] ?? '');
+                $destSiteCode = (string)($workPayload['site_code'] ?? '');
                 $destLoc = $locByAnyKey[$destSiteCode] ?? [];
                 $destLocationCode = (string)($destLoc['location_code'] ?? $destSiteCode);
 
@@ -74,80 +82,189 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $fulfillItems = $fulfillPayload['line_items'] ?? [];
-                if (!is_array($fulfillItems)) $fulfillItems = [];
+                $items = $workPayload['line_items'] ?? [];
+                if (!is_array($items)) {
+                    $items = [];
+                }
 
-                foreach ($fulfillItems as $li) {
+                $shortNotes = [];
+                foreach ($items as $idx => $li) {
                     $liAssetId = (string)($li['asset_id'] ?? '');
-                    $qty = (int)($li['quantity'] ?? 0);
-                    if ($liAssetId === '' || $qty <= 0) continue;
-
+                    $reqQty = (int)($li['quantity'] ?? 0);
+                    if ($liAssetId === '' || $reqQty <= 0) {
+                        continue;
+                    }
                     $asset = $assetById[$liAssetId] ?? [];
-                    if (!$asset) continue;
+                    if (!$asset) {
+                        continue;
+                    }
 
                     $srcLocId = (string)($asset['location_id'] ?? '');
                     $srcLoc = $locByAnyKey[$srcLocId] ?? [];
                     $srcLocationCode = (string)($srcLoc['location_code'] ?? $srcLocId);
-                    if ($srcLocationCode === '' || $srcLocationCode === $destLocationCode) continue;
-
-                    // Source: deduct
-                    $srcKey = $liAssetId . '|' . $srcLocationCode . '|' . $reqCountryId;
-                    $srcInv = $invByKey[$srcKey] ?? null;
-                    if ($srcInv) {
-                        $srcQoh = max(0, (int)($srcInv['quantity_on_hand'] ?? 0) - $qty);
-                        am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
-                            'quantity_on_hand' => $srcQoh,
-                            'updated_at' => date('c'),
-                        ]);
-                    } else {
-                        $srcQoh = max(0, (int)($asset['quantity'] ?? 0) - $qty);
-                        am_firestore_create_document('am_core_inventory_levels', [
-                            'asset_id' => $liAssetId,
-                            'location_id' => $srcLocationCode,
-                            'country_id' => $reqCountryId,
-                            'quantity_on_hand' => $srcQoh,
-                            'quantity_allocated' => 0,
-                            'created_at' => date('c'),
-                            'updated_at' => date('c'),
-                        ]);
+                    if ($srcLocationCode === '') {
+                        continue;
                     }
 
-                    // Destination: add
-                    $destKey = $liAssetId . '|' . $destLocationCode . '|' . $reqCountryId;
-                    $destInv = $invByKey[$destKey] ?? null;
-                    if ($destInv) {
-                        $destQoh = (int)($destInv['quantity_on_hand'] ?? 0) + $qty;
-                        am_firestore_update_document('am_core_inventory_levels', (string)$destInv['id'], [
-                            'quantity_on_hand' => $destQoh,
-                            'updated_at' => date('c'),
-                        ]);
-                    } else {
-                        am_firestore_create_document('am_core_inventory_levels', [
-                            'asset_id' => $liAssetId,
-                            'location_id' => $destLocationCode,
-                            'country_id' => $reqCountryId,
-                            'quantity_on_hand' => $qty,
-                            'quantity_allocated' => 0,
-                            'created_at' => date('c'),
-                            'updated_at' => date('c'),
-                        ]);
+                    $srcKey = $liAssetId . '|' . $srcLocationCode . '|' . $reqCountryId;
+                    $srcInv = $invByKey[$srcKey] ?? null;
+                    $srcQoh = $srcInv ? (int)($srcInv['quantity_on_hand'] ?? 0) : (int)($asset['quantity'] ?? 0);
+                    $srcAlloc = $srcInv ? (int)($srcInv['quantity_allocated'] ?? 0) : 0;
+                    $available = max(0, $srcQoh - $srcAlloc);
+
+                    // Approved: reserve available quantity.
+                    if ($newStatus === 'Approved') {
+                        $allocQty = min($reqQty, $available);
+                        $shortQty = max(0, $reqQty - $allocQty);
+                        $items[$idx]['allocated_quantity'] = $allocQty;
+                        $items[$idx]['short_quantity'] = $shortQty;
+                        $items[$idx]['allocation_updated_at'] = date('c');
+
+                        if ($allocQty > 0) {
+                            if ($srcInv) {
+                                $newAlloc = $srcAlloc + $allocQty;
+                                am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
+                                    'quantity_allocated' => $newAlloc,
+                                    'updated_at' => date('c'),
+                                ]);
+                                $srcInv['quantity_allocated'] = $newAlloc;
+                                $invByKey[$srcKey] = $srcInv;
+                            } else {
+                                $cr = am_firestore_create_document('am_core_inventory_levels', [
+                                    'asset_id' => $liAssetId,
+                                    'location_id' => $srcLocationCode,
+                                    'country_id' => $reqCountryId,
+                                    'quantity_on_hand' => $srcQoh,
+                                    'quantity_allocated' => $allocQty,
+                                    'created_at' => date('c'),
+                                    'updated_at' => date('c'),
+                                ]);
+                                if (!empty($cr['ok']) && !empty($cr['id'])) {
+                                    $invByKey[$srcKey] = [
+                                        'id' => (string)$cr['id'],
+                                        'asset_id' => $liAssetId,
+                                        'location_id' => $srcLocationCode,
+                                        'country_id' => $reqCountryId,
+                                        'quantity_on_hand' => $srcQoh,
+                                        'quantity_allocated' => $allocQty,
+                                    ];
+                                }
+                            }
+                        }
+                        if ($shortQty > 0) {
+                            $shortNotes[] = (string)($li['name'] ?? ('Item #' . ($idx + 1))) . ': short by ' . $shortQty;
+                        }
+                    }
+
+                    // Fulfilled: move allocated qty when present, else best-effort available qty.
+                    if ($newStatus === 'Fulfilled') {
+                        $allocQty = (int)($li['allocated_quantity'] ?? 0);
+                        $moveQty = $allocQty > 0 ? $allocQty : min($reqQty, $available);
+                        $unfulfilled = max(0, $reqQty - $moveQty);
+                        $items[$idx]['fulfilled_quantity'] = $moveQty;
+                        $items[$idx]['unfulfilled_quantity'] = $unfulfilled;
+                        $items[$idx]['fulfilled_updated_at'] = date('c');
+                        if ($moveQty <= 0 || $srcLocationCode === $destLocationCode) {
+                            continue;
+                        }
+
+                        // Source: deduct on-hand and release allocation.
+                        if ($srcInv) {
+                            $newQoh = max(0, (int)($srcInv['quantity_on_hand'] ?? 0) - $moveQty);
+                            $newAlloc = max(0, (int)($srcInv['quantity_allocated'] ?? 0) - $allocQty);
+                            am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
+                                'quantity_on_hand' => $newQoh,
+                                'quantity_allocated' => $newAlloc,
+                                'updated_at' => date('c'),
+                            ]);
+                            $srcInv['quantity_on_hand'] = $newQoh;
+                            $srcInv['quantity_allocated'] = $newAlloc;
+                            $invByKey[$srcKey] = $srcInv;
+                        } else {
+                            am_firestore_create_document('am_core_inventory_levels', [
+                                'asset_id' => $liAssetId,
+                                'location_id' => $srcLocationCode,
+                                'country_id' => $reqCountryId,
+                                'quantity_on_hand' => max(0, (int)($asset['quantity'] ?? 0) - $moveQty),
+                                'quantity_allocated' => 0,
+                                'created_at' => date('c'),
+                                'updated_at' => date('c'),
+                            ]);
+                        }
+
+                        // Destination: add on-hand.
+                        $destKey = $liAssetId . '|' . $destLocationCode . '|' . $reqCountryId;
+                        $destInv = $invByKey[$destKey] ?? null;
+                        if ($destInv) {
+                            $destQoh = (int)($destInv['quantity_on_hand'] ?? 0) + $moveQty;
+                            am_firestore_update_document('am_core_inventory_levels', (string)$destInv['id'], [
+                                'quantity_on_hand' => $destQoh,
+                                'updated_at' => date('c'),
+                            ]);
+                            $destInv['quantity_on_hand'] = $destQoh;
+                            $invByKey[$destKey] = $destInv;
+                        } else {
+                            $cr = am_firestore_create_document('am_core_inventory_levels', [
+                                'asset_id' => $liAssetId,
+                                'location_id' => $destLocationCode,
+                                'country_id' => $reqCountryId,
+                                'quantity_on_hand' => $moveQty,
+                                'quantity_allocated' => 0,
+                                'created_at' => date('c'),
+                                'updated_at' => date('c'),
+                            ]);
+                            if (!empty($cr['ok']) && !empty($cr['id'])) {
+                                $invByKey[$destKey] = [
+                                    'id' => (string)$cr['id'],
+                                    'asset_id' => $liAssetId,
+                                    'location_id' => $destLocationCode,
+                                    'country_id' => $reqCountryId,
+                                    'quantity_on_hand' => $moveQty,
+                                    'quantity_allocated' => 0,
+                                ];
+                            }
+                        }
                     }
                 }
 
-                // Update asset location for all line items (critical for FixedAssets)
-                $destLocName = (string)($destLoc['location_name'] ?? $destSiteCode);
-                foreach ($fulfillItems as $li) {
-                    $liAssetId = (string)($li['asset_id'] ?? '');
-                    if ($liAssetId === '') continue;
-                    $la = $assetById[$liAssetId] ?? [];
-                    if (!$la) continue;
-                    $currentLocId = (string)($la['location_id'] ?? '');
-                    if ($currentLocId === $destLocationCode) continue;
-                    am_firestore_update_document('am_core_assets', $liAssetId, [
-                        'location_id' => $destLocationCode,
-                        'location_name' => $destLocName,
-                        'updated_at' => date('c'),
-                    ]);
+                $workPayload['line_items'] = array_values($items);
+                if ($newStatus === 'Approved') {
+                    $workPayload['allocation_applied_at'] = date('c');
+                    if (!empty($shortNotes)) {
+                        $workPayload['allocation_note'] = 'Partially apportioned: ' . implode('; ', $shortNotes);
+                    } else {
+                        unset($workPayload['allocation_note']);
+                    }
+                }
+                if ($newStatus === 'Fulfilled') {
+                    $workPayload['fulfilled_apportionment_at'] = date('c');
+                }
+                $update['payload'] = $workPayload;
+
+                if ($newStatus === 'Fulfilled') {
+                    // Update asset location for fulfilled line items.
+                    $destLocName = (string)($destLoc['location_name'] ?? $destSiteCode);
+                    foreach ($items as $li) {
+                        $liAssetId = (string)($li['asset_id'] ?? '');
+                        $moved = (int)($li['fulfilled_quantity'] ?? 0);
+                        if ($liAssetId === '' || $moved <= 0) {
+                            continue;
+                        }
+                        $la = $assetById[$liAssetId] ?? [];
+                        if (!$la) {
+                            continue;
+                        }
+                        $currentLocId = (string)($la['location_id'] ?? '');
+                        if ($currentLocId === $destLocationCode) {
+                            continue;
+                        }
+                        am_firestore_update_document('am_core_assets', $liAssetId, [
+                            'location_id' => $destLocationCode,
+                            'location_name' => $destLocName,
+                            'updated_at' => date('c'),
+                        ]);
+                    }
+                    $update['fulfilled_date'] = date('c');
                 }
             }
             am_firestore_update_document('am_core_requests', $docId, $update);
