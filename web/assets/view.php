@@ -60,6 +60,7 @@ $page_title = (string)($asset['name'] ?? 'Item Detail');
 
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 $transactions = am_firestore_get_collection('am_core_transactions', 2000);
+$inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 5000);
 
 $itemAllocations = array_filter($allocations, fn($a) => (string)($a['asset_id'] ?? '') === $assetId);
 $itemTransactions = array_filter($transactions, fn($t) => (string)($t['asset_id'] ?? '') === $assetId);
@@ -71,6 +72,23 @@ usort($itemTransactions, function ($a, $b) {
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
 $cls = (string)($asset['item_class'] ?? '');
+$isStockable = in_array($cls, ['Material', 'Consumable', 'Inventory'], true);
+
+$stockQoh = 0;
+$stockAlloc = 0;
+$stockRowCount = 0;
+foreach ($inventoryLevels as $inv) {
+    if ((string)($inv['asset_id'] ?? '') !== $assetId) {
+        continue;
+    }
+    $stockRowCount++;
+    $stockQoh += (int)($inv['quantity_on_hand'] ?? 0);
+    $stockAlloc += (int)($inv['quantity_allocated'] ?? 0);
+}
+$hasInventoryRows = $stockRowCount > 0;
+$effectiveQoh = $isStockable ? ($hasInventoryRows ? $stockQoh : (int)($asset['quantity'] ?? 1)) : (int)($asset['quantity'] ?? 1);
+$effectiveAlloc = $isStockable ? $stockAlloc : 0;
+$effectiveAvail = max(0, $effectiveQoh - $effectiveAlloc);
 
 $resolvedCountryId = am_resolve_asset_country_id($asset, $countries);
 $country = $countryById[$resolvedCountryId] ?? [];
@@ -193,9 +211,19 @@ include __DIR__ . '/../includes/header.php';
                         </div>
                         <?php if ($cls !== 'FixedAsset'): ?>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Quantity</small>
-                            <p class="fw-bold mb-0"><?php echo (int)($asset['quantity'] ?? 1); ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                            <small class="text-gray-500"><?php echo $isStockable ? 'On Hand' : 'Quantity'; ?></small>
+                            <p class="fw-bold mb-0"><?php echo (int)$effectiveQoh; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
                         </div>
+                        <?php if ($isStockable): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Allocated</small>
+                            <p class="fw-bold mb-0"><?php echo (int)$effectiveAlloc; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Available</small>
+                            <p class="fw-bold mb-0"><?php echo (int)$effectiveAvail; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                        </div>
+                        <?php endif; ?>
                         <?php endif; ?>
                         <?php if ($asset['description'] ?? ''): ?>
                         <div class="col-12">

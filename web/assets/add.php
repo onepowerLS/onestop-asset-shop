@@ -128,6 +128,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $result = am_firestore_create_document('am_core_assets', $data);
         if ($result['ok']) {
+            // Keep stock levels in sync for stockable classes on create.
+            $newAssetId = (string)($result['id'] ?? '');
+            if (
+                $newAssetId !== '' &&
+                in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) &&
+                $locationId !== '' &&
+                $countryId !== ''
+            ) {
+                am_firestore_create_document('am_core_inventory_levels', [
+                    'asset_id' => $newAssetId,
+                    'location_id' => $locationId,
+                    'country_id' => $countryId,
+                    'quantity_on_hand' => max(0, $quantity),
+                    'quantity_allocated' => 0,
+                    'created_at' => date('c'),
+                    'updated_at' => date('c'),
+                ]);
+            }
             $_SESSION['flash_success'] = 'Item "' . htmlspecialchars($name) . '" created with tag ' . $assetTag;
             header('Location: ' . base_url('assets/view.php?id=' . urlencode($result['id'])));
             exit;

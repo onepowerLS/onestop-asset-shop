@@ -160,6 +160,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             $result = am_firestore_update_document('am_core_assets', $assetId, $data);
             if ($result['ok']) {
+                // For stockable classes, keep the primary inventory row aligned with edited quantity.
+                if (
+                    in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) &&
+                    $countryId !== '' &&
+                    trim((string)($data['location_id'] ?? '')) !== ''
+                ) {
+                    $targetLoc = trim((string)$data['location_id']);
+                    $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
+                    $targetInv = null;
+                    foreach ($allInv as $inv) {
+                        if (
+                            (string)($inv['asset_id'] ?? '') === $assetId &&
+                            (string)($inv['location_id'] ?? '') === $targetLoc &&
+                            (string)($inv['country_id'] ?? '') === $countryId
+                        ) {
+                            $targetInv = $inv;
+                            break;
+                        }
+                    }
+                    if ($targetInv) {
+                        $alloc = (int)($targetInv['quantity_allocated'] ?? 0);
+                        $qoh = max((int)$data['quantity'], $alloc);
+                        am_firestore_update_document('am_core_inventory_levels', (string)$targetInv['id'], [
+                            'quantity_on_hand' => $qoh,
+                            'updated_at' => date('c'),
+                        ]);
+                    } else {
+                        am_firestore_create_document('am_core_inventory_levels', [
+                            'asset_id' => $assetId,
+                            'location_id' => $targetLoc,
+                            'country_id' => $countryId,
+                            'quantity_on_hand' => max(0, (int)$data['quantity']),
+                            'quantity_allocated' => 0,
+                            'created_at' => date('c'),
+                            'updated_at' => date('c'),
+                        ]);
+                    }
+                }
                 $_SESSION['flash_success'] = 'Item updated successfully.';
                 header('Location: ' . base_url('assets/view.php?id=' . urlencode($assetId)));
                 exit;
