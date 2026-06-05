@@ -18,8 +18,12 @@ $inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 4000)
 $locationById = [];
 foreach ($locations as $l) {
     $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    $lcode = (string)($l['location_code'] ?? '');
     if ($lid !== '') {
         $locationById[$lid] = $l;
+    }
+    if ($lcode !== '' && $lcode !== $lid) {
+        $locationById[$lcode] = $l;
     }
 }
 
@@ -52,6 +56,7 @@ $stockView = isset($_GET['each_tag']) ? 'each_tag' : 'rollup';
 
 $stockItems = [];
 $reorderAlerts = 0;
+$hasInvByAsset = [];
 
 if (!empty($inventoryLevels)) {
     foreach ($inventoryLevels as $inv) {
@@ -60,8 +65,19 @@ if (!empty($inventoryLevels)) {
         if ($asset !== [] && !am_asset_passes_country_scope($asset, $countries, $locationById)) {
             continue;
         }
+        if ($aid !== '') {
+            $hasInvByAsset[$aid] = true;
+        }
+
+        // Normalize inventory location_id so stock rows are grouped/displayed consistently.
+        $rawLocId = (string)($inv['location_id'] ?? '');
+        $locResolved = $locationById[$rawLocId] ?? [];
+        $canonLocId = (string)($locResolved['location_code'] ?? $rawLocId);
+        $invNorm = $inv;
+        $invNorm['location_id'] = $canonLocId;
+
         $cls = (string)($asset['item_class'] ?? '');
-        $cid = (string)($inv['country_id'] ?? '');
+        $cid = (string)($invNorm['country_id'] ?? '');
         if ($cid === '' && $asset) {
             $cid = am_resolve_asset_country_id($asset, $countries);
         }
@@ -73,8 +89,8 @@ if (!empty($inventoryLevels)) {
             continue;
         }
 
-        $qoh = (int)($inv['quantity_on_hand'] ?? 0);
-        $reorder = $inv['reorder_level'] ?? null;
+        $qoh = (int)($invNorm['quantity_on_hand'] ?? 0);
+        $reorder = $invNorm['reorder_level'] ?? null;
         $isLow = $reorder !== null && $qoh <= (int)$reorder;
         if ($lowStockOnly && !$isLow) {
             continue;
@@ -84,40 +100,56 @@ if (!empty($inventoryLevels)) {
         }
 
         $stockItems[] = [
-            'inv' => $inv,
+            'inv' => $invNorm,
             'asset' => $asset,
             'country' => $countryById[$cid] ?? [],
             'category' => $categoryById[(string)($asset['category_id'] ?? '')] ?? [],
-            'location' => $locationById[(string)($inv['location_id'] ?? '')] ?? [],
+            'location' => $locationById[$canonLocId] ?? [],
             'is_low' => $isLow,
             'country_id_resolved' => $cid,
         ];
     }
-} else {
-    $trackable = array_filter($assets, fn($a) => in_array($a['item_class'] ?? '', ['Material', 'Consumable', 'Inventory']));
-    foreach ($trackable as $asset) {
-        if (!am_asset_passes_country_scope($asset, $countries, $locationById)) {
-            continue;
-        }
-        $cls = (string)($asset['item_class'] ?? '');
-        $cid = am_resolve_asset_country_id($asset, $countries);
-        if ($classFilter && $cls !== $classFilter) {
-            continue;
-        }
-        if ($countryFilter && $cid !== $countryFilter) {
-            continue;
-        }
+}
 
-        $stockItems[] = [
-            'inv' => ['quantity_on_hand' => (int)($asset['quantity'] ?? 0), 'quantity_allocated' => 0, 'reorder_level' => null],
-            'asset' => $asset,
-            'country' => $countryById[$cid] ?? [],
-            'category' => $categoryById[(string)($asset['category_id'] ?? '')] ?? [],
-            'location' => $locationById[(string)($asset['location_id'] ?? '')] ?? [],
-            'is_low' => false,
-            'country_id_resolved' => $cid,
-        ];
+// Backfill stockable assets without inventory rows so Item Detail and Stock Levels remain aligned.
+$trackable = array_filter($assets, fn($a) => in_array($a['item_class'] ?? '', ['Material', 'Consumable', 'Inventory'], true));
+foreach ($trackable as $asset) {
+    $aid = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
+    if ($aid !== '' && isset($hasInvByAsset[$aid])) {
+        continue;
     }
+    if (!am_asset_passes_country_scope($asset, $countries, $locationById)) {
+        continue;
+    }
+    $cls = (string)($asset['item_class'] ?? '');
+    $cid = am_resolve_asset_country_id($asset, $countries);
+    if ($classFilter && $cls !== $classFilter) {
+        continue;
+    }
+    if ($countryFilter && $cid !== $countryFilter) {
+        continue;
+    }
+
+    $assetLocRaw = (string)($asset['location_id'] ?? '');
+    $assetLocResolved = $locationById[$assetLocRaw] ?? [];
+    $assetLocCanonical = (string)($assetLocResolved['location_code'] ?? $assetLocRaw);
+    $fallbackInv = [
+        'quantity_on_hand' => (int)($asset['quantity'] ?? 0),
+        'quantity_allocated' => 0,
+        'reorder_level' => null,
+        'location_id' => $assetLocCanonical,
+        'country_id' => $cid,
+    ];
+
+    $stockItems[] = [
+        'inv' => $fallbackInv,
+        'asset' => $asset,
+        'country' => $countryById[$cid] ?? [],
+        'category' => $categoryById[(string)($asset['category_id'] ?? '')] ?? [],
+        'location' => $locationById[$assetLocCanonical] ?? [],
+        'is_low' => false,
+        'country_id_resolved' => $cid,
+    ];
 }
 
 if ($stockView === 'rollup') {
