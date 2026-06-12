@@ -1,7 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/duplicate_assets.php';
+require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
+am_ensure_country_scope_from_session();
+am_require_can_mutate();
 
 $page_title = 'Add New Item';
 $errors = [];
@@ -12,6 +17,7 @@ $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
+$countries = am_countries_for_user_select($countries);
 $categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
 
 $preselectedClass = $_GET['item_class'] ?? '';
@@ -35,6 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $unitOfMeasure = trim($_POST['unit_of_measure'] ?? 'EA');
     $legacyTag = trim($_POST['legacy_tag'] ?? '');
     $notes = trim($_POST['notes'] ?? '');
+    $vehicleType = trim($_POST['vehicle_type'] ?? '');
+    $vehicleYear = trim($_POST['vehicle_year'] ?? '');
+    $engineNumber = trim($_POST['engine_number'] ?? '');
+    $transmissionType = trim($_POST['transmission_type'] ?? '');
+    $fuelType = trim($_POST['fuel_type'] ?? '');
+    $driveType = trim($_POST['drive_type'] ?? '');
 
     if ($itemClass === '' || !in_array($itemClass, ['FixedAsset', 'Material', 'Consumable', 'Inventory'])) {
         $errors[] = 'Please select a valid item classification.';
@@ -44,6 +56,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($countryId === '') {
         $errors[] = 'Country is required.';
+    }
+    if ($countryId !== '' && !am_user_may_access_country_id($countryId, $countries)) {
+        $errors[] = 'You cannot create items for that country.';
+    }
+
+    // Class-specific validation
+    if ($itemClass === 'FixedAsset') {
+        if ($categoryId === '') {
+            $errors[] = 'Category is required for Fixed Assets.';
+        }
+    } elseif (in_array($itemClass, ['Material', 'Consumable', 'Inventory'])) {
+        if ($categoryId === '') {
+            $errors[] = 'Category is required.';
+        }
+        if ($unitOfMeasure === '') {
+            $errors[] = 'Unit of measure is required.';
+        }
+        if ($quantity < 1) {
+            $errors[] = 'Quantity must be at least 1.';
+        }
     }
 
     if (empty($errors)) {
@@ -55,8 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $existingAssets = am_firestore_get_collection('am_core_assets', 2000);
-        $assetTag = am_generate_asset_tag($itemClass, $countryCode, $existingAssets);
+        $existingAssets = am_firestore_get_collection('am_core_assets', 10000);
+        $assetTag = am_generate_unique_asset_tag($itemClass, $countryCode, $existingAssets);
+
+        am_require_asset_country_mutate($countryId, $countries);
 
         $data = [
             'name' => $name,
@@ -83,10 +117,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'created_at' => date('c'),
             'updated_at' => date('c'),
             'created_by' => $_SESSION['user_id'] ?? '',
+            // Vehicle-specific fields (only meaningful for vehicle categories)
+            'vehicle_type'       => trim($_POST['vehicle_type'] ?? ''),
+            'vehicle_year'       => $vehicleYear !== '' ? (int)$vehicleYear : null,
+            'engine_number'      => trim($_POST['engine_number'] ?? ''),
+            'transmission_type'  => trim($_POST['transmission_type'] ?? ''),
+            'fuel_type'          => trim($_POST['fuel_type'] ?? ''),
+            'drive_type'         => trim($_POST['drive_type'] ?? ''),
         ];
 
         $result = am_firestore_create_document('am_core_assets', $data);
         if ($result['ok']) {
+            // Keep stock levels in sync for stockable classes on create.
+            $newAssetId = (string)($result['id'] ?? '');
+            if (
+                $newAssetId !== '' &&
+                in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) &&
+                $locationId !== '' &&
+                $countryId !== ''
+            ) {
+                $locByAnyKey = [];
+                foreach ($locations as $loc) {
+                    $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
+                    $lcode = (string)($loc['location_code'] ?? '');
+                    if ($lid !== '') {
+                        $locByAnyKey[$lid] = $loc;
+                    }
+                    if ($lcode !== '' && $lcode !== $lid) {
+                        $locByAnyKey[$lcode] = $loc;
+                    }
+                }
+                $resolved = $locByAnyKey[$locationId] ?? [];
+                $canonicalLoc = (string)($resolved['location_code'] ?? $locationId);
+                am_firestore_create_document('am_core_inventory_levels', [
+                    'asset_id' => $newAssetId,
+                    'location_id' => $canonicalLoc,
+                    'country_id' => $countryId,
+                    'quantity_on_hand' => max(0, $quantity),
+                    'quantity_allocated' => 0,
+                    'created_at' => date('c'),
+                    'updated_at' => date('c'),
+                ]);
+            }
             $_SESSION['flash_success'] = 'Item "' . htmlspecialchars($name) . '" created with tag ' . $assetTag;
             header('Location: ' . base_url('assets/view.php?id=' . urlencode($result['id'])));
             exit;
@@ -266,6 +338,58 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
+        <!-- Step 3b: Vehicle-specific fields (shown when a vehicle category is selected) -->
+        <div class="card border-0 shadow mb-4" id="vehicleFields" style="display:none;">
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">3b. Vehicle Details</h2></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Vehicle Type</label>
+                        <select class="form-select" name="vehicle_type">
+                            <option value="">Select…</option>
+                            <option value="4x4" <?php echo ($_POST['vehicle_type'] ?? '') === '4x4' ? 'selected' : ''; ?>>4x4 / SUV</option>
+                            <option value="truck" <?php echo ($_POST['vehicle_type'] ?? '') === 'truck' ? 'selected' : ''; ?>>Truck</option>
+                            <option value="trailer" <?php echo ($_POST['vehicle_type'] ?? '') === 'trailer' ? 'selected' : ''; ?>>Trailer</option>
+                            <option value="equipment" <?php echo ($_POST['vehicle_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Year</label>
+                        <input type="number" class="form-control" name="vehicle_year" min="1980" max="2099" value="<?php echo htmlspecialchars($_POST['vehicle_year'] ?? ''); ?>">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Engine Number</label>
+                        <input type="text" class="form-control" name="engine_number" value="<?php echo htmlspecialchars($_POST['engine_number'] ?? ''); ?>">
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Transmission</label>
+                        <select class="form-select" name="transmission_type">
+                            <option value="">—</option>
+                            <option value="MT" <?php echo ($_POST['transmission_type'] ?? '') === 'MT' ? 'selected' : ''; ?>>Manual (MT)</option>
+                            <option value="AT" <?php echo ($_POST['transmission_type'] ?? '') === 'AT' ? 'selected' : ''; ?>>Automatic (AT)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Fuel Type</label>
+                        <select class="form-select" name="fuel_type">
+                            <option value="">—</option>
+                            <option value="Petrol" <?php echo ($_POST['fuel_type'] ?? '') === 'Petrol' ? 'selected' : ''; ?>>Petrol</option>
+                            <option value="Diesel" <?php echo ($_POST['fuel_type'] ?? '') === 'Diesel' ? 'selected' : ''; ?>>Diesel</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Drive Type</label>
+                        <select class="form-select" name="drive_type">
+                            <option value="">—</option>
+                            <option value="2WD" <?php echo ($_POST['drive_type'] ?? '') === '2WD' ? 'selected' : ''; ?>>2WD</option>
+                            <option value="4WD" <?php echo ($_POST['drive_type'] ?? '') === '4WD' ? 'selected' : ''; ?>>4WD</option>
+                            <option value="6WD" <?php echo ($_POST['drive_type'] ?? '') === '6WD' ? 'selected' : ''; ?>>6WD</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow mb-4" id="quantityFields" style="display:none;">
             <div class="card-header"><h2 class="fs-5 fw-bold mb-0">3. Quantity & Units</h2></div>
             <div class="card-body">
@@ -328,8 +452,17 @@ function onClassChange() {
             catSelect.value = '';
         }
     });
+    updateVehicleFields();
 }
-document.addEventListener('DOMContentLoaded', onClassChange);
+function updateVehicleFields() {
+    var catVal = document.getElementById('categorySelect').value || '';
+    var isVehicle = /^FA-VEH/.test(catVal);
+    document.getElementById('vehicleFields').style.display = isVehicle ? '' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function() {
+    onClassChange();
+    document.getElementById('categorySelect').addEventListener('change', updateVehicleFields);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

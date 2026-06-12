@@ -17,6 +17,45 @@ function am_firestore_id_token(): string {
     return (string)($_SESSION['firebase_id_token'] ?? '');
 }
 
+/**
+ * If the session has a Firebase refresh token (set at login), mint a fresh ID token once per
+ * request so Firestore reads succeed without relying on the browser calling tokeninfo.
+ */
+function am_firestore_refresh_session_token_from_refresh_token(): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $rt = trim((string)($_SESSION['firebase_refresh_token'] ?? ''));
+    if ($rt === '') {
+        return;
+    }
+    $cur = (string)($_SESSION['firebase_id_token'] ?? '');
+    $exp = am_firebase_id_token_exp_unix($cur);
+    if ($exp !== null && $exp > time() + 120) {
+        return;
+    }
+    $res = am_firebase_exchange_refresh_token($rt);
+    if (empty($res['ok']) || empty($res['id_token'])) {
+        return;
+    }
+    $_SESSION['firebase_id_token'] = (string)$res['id_token'];
+    if (!empty($res['refresh_token'])) {
+        $_SESSION['firebase_refresh_token'] = (string)$res['refresh_token'];
+    }
+}
+
+/** Session token, or a Bearer override (e.g. FM / API callers passing a Firebase ID token). */
+function am_firestore_resolve_id_token(?string $overrideToken = null): string {
+    $t = trim((string)$overrideToken);
+    if ($t !== '') {
+        return $t;
+    }
+    am_firestore_refresh_session_token_from_refresh_token();
+    return am_firestore_id_token();
+}
+
 function am_firestore_base_url(): string {
     $project = am_firestore_project_id();
     return 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
@@ -161,8 +200,8 @@ function am_php_to_firestore_fields(array $data): array {
 
 // ── Single-document read ────────────────────────────────────────────
 
-function am_firestore_get_document(string $collection, string $documentId): ?array {
-    $token = am_firestore_id_token();
+function am_firestore_get_document(string $collection, string $documentId, ?string $idTokenOverride = null): ?array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return null;
     }
@@ -178,8 +217,8 @@ function am_firestore_get_document(string $collection, string $documentId): ?arr
 
 // ── Create document ─────────────────────────────────────────────────
 
-function am_firestore_create_document(string $collection, array $data, ?string $documentId = null): array {
-    $token = am_firestore_id_token();
+function am_firestore_create_document(string $collection, array $data, ?string $documentId = null, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
         return ['ok' => false, 'error' => 'Not authenticated', 'id' => ''];
     }
@@ -201,13 +240,17 @@ function am_firestore_create_document(string $collection, array $data, ?string $
     $parts = explode('/', (string)$docName);
     $createdId = end($parts);
 
+    if (function_exists('am_mutation_log_record')) {
+        am_mutation_log_record('create', $collection, (string)$createdId, $data, $idTokenOverride, array_keys($data));
+    }
+
     return ['ok' => true, 'error' => null, 'id' => $createdId, 'data' => am_firestore_document_to_array($result['json'])];
 }
 
 // ── Update document ─────────────────────────────────────────────────
 
-function am_firestore_update_document(string $collection, string $documentId, array $data): array {
-    $token = am_firestore_id_token();
+function am_firestore_update_document(string $collection, string $documentId, array $data, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
     }
@@ -231,15 +274,27 @@ function am_firestore_update_document(string $collection, string $documentId, ar
         return ['ok' => false, 'error' => $msg];
     }
 
+    if (function_exists('am_mutation_log_record')) {
+        $infer = function_exists('am_mutation_log_merge_row_for_infer')
+            ? am_mutation_log_merge_row_for_infer($collection, $documentId, $data, $idTokenOverride)
+            : $data;
+        am_mutation_log_record('update', $collection, $documentId, $infer, $idTokenOverride, array_keys($data));
+    }
+
     return ['ok' => true, 'error' => null, 'data' => am_firestore_document_to_array($result['json'])];
 }
 
 // ── Delete document ─────────────────────────────────────────────────
 
-function am_firestore_delete_document(string $collection, string $documentId): array {
-    $token = am_firestore_id_token();
+function am_firestore_delete_document(string $collection, string $documentId, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
+    }
+
+    $prefetch = [];
+    if (function_exists('am_mutation_log_prefetch_before_delete') && am_mutation_log_enabled() && am_mutation_log_should_record($collection)) {
+        $prefetch = am_mutation_log_prefetch_before_delete($collection, $documentId, $idTokenOverride);
     }
 
     $url = am_firestore_base_url() . '/' . rawurlencode($collection) . '/' . rawurlencode($documentId);
@@ -248,6 +303,10 @@ function am_firestore_delete_document(string $collection, string $documentId): a
     if (!$result['ok']) {
         $msg = $result['json']['error']['message'] ?? ($result['error'] ?? 'Delete failed');
         return ['ok' => false, 'error' => $msg];
+    }
+
+    if (function_exists('am_mutation_log_record')) {
+        am_mutation_log_record('delete', $collection, $documentId, is_array($prefetch) ? $prefetch : [], $idTokenOverride, []);
     }
 
     return ['ok' => true, 'error' => null];
@@ -334,33 +393,140 @@ function am_firestore_document_to_array(array $doc): array {
     return $data;
 }
 
-function am_firestore_get_collection(string $collectionName, int $pageSize = 1000): array {
-    $token = am_firestore_id_token();
+/**
+ * Resolve pr_master_countries document id for dashboard/joins.
+ * Migration rows often set country_code (e.g. LSO) without country_id; AM forms set country_id.
+ */
+function am_country_id_known_in_master(string $countryId, array $countries): bool {
+    if ($countryId === '') {
+        return false;
+    }
+    foreach ($countries as $c) {
+        $id = (string)($c['country_id'] ?? $c['id'] ?? '');
+        if ($id !== '' && $id === $countryId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Map common country_code / legacy strings to LSO, ZMB, BEN. */
+function am_normalize_asset_country_code_field(string $raw): string {
+    $u = strtoupper(trim($raw));
+    if ($u === '') {
+        return '';
+    }
+    if (in_array($u, ['LSO', 'ZMB', 'BEN'], true)) {
+        return $u;
+    }
+    static $aliases = [
+        'LESOTHO' => 'LSO',
+        'ZAMBIA' => 'ZMB',
+        'BENIN' => 'BEN',
+    ];
+    return $aliases[$u] ?? '';
+}
+
+function am_infer_country_code_from_tags(string $assetTag, string $qrCodeId): string {
+    foreach ([$assetTag, $qrCodeId] as $s) {
+        if ($s === '') {
+            continue;
+        }
+        // asset_tag: 1PWR-FA-LSO-000001 → middle segment is class, next is 3-letter country
+        if (preg_match('/^1PWR-[A-Z]+-([A-Z]{3})-\d+/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+        // qr_code_id: 1PWR-LSO-FA-000001 → country first after prefix
+        if (preg_match('/^1PWR-([A-Z]{3})-[A-Z]+-\d+/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+    }
+    foreach ([$assetTag, $qrCodeId] as $s) {
+        if ($s === '') {
+            continue;
+        }
+        // Legacy / free-form: any standalone org code in the string
+        if (preg_match('/\b(LSO|ZMB|BEN)\b/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+    }
+    return '';
+}
+
+function am_resolve_asset_country_id(array $asset, array $countries): string {
+    $cid = trim((string)($asset['country_id'] ?? ''));
+    if ($cid !== '' && am_country_id_known_in_master($cid, $countries)) {
+        return $cid;
+    }
+
+    $code = am_normalize_asset_country_code_field((string)($asset['country_code'] ?? ''));
+    if ($code === '') {
+        $code = am_infer_country_code_from_tags(
+            (string)($asset['asset_tag'] ?? ''),
+            (string)($asset['qr_code_id'] ?? '')
+        );
+    }
+    if ($code === '') {
+        return '';
+    }
+
+    foreach ($countries as $c) {
+        $cc = strtoupper(trim((string)($c['country_code'] ?? '')));
+        if ($cc !== '' && $cc === $code) {
+            return (string)($c['country_id'] ?? $c['id'] ?? '');
+        }
+    }
+    return '';
+}
+
+function am_firestore_get_collection(string $collectionName, int $pageSize = 1000, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
         return [];
     }
 
     $project = am_firestore_project_id();
-    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
-        '/databases/(default)/documents/' . rawurlencode($collectionName) .
-        '?pageSize=' . max(1, min(1000, $pageSize));
+    $baseUrl = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
+        '/databases/(default)/documents/' . rawurlencode($collectionName);
 
-    $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
-    if (!$result['ok']) {
-        return [];
-    }
-
-    $docs = $result['json']['documents'] ?? [];
-    if (!is_array($docs)) {
-        return [];
-    }
-
+    $ps = max(1, min(1000, $pageSize));
     $out = [];
-    foreach ($docs as $doc) {
-        if (is_array($doc)) {
-            $out[] = am_firestore_document_to_array($doc);
+    $pageToken = '';
+    $guard = 0;
+
+    do {
+        $url = $baseUrl . '?pageSize=' . $ps;
+        if ($pageToken !== '') {
+            $url .= '&pageToken=' . rawurlencode($pageToken);
         }
-    }
+
+        $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
+        if (!$result['ok']) {
+            $st = (int)($result['status'] ?? 0);
+            if ($st === 401 || $st === 403) {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION['am_firestore_reauth'] = true;
+                }
+            }
+            break;
+        }
+
+        $docs = $result['json']['documents'] ?? [];
+        if (is_array($docs)) {
+            foreach ($docs as $doc) {
+                if (is_array($doc)) {
+                    $out[] = am_firestore_document_to_array($doc);
+                }
+            }
+        }
+
+        $pageToken = (string)($result['json']['nextPageToken'] ?? '');
+        $guard++;
+        if ($guard > 10000) {
+            break;
+        }
+    } while ($pageToken !== '');
+
     return $out;
 }
 
@@ -437,3 +603,48 @@ function am_get_pr_sites(): array {
 
     return $locations;
 }
+
+/**
+ * Load shared `users/{uid}` profile (same document as PR portal).
+ * Includes optional `capabilities` map (e.g. sim_team_assign, sim_phone_link).
+ */
+function am_fetch_pr_user_profile(string $idToken, string $uid): array {
+    $cfg = am_firebase_config();
+    if (empty($cfg['project_id']) || empty($idToken) || empty($uid)) {
+        return ['ok' => false, 'data' => []];
+    }
+
+    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($cfg['project_id']) .
+        '/databases/(default)/documents/users/' . rawurlencode($uid);
+
+    $result = am_http_get_json($url, ['Authorization: Bearer ' . $idToken]);
+    if (!$result['ok']) {
+        return ['ok' => false, 'data' => []];
+    }
+
+    $data = am_firestore_document_to_array($result['json']);
+    $caps = $data['capabilities'] ?? [];
+    if (!is_array($caps)) {
+        $caps = [];
+    }
+
+    require_once __DIR__ . '/country_scope.php';
+    $amCountryAccess = am_extract_am_country_access_codes($data);
+
+    return [
+        'ok' => true,
+        'data' => [
+            'firstName' => (string)($data['firstName'] ?? ''),
+            'lastName' => (string)($data['lastName'] ?? ''),
+            'role' => (string)($data['role'] ?? ''),
+            'permissionLevel' => $data['permissionLevel'] ?? null,
+            'department' => (string)($data['department'] ?? ''),
+            'organization' => (string)($data['organization'] ?? ''),
+            'isActive' => $data['isActive'] ?? true,
+            'capabilities' => $caps,
+            'amCountryAccess' => $amCountryAccess,
+        ],
+    ];
+}
+
+require_once __DIR__ . '/mutation_log.php';

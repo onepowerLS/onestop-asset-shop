@@ -1,16 +1,17 @@
 <?php
 /**
  * Vehicles API Endpoint
- * 
- * Provides vehicle data for external systems (PR system)
- * AM is the single source of truth for vehicle data
- * 
- * GET /api/vehicles/ - List all active vehicles
+ *
+ * Provides vehicle data for external systems (PR system).
+ * AM is the single source of truth for vehicle data.
+ * Reads from Firestore am_core_assets (post-migration).
+ *
+ * GET /api/vehicles/ - List all vehicles
  * GET /api/vehicles/?id=X - Get specific vehicle
- * POST /api/vehicles/sync.php - Sync vehicles from PR (one-time migration)
  */
 
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../config/firestore.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -22,84 +23,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Get vehicles category ID
-$stmt = $pdo->prepare("SELECT category_id FROM categories WHERE category_name = 'Vehicles'");
-$stmt->execute();
-$vehicleCategory = $stmt->fetch();
+$vehicleCategories = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-TRAILER', 'FA-VEH-EQUIP'];
 
-if (!$vehicleCategory) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Vehicles category not found']);
-    exit;
+// Fetch all assets and filter to vehicles
+$assets = am_firestore_get_collection('am_core_assets', 2000);
+$countries = am_firestore_get_collection('pr_master_countries', 500);
+$locations = am_get_pr_sites();
+
+$countryById = [];
+foreach ($countries as $c) {
+    $cid = (string)($c['country_id'] ?? $c['id'] ?? '');
+    if ($cid !== '') $countryById[$cid] = $c;
+}
+$locationById = [];
+foreach ($locations as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') $locationById[$lid] = $l;
 }
 
-$vehicleCategoryId = $vehicleCategory['category_id'];
+$vehicles = [];
+foreach ($assets as $a) {
+    $cls = (string)($a['item_class'] ?? '');
+    $cat = (string)($a['category_id'] ?? '');
+    if ($cls !== 'FixedAsset' || !in_array($cat, $vehicleCategories, true)) continue;
+
+    $cid = (string)($a['country_id'] ?? '');
+    $lid = (string)($a['location_id'] ?? '');
+    $country = $countryById[$cid] ?? [];
+    $loc = $locationById[$lid] ?? [];
+
+    $vehicles[] = [
+        'id'                 => $a['asset_id'] ?? $a['id'] ?? '',
+        'code'               => (string)($a['name'] ?? ''),
+        'name'               => (string)($a['name'] ?? ''),
+        'vinNumber'          => (string)($a['serial_number'] ?? '') ?: null,
+        'make'               => (string)($a['manufacturer'] ?? '') ?: null,
+        'model'              => (string)($a['model'] ?? '') ?: null,
+        'registrationNumber' => (string)($a['legacy_tag'] ?? '') ?: null,
+        'year'               => isset($a['vehicle_year']) ? (int)$a['vehicle_year'] : null,
+        'engineNumber'       => (string)($a['engine_number'] ?? '') ?: null,
+        'status'             => (string)($a['status'] ?? 'Available'),
+        'isActive'           => (string)($a['status'] ?? '') === 'Available' ? 1 : 0,
+        'organization'       => (string)($country['country_code'] ?? ''),
+        'location'           => (string)($loc['location_name'] ?? '') ?: null,
+        'vehicleType'        => (string)($a['vehicle_type'] ?? '') ?: null,
+        'odometerFirstKm'   => isset($a['odometer_first_km']) ? (int)$a['odometer_first_km'] : null,
+        'odometerFirstDate' => (string)($a['odometer_first_date'] ?? '') ?: null,
+        'odometerLastKm'    => isset($a['odometer_last_km']) ? (int)$a['odometer_last_km'] : null,
+        'odometerLastDate'  => (string)($a['odometer_last_date'] ?? '') ?: null,
+        'notes'             => (string)($a['notes'] ?? '') ?: null,
+        'qrCode'             => (string)($a['qr_code_id'] ?? '') ?: null,
+        'assetTag'           => (string)($a['asset_tag'] ?? ''),
+    ];
+}
 
 // Handle specific vehicle request
 if (isset($_GET['id'])) {
-    $stmt = $pdo->prepare("
-        SELECT 
-            a.asset_id,
-            a.name,
-            a.serial_number as vin_number,
-            a.manufacturer as make,
-            a.model,
-            a.asset_tag as registration_number,
-            a.purchase_date,
-            a.status,
-            a.condition_status,
-            a.notes,
-            c.country_code,
-            l.location_name
-        FROM assets a
-        LEFT JOIN countries c ON a.country_id = c.country_id
-        LEFT JOIN locations l ON a.location_id = l.location_id
-        WHERE a.asset_id = ? AND a.category_id = ?
-    ");
-    $stmt->execute([$_GET['id'], $vehicleCategoryId]);
-    $vehicle = $stmt->fetch();
-    
-    if ($vehicle) {
-        echo json_encode(['success' => true, 'vehicle' => $vehicle]);
-    } else {
-        http_response_code(404);
-        echo json_encode(['error' => 'Vehicle not found']);
+    $requestedId = trim($_GET['id']);
+    foreach ($vehicles as $v) {
+        if ((string)$v['id'] === $requestedId) {
+            echo json_encode(['success' => true, 'vehicle' => $v]);
+            exit;
+        }
     }
+    http_response_code(404);
+    echo json_encode(['error' => 'Vehicle not found']);
     exit;
 }
 
-// List all active vehicles
-$stmt = $pdo->prepare("
-    SELECT 
-        a.asset_id as id,
-        a.name as code,
-        a.name,
-        a.asset_tag as registrationNumber,
-        a.vehicle_year as year,
-        a.manufacturer as make,
-        a.model,
-        a.serial_number as vinNumber,
-        a.engine_number as engineNumber,
-        a.status,
-        a.condition_status as conditionStatus,
-        CASE WHEN a.status = 'Available' THEN 1 ELSE 0 END as isActive,
-        c.country_code as organization,
-        l.location_name as location,
-        a.notes,
-        a.qr_code_id as qrCode
-    FROM assets a
-    LEFT JOIN countries c ON a.country_id = c.country_id
-    LEFT JOIN locations l ON a.location_id = l.location_id
-    WHERE a.category_id = ?
-    ORDER BY a.name
-");
-$stmt->execute([$vehicleCategoryId]);
-$vehicles = $stmt->fetchAll();
+usort($vehicles, fn($a, $b) => strcmp($a['name'], $b['name']));
 
 echo json_encode([
-    'success' => true,
-    'count' => count($vehicles),
-    'vehicles' => $vehicles,
-    'source' => 'AM',
-    'timestamp' => date('c')
+    'success'   => true,
+    'count'     => count($vehicles),
+    'vehicles'  => $vehicles,
+    'source'    => 'AM (Firestore)',
+    'timestamp' => date('c'),
 ]);

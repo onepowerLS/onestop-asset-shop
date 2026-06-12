@@ -2,7 +2,7 @@
 
 ## Logging In
 
-Navigate to `https://assets.1pwrafrica.com`. Enter your 1PWR email and password (or your legacy username). The system authenticates through Firebase, then checks your role in the shared `users` collection.
+Navigate to `https://am.1pwrafrica.com`. Enter your 1PWR email and password (or your legacy username). The system authenticates through Firebase, then checks your role in the shared `users` collection.
 
 **Roles:**
 
@@ -150,6 +150,84 @@ The request list shows status summary cards at the top. Click a request to view 
 
 ---
 
+## Inventory Dispatch
+
+Navigate to **Requests → Inventory dispatch** in the sidebar to request stockable items (Materials, Consumables, Inventory) dispatched from HQ/warehouse to a field site within your country.
+
+### Submitting a Dispatch Request
+
+1. Confirm your **name and email** (pre-filled from your account)
+2. Set **Request country** first. The **Add item → Search catalog** dialog only shows items whose **country** matches this field (same rules as the main catalog: master `country_id` when present, otherwise inferred from location and tags). If you pick the wrong country, you may see **no results** even though the item appears when you browse the catalog with “All countries” or a different filter.
+3. Click **Add item** to open **Search catalog**. The form shows which country is being searched; it always tracks **Request country** when you change it.
+4. Search matches **name**, **asset tag**, **legacy tag**, **description**, **manufacturer**, **model**, **notes**, **UGP part id**, **category name**, and **location name/code** (type at least two characters).
+5. Set the **quantity** for each item you need — add as many items as required
+6. Choose the **destination site** from the dropdown (filtered to your country)
+7. Set the **estimated dispatch date**
+8. Select the **receiver** from the employee directory — start typing a name and pick a suggestion so the **email matches HR** (`pr_master_employees`). If you type an address by hand, it must be exactly the one on file (including `work_email` when that is the primary contact field). If someone is missing, ask IT/HR to add them to the directory before dispatching to them.
+9. Click **Submit request** — the request number follows the `AMW-YYYY-NNNNN` format
+
+**If an item does not appear in Search catalog:** confirm **Request country** matches where the stock is held (for example Lesotho HQ for LSO-tagged warehouse items), then try a shorter search term (e.g. part of the name or the asset tag).
+
+### Viewing a Dispatch Request
+
+Open a request from the Service workflows list to see:
+- **Line items table** with quantities and links back to catalog items
+- **Requester info** — who submitted it and when
+- **Destination** — site, country, and dispatch date
+- **Receiver** — name and email confirmed from the employee directory
+
+### Managing Dispatch Requests (Admin/Manager)
+
+Managers and Admins can update the status:
+- **Approve** — confirms the dispatch is authorized
+- **Reject** — declines the request
+- **Mark fulfilled** — records that items have been dispatched
+
+> **Note:** Dispatch requests are within-country only (warehouse/HQ → site). Cross-country transfers between Lesotho, Zambia, and Benin are a separate process.
+
+---
+
+## Load-out manifests
+
+Use **Load-out manifests** in the sidebar when operations pack goods leaving HQ (or the warehouse) toward a field site. A manifest is a packing list with line items tied to catalog assets where applicable.
+
+- **Draft** -- edit lines, quantities, and notes.
+- **Packed / Shipped / Delivered** -- progress the shipment lifecycle as appropriate.
+- **Fleet Management:** manifests can be linked to a trip (`trip_id`) so Fleet sees the same load-out from the FM app. Trip linking is a Manager-level action; see internal FM/AM integration notes if you connect trips from `fm.1pwrafrica.com`.
+
+Open a manifest to **view** or **print** the packing list for the warehouse team.
+
+---
+
+## Telecom
+
+The **Telecom** menu covers SIM cards and phone procurement requests. Capabilities are split so Finance can assign numbers to teams and IT can link SIMs to handset assets in the catalog (your account may show only the actions you are allowed to perform).
+
+### SIM registry
+
+Lists **SIM cards** (MSISDN and operational fields such as pool, site label, and assignment). Search and filter to find a number. Edit a SIM to update status, notes, or location context after verification.
+
+### SIM assignments
+
+From a SIM, you can record an **assignment**:
+
+- **Team / function** -- which pool or team uses the line (Finance-oriented workflow).
+- **Phone asset** -- link the SIM to a **Fixed Asset** handset in the catalog (IT-oriented workflow). Use the handset’s asset id from the item detail page.
+
+Assignments are time-stamped; use this to keep the registry aligned with physical swaps.
+
+### Phone requests
+
+**Phone requests** are for requesting new handsets or lines through procurement/IT. Submit a justification and country; managers update status (Approved, Fulfilled, etc.) through the list and detail views.
+
+---
+
+## IT Helpdesk
+
+**IT Helpdesk** (under Telecom in the sidebar) is for IT and AM Operations tickets: hardware issues, access, and operational requests. Create a ticket with a title and description, set priority, and track status through resolution. This replaces ad-hoc channels for issues that should stay auditable alongside Asset Management.
+
+---
+
 ## QR Codes
 
 ### Generating QR Codes
@@ -185,10 +263,7 @@ Manage the category hierarchy. Categories are grouped by item class. Each catego
 
 ### Locations
 
-Manage the location hierarchy (Country > Region > Site > Building > Room). Locations are used for:
-- Where items are stored
-- Where items are checked out to/from
-- Multi-country filtering
+**Read-only in AM:** site and location data are synced from the **PR Portal**. Use this page to browse sites by country. To add or change a site, update it in the PR Portal at `https://pr.1pwrafrica.com` (locations drive where items are stored, checked out from, and filtered).
 
 ### Employees
 
