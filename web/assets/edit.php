@@ -166,33 +166,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $countryId !== '' &&
                     trim((string)($data['location_id'] ?? '')) !== ''
                 ) {
-                    $targetLoc = trim((string)$data['location_id']);
-                    $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
-                    $targetInv = null;
-                    foreach ($allInv as $inv) {
-                        if (
-                            (string)($inv['asset_id'] ?? '') === $assetId &&
-                            (string)($inv['location_id'] ?? '') === $targetLoc &&
-                            (string)($inv['country_id'] ?? '') === $countryId
-                        ) {
-                            $targetInv = $inv;
-                            break;
+                    $targetLocRaw = trim((string)$data['location_id']);
+                    $locByAnyKey = [];
+                    foreach ($locations as $loc) {
+                        $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
+                        $lcode = (string)($loc['location_code'] ?? '');
+                        if ($lid !== '') {
+                            $locByAnyKey[$lid] = $loc;
+                        }
+                        if ($lcode !== '' && $lcode !== $lid) {
+                            $locByAnyKey[$lcode] = $loc;
                         }
                     }
+                    $targetLocResolved = $locByAnyKey[$targetLocRaw] ?? [];
+                    $targetLocCanonical = (string)($targetLocResolved['location_code'] ?? $targetLocRaw);
+
+                    $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
+                    $targetRows = [];
+                    $targetInv = null;
+                    foreach ($allInv as $inv) {
+                        if ((string)($inv['asset_id'] ?? '') !== $assetId) {
+                            continue;
+                        }
+                        if ((string)($inv['country_id'] ?? '') !== $countryId) {
+                            continue;
+                        }
+                        $invLocRaw = (string)($inv['location_id'] ?? '');
+                        $invLocResolved = $locByAnyKey[$invLocRaw] ?? [];
+                        $invLocCanonical = (string)($invLocResolved['location_code'] ?? $invLocRaw);
+                        if ($invLocCanonical !== $targetLocCanonical) {
+                            continue;
+                        }
+                        $targetRows[] = $inv;
+                        if ($targetInv === null && $invLocRaw === $targetLocCanonical) {
+                            $targetInv = $inv;
+                        }
+                    }
+
+                    if ($targetInv === null && !empty($targetRows)) {
+                        $targetInv = $targetRows[0];
+                    }
+
+                    $allocTotal = 0;
+                    foreach ($targetRows as $row) {
+                        $allocTotal += (int)($row['quantity_allocated'] ?? 0);
+                    }
+                    $qohTarget = max((int)$data['quantity'], $allocTotal);
+
                     if ($targetInv) {
-                        $alloc = (int)($targetInv['quantity_allocated'] ?? 0);
-                        $qoh = max((int)$data['quantity'], $alloc);
                         am_firestore_update_document('am_core_inventory_levels', (string)$targetInv['id'], [
-                            'quantity_on_hand' => $qoh,
+                            'location_id' => $targetLocCanonical,
+                            'quantity_on_hand' => $qohTarget,
+                            'quantity_allocated' => $allocTotal,
                             'updated_at' => date('c'),
                         ]);
+                        // Remove duplicate alias rows for the same canonical location.
+                        foreach ($targetRows as $dup) {
+                            $dupId = (string)($dup['id'] ?? '');
+                            if ($dupId === '' || $dupId === (string)$targetInv['id']) {
+                                continue;
+                            }
+                            am_firestore_delete_document('am_core_inventory_levels', $dupId);
+                        }
                     } else {
                         am_firestore_create_document('am_core_inventory_levels', [
                             'asset_id' => $assetId,
-                            'location_id' => $targetLoc,
+                            'location_id' => $targetLocCanonical,
                             'country_id' => $countryId,
-                            'quantity_on_hand' => max(0, (int)$data['quantity']),
-                            'quantity_allocated' => 0,
+                            'quantity_on_hand' => $qohTarget,
+                            'quantity_allocated' => $allocTotal,
                             'created_at' => date('c'),
                             'updated_at' => date('c'),
                         ]);

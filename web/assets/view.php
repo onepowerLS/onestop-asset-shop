@@ -26,7 +26,13 @@ foreach ($categories as $c) {
 $locationById = [];
 foreach ($locations as $l) {
     $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
-    if ($lid !== '') $locationById[$lid] = $l;
+    $lcode = (string)($l['location_code'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+    if ($lcode !== '' && $lcode !== $lid) {
+        $locationById[$lcode] = $l;
+    }
 }
 
 $asset = null;
@@ -74,20 +80,44 @@ $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consum
 $cls = (string)($asset['item_class'] ?? '');
 $isStockable = in_array($cls, ['Material', 'Consumable', 'Inventory'], true);
 
-$stockQoh = 0;
-$stockAlloc = 0;
-$stockRowCount = 0;
+$stockQohAll = 0;
+$stockAllocAll = 0;
+$stockQohHere = 0;
+$stockAllocHere = 0;
+$stockRowCountAll = 0;
+$stockRowCountHere = 0;
+$assetLocRaw = (string)($asset['location_id'] ?? '');
+$assetLocResolved = $locationById[$assetLocRaw] ?? [];
+$assetLocCanonical = (string)($assetLocResolved['location_code'] ?? $assetLocRaw);
+
 foreach ($inventoryLevels as $inv) {
     if ((string)($inv['asset_id'] ?? '') !== $assetId) {
         continue;
     }
-    $stockRowCount++;
-    $stockQoh += (int)($inv['quantity_on_hand'] ?? 0);
-    $stockAlloc += (int)($inv['quantity_allocated'] ?? 0);
+    $stockRowCountAll++;
+    $qoh = (int)($inv['quantity_on_hand'] ?? 0);
+    $alloc = (int)($inv['quantity_allocated'] ?? 0);
+    $stockQohAll += $qoh;
+    $stockAllocAll += $alloc;
+
+    $invLocRaw = (string)($inv['location_id'] ?? '');
+    $invLocResolved = $locationById[$invLocRaw] ?? [];
+    $invLocCanonical = (string)($invLocResolved['location_code'] ?? $invLocRaw);
+    if ($assetLocCanonical !== '' && $invLocCanonical === $assetLocCanonical) {
+        $stockRowCountHere++;
+        $stockQohHere += $qoh;
+        $stockAllocHere += $alloc;
+    }
 }
-$hasInventoryRows = $stockRowCount > 0;
-$effectiveQoh = $isStockable ? ($hasInventoryRows ? $stockQoh : (int)($asset['quantity'] ?? 1)) : (int)($asset['quantity'] ?? 1);
-$effectiveAlloc = $isStockable ? $stockAlloc : 0;
+
+$useCurrentLocationRows = $isStockable && $stockRowCountHere > 0;
+$hasInventoryRows = $stockRowCountAll > 0;
+$effectiveQoh = $isStockable
+    ? ($useCurrentLocationRows ? $stockQohHere : ($hasInventoryRows ? $stockQohAll : (int)($asset['quantity'] ?? 1)))
+    : (int)($asset['quantity'] ?? 1);
+$effectiveAlloc = $isStockable
+    ? ($useCurrentLocationRows ? $stockAllocHere : $stockAllocAll)
+    : 0;
 $effectiveAvail = max(0, $effectiveQoh - $effectiveAlloc);
 
 $resolvedCountryId = am_resolve_asset_country_id($asset, $countries);

@@ -136,9 +136,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $locationId !== '' &&
                 $countryId !== ''
             ) {
+                $locByAnyKey = [];
+                foreach ($locations as $loc) {
+                    $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
+                    $lcode = (string)($loc['location_code'] ?? '');
+                    if ($lid !== '') {
+                        $locByAnyKey[$lid] = $loc;
+                    }
+                    if ($lcode !== '' && $lcode !== $lid) {
+                        $locByAnyKey[$lcode] = $loc;
+                    }
+                }
+                $resolved = $locByAnyKey[$locationId] ?? [];
+                $canonicalLoc = (string)($resolved['location_code'] ?? $locationId);
                 am_firestore_create_document('am_core_inventory_levels', [
                     'asset_id' => $newAssetId,
-                    'location_id' => $locationId,
+                    'location_id' => $canonicalLoc,
                     'country_id' => $countryId,
                     'quantity_on_hand' => max(0, $quantity),
                     'quantity_allocated' => 0,
