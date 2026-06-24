@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/duplicate_assets.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -167,44 +168,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     trim((string)($data['location_id'] ?? '')) !== ''
                 ) {
                     $targetLocRaw = trim((string)$data['location_id']);
-                    $locByAnyKey = [];
-                    foreach ($locations as $loc) {
-                        $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
-                        $lcode = (string)($loc['location_code'] ?? '');
-                        if ($lid !== '') {
-                            $locByAnyKey[$lid] = $loc;
-                        }
-                        if ($lcode !== '' && $lcode !== $lid) {
-                            $locByAnyKey[$lcode] = $loc;
-                        }
-                    }
-                    $targetLocResolved = $locByAnyKey[$targetLocRaw] ?? [];
-                    $targetLocCanonical = (string)($targetLocResolved['location_code'] ?? $targetLocRaw);
+                    $locByAnyKey = am_build_location_index($locations);
+                    $targetLocCanonical = am_canonical_location_code($targetLocRaw, $locByAnyKey);
 
                     $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
-                    $targetRows = [];
+                    $targetRows = am_inventory_matching_location_rows(
+                        $assetId,
+                        $targetLocCanonical,
+                        $allInv,
+                        $locByAnyKey,
+                        $countryId
+                    );
                     $targetInv = null;
-                    foreach ($allInv as $inv) {
-                        if ((string)($inv['asset_id'] ?? '') !== $assetId) {
-                            continue;
-                        }
-                        if ((string)($inv['country_id'] ?? '') !== $countryId) {
-                            continue;
-                        }
-                        $invLocRaw = (string)($inv['location_id'] ?? '');
-                        $invLocResolved = $locByAnyKey[$invLocRaw] ?? [];
-                        $invLocCanonical = (string)($invLocResolved['location_code'] ?? $invLocRaw);
-                        if ($invLocCanonical !== $targetLocCanonical) {
-                            continue;
-                        }
-                        $targetRows[] = $inv;
-                        if ($targetInv === null && $invLocRaw === $targetLocCanonical) {
-                            $targetInv = $inv;
-                        }
-                    }
-
-                    if ($targetInv === null && !empty($targetRows)) {
-                        $targetInv = $targetRows[0];
+                    if (!empty($targetRows)) {
+                        $targetInv = am_inventory_pick_keeper_row(
+                            $targetRows,
+                            $targetLocCanonical,
+                            $locByAnyKey,
+                            array_merge($asset, $data)
+                        );
                     }
 
                     $allocTotal = 0;

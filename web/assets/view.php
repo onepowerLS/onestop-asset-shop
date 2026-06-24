@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
 require_login();
 am_ensure_country_scope_from_session();
 
@@ -23,17 +24,7 @@ foreach ($categories as $c) {
     $cid = (string)($c['category_id'] ?? $c['id'] ?? '');
     if ($cid !== '') $categoryById[$cid] = $c;
 }
-$locationById = [];
-foreach ($locations as $l) {
-    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
-    $lcode = (string)($l['location_code'] ?? '');
-    if ($lid !== '') {
-        $locationById[$lid] = $l;
-    }
-    if ($lcode !== '' && $lcode !== $lid) {
-        $locationById[$lcode] = $l;
-    }
-}
+$locationById = am_build_location_index($locations);
 
 $asset = null;
 
@@ -87,22 +78,17 @@ $stockAllocHere = 0;
 $stockRowCountAll = 0;
 $stockRowCountHere = 0;
 $assetLocRaw = (string)($asset['location_id'] ?? '');
-$assetLocResolved = $locationById[$assetLocRaw] ?? [];
-$assetLocCanonical = (string)($assetLocResolved['location_code'] ?? $assetLocRaw);
+$assetLocCanonical = am_canonical_location_code($assetLocRaw, $locationById);
 
-foreach ($inventoryLevels as $inv) {
-    if ((string)($inv['asset_id'] ?? '') !== $assetId) {
-        continue;
-    }
+$itemInventoryRows = am_inventory_rows_for_asset($assetId, $inventoryLevels, $locationById, $asset);
+foreach ($itemInventoryRows as $inv) {
     $stockRowCountAll++;
     $qoh = (int)($inv['quantity_on_hand'] ?? 0);
     $alloc = (int)($inv['quantity_allocated'] ?? 0);
     $stockQohAll += $qoh;
     $stockAllocAll += $alloc;
 
-    $invLocRaw = (string)($inv['location_id'] ?? '');
-    $invLocResolved = $locationById[$invLocRaw] ?? [];
-    $invLocCanonical = (string)($invLocResolved['location_code'] ?? $invLocRaw);
+    $invLocCanonical = am_canonical_location_code((string)($inv['location_id'] ?? ''), $locationById);
     if ($assetLocCanonical !== '' && $invLocCanonical === $assetLocCanonical) {
         $stockRowCountHere++;
         $stockQohHere += $qoh;

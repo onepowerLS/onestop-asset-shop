@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/inventory_aggregate.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
 require_login();
 am_ensure_country_scope_from_session();
 
@@ -15,17 +16,7 @@ $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 $inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 4000);
 
-$locationById = [];
-foreach ($locations as $l) {
-    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
-    $lcode = (string)($l['location_code'] ?? '');
-    if ($lid !== '') {
-        $locationById[$lid] = $l;
-    }
-    if ($lcode !== '' && $lcode !== $lid) {
-        $locationById[$lcode] = $l;
-    }
-}
+$locationById = am_build_location_index($locations);
 
 $countryById = [];
 foreach ($countries as $c) {
@@ -48,6 +39,8 @@ foreach ($assets as $a) {
         $assetById[$aid] = $a;
     }
 }
+
+$inventoryLevels = am_inventory_dedupe_all_levels($inventoryLevels, $locationById, $assetById);
 
 $classFilter = $_GET['item_class'] ?? '';
 $countryFilter = $_GET['country'] ?? '';

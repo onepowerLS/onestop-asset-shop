@@ -7,11 +7,12 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
 
-$page_title = 'Assemble asset';
+$page_title = 'Assemble / produce';
 $errors = [];
 
 // ── Reference data ──────────────────────────────────────────────
@@ -21,8 +22,9 @@ $countries = am_countries_for_user_select($countries);
 
 $allCategories = am_firestore_get_collection('pr_master_categories', 1000);
 $allCategories = array_values(array_filter($allCategories, fn($c) => (int)($c['active'] ?? 1) === 1));
-// Only FixedAsset categories for the result
+// Only FixedAsset categories for fixed-asset results; stockable for inventory/material output.
 $faCategories = array_values(array_filter($allCategories, fn($c) => ($c['item_class'] ?? '') === 'FixedAsset'));
+$stockableCategories = array_values(array_filter($allCategories, fn($c) => in_array($c['item_class'] ?? '', ['Material', 'Consumable', 'Inventory'], true)));
 
 $locations = am_get_pr_sites();
 $allowCodes = am_country_allow_codes();
@@ -48,11 +50,13 @@ foreach ($allAssets as $a) {
     $sourceItems[] = $a;
 }
 
-// Inventory levels indexed by asset_id|location_id|country_id
+$locByAnyKey = am_build_location_index($locations);
+
+// Inventory levels indexed by asset_id|canonical location|country_id
 $invByKey = [];
-foreach ($allInvLevels as $inv) {
+foreach (am_inventory_dedupe_all_levels($allInvLevels, $locByAnyKey, $assetById) as $inv) {
     $iaid = (string)($inv['asset_id'] ?? '');
-    $iloc = (string)($inv['location_id'] ?? '');
+    $iloc = am_canonical_location_code((string)($inv['location_id'] ?? ''), $locByAnyKey);
     $icid = (string)($inv['country_id'] ?? '');
     if ($iaid !== '' && $iloc !== '') {
         $invByKey[$iaid . '|' . $iloc . '|' . $icid] = $inv;
@@ -63,16 +67,9 @@ foreach ($allInvLevels as $inv) {
 $countryById = [];
 foreach ($countries as $c) {
     $cid = (string)($c['country_id'] ?? $c['id'] ?? '');
-    if ($cid !== '') $countryById[$cid] = $c;
-}
-
-// Location by id/code map
-$locByAnyKey = [];
-foreach ($locations as $l) {
-    $lid = (string)($l['id'] ?? '');
-    $lcode = (string)($l['location_code'] ?? '');
-    if ($lid !== '') $locByAnyKey[$lid] = $l;
-    if ($lcode !== '' && $lcode !== $lid) $locByAnyKey[$lcode] = $l;
+    if ($cid !== '') {
+        $countryById[$cid] = $c;
+    }
 }
 
 // Default country from session scope
@@ -90,14 +87,25 @@ foreach ($countries as $c) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $assemblyCountryId = trim($_POST['country_id'] ?? '');
     $assemblyLocationCode = trim($_POST['location_code'] ?? '');
+    $resultType = trim($_POST['result_type'] ?? 'FixedAsset');
     $resultName = trim($_POST['name'] ?? '');
     $resultCategoryId = trim($_POST['category_id'] ?? '');
+    $resultItemClass = trim($_POST['result_item_class'] ?? 'Inventory');
+    $existingResultAssetId = trim($_POST['existing_result_asset_id'] ?? '');
     $resultQty = (int)($_POST['result_qty'] ?? 1);
     $serialNumber = trim($_POST['serial_number'] ?? '');
     $manufacturer = trim($_POST['manufacturer'] ?? '');
     $model = trim($_POST['model'] ?? '');
     $conditionStatus = trim($_POST['condition_status'] ?? 'New');
     $notes = trim($_POST['notes'] ?? '');
+
+    $isStockableResult = $resultType === 'Stockable';
+    if (!in_array($resultType, ['FixedAsset', 'Stockable'], true)) {
+        $errors[] = 'Please select a valid output type.';
+    }
+    if ($isStockableResult && !in_array($resultItemClass, ['Material', 'Consumable', 'Inventory'], true)) {
+        $errors[] = 'Please select a valid stockable item class.';
+    }
 
     // Parse source items JSON
     $rawSourceItems = trim($_POST['source_items_json'] ?? '');
@@ -108,11 +116,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validate result fields
-    if ($resultName === '') $errors[] = 'Resulting asset name is required.';
-    if ($resultCategoryId === '') $errors[] = 'Category is required for Fixed Assets.';
+    if ($resultName === '' && ($existingResultAssetId === '' || !$isStockableResult)) {
+        $errors[] = 'Resulting item name is required.';
+    }
+    if (!$isStockableResult && $resultCategoryId === '') {
+        $errors[] = 'Category is required for Fixed Assets.';
+    }
+    if ($isStockableResult && $existingResultAssetId === '' && $resultCategoryId === '') {
+        $errors[] = 'Category is required when creating a new stockable item.';
+    }
     if ($assemblyCountryId === '') $errors[] = 'Country is required.';
     if ($assemblyLocationCode === '') $errors[] = 'Assembly location is required.';
     if ($resultQty < 1) $errors[] = 'Quantity to produce must be at least 1.';
+
+    if ($isStockableResult && $existingResultAssetId !== '') {
+        $existingResult = $assetById[$existingResultAssetId] ?? [];
+        if ($existingResult === []) {
+            $errors[] = 'Selected stockable catalog item was not found.';
+        } elseif (!in_array((string)($existingResult['item_class'] ?? ''), ['Material', 'Consumable', 'Inventory'], true)) {
+            $errors[] = 'Selected catalog item is not a stockable class.';
+        }
+    }
 
     // Validate source items
     $validSources = [];
@@ -147,13 +171,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check inventory sufficiency
     if (empty($errors)) {
+        $checkLoc = am_canonical_location_code($assemblyLocationCode, $locByAnyKey);
         foreach ($validSources as $src) {
-            $skey = $src['asset_id'] . '|' . $assemblyLocationCode . '|' . $assemblyCountryId;
+            $skey = $src['asset_id'] . '|' . $checkLoc . '|' . $assemblyCountryId;
             $sinv = $invByKey[$skey] ?? null;
-            $available = $sinv ? (int)($sinv['quantity_on_hand'] ?? 0) : 0;
+            $available = $sinv ? (int)($sinv['quantity_on_hand'] ?? 0) - (int)($sinv['quantity_allocated'] ?? 0) : 0;
             if ($available < $src['quantity']) {
                 $errors[] = 'Insufficient stock for ' . $src['name'] . ': '
-                    . $available . ' available, ' . $src['quantity'] . ' requested.';
+                    . max(0, $available) . ' available, ' . $src['quantity'] . ' requested.';
             }
         }
     }
@@ -161,6 +186,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         // Country code for tag generation
         $countryCode = (string)($countryById[$assemblyCountryId]['country_code'] ?? 'UNK');
+        $asmLoc = $locByAnyKey[$assemblyLocationCode] ?? [];
+        $asmLocName = (string)($asmLoc['location_name'] ?? $assemblyLocationCode);
+        $assemblyLocationCode = am_canonical_location_code($assemblyLocationCode, $locByAnyKey);
 
         // Consume source inventory
         foreach ($validSources as $src) {
@@ -172,13 +200,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'quantity_on_hand' => $newQoh,
                     'updated_at' => date('c'),
                 ]);
+                $invByKey[$skey]['quantity_on_hand'] = $newQoh;
             }
         }
 
-        // Get assembly location name
-        $asmLoc = $locByAnyKey[$assemblyLocationCode] ?? [];
-        $asmLocName = (string)($asmLoc['location_name'] ?? $assemblyLocationCode);
+        $lineage = [
+            'built_from' => $validSources,
+            'assembled_at' => date('c'),
+            'assembled_by' => $_SESSION['user_id'] ?? '',
+        ];
 
+        if ($isStockableResult) {
+            $targetAsset = null;
+            $targetAssetId = '';
+            if ($existingResultAssetId !== '') {
+                $targetAsset = $assetById[$existingResultAssetId] ?? [];
+                $targetAssetId = $existingResultAssetId;
+                $resultName = (string)($targetAsset['name'] ?? $resultName);
+            }
+
+            if ($targetAssetId === '') {
+                $assetTag = am_generate_asset_tag($resultItemClass, $countryCode, $allAssets);
+                $data = array_merge([
+                    'name' => $resultName,
+                    'description' => 'Produced from ' . count($validSources) . ' material type(s)',
+                    'item_class' => $resultItemClass,
+                    'category_id' => $resultCategoryId,
+                    'country_id' => $assemblyCountryId,
+                    'location_id' => $assemblyLocationCode,
+                    'location_name' => $asmLocName,
+                    'condition_status' => $conditionStatus,
+                    'status' => 'Available',
+                    'quantity' => $resultQty,
+                    'unit_of_measure' => 'EA',
+                    'asset_tag' => $assetTag,
+                    'qr_code_id' => '',
+                    'notes' => $notes,
+                    'created_at' => date('c'),
+                    'updated_at' => date('c'),
+                    'created_by' => $_SESSION['user_id'] ?? '',
+                ], $lineage);
+
+                $result = am_firestore_create_document('am_core_assets', $data);
+                if (!$result['ok']) {
+                    $errors[] = 'Failed to create stockable item: ' . ($result['error'] ?? 'Unknown');
+                } else {
+                    $targetAssetId = (string)($result['id'] ?? '');
+                    am_firestore_create_document('am_core_inventory_levels', [
+                        'asset_id' => $targetAssetId,
+                        'location_id' => $assemblyLocationCode,
+                        'country_id' => $assemblyCountryId,
+                        'quantity_on_hand' => $resultQty,
+                        'quantity_allocated' => 0,
+                        'created_at' => date('c'),
+                        'updated_at' => date('c'),
+                    ]);
+                    $_SESSION['flash_success'] = 'Produced ' . $resultQty . ' × ' . $resultName
+                        . ' (' . $assetTag . ') from ' . count($validSources) . ' material type(s).';
+                    header('Location: ' . base_url('assets/view.php?id=' . urlencode($targetAssetId)));
+                    exit;
+                }
+            } else {
+                $invKey = $targetAssetId . '|' . $assemblyLocationCode . '|' . $assemblyCountryId;
+                $tinv = $invByKey[$invKey] ?? null;
+                $prevQty = (int)($targetAsset['quantity'] ?? 0);
+                $newQty = $prevQty + $resultQty;
+                am_firestore_update_document('am_core_assets', $targetAssetId, array_merge([
+                    'quantity' => $newQty,
+                    'location_id' => $assemblyLocationCode,
+                    'location_name' => $asmLocName,
+                    'updated_at' => date('c'),
+                ], $lineage));
+
+                if ($tinv) {
+                    am_firestore_update_document('am_core_inventory_levels', (string)$tinv['id'], [
+                        'location_id' => $assemblyLocationCode,
+                        'quantity_on_hand' => (int)($tinv['quantity_on_hand'] ?? 0) + $resultQty,
+                        'updated_at' => date('c'),
+                    ]);
+                } else {
+                    am_firestore_create_document('am_core_inventory_levels', [
+                        'asset_id' => $targetAssetId,
+                        'location_id' => $assemblyLocationCode,
+                        'country_id' => $assemblyCountryId,
+                        'quantity_on_hand' => $resultQty,
+                        'quantity_allocated' => 0,
+                        'created_at' => date('c'),
+                        'updated_at' => date('c'),
+                    ]);
+                }
+
+                $_SESSION['flash_success'] = 'Produced ' . $resultQty . ' × ' . $resultName
+                    . ' (added to ' . (string)($targetAsset['asset_tag'] ?? $targetAssetId) . ') from '
+                    . count($validSources) . ' material type(s).';
+                header('Location: ' . base_url('assets/view.php?id=' . urlencode($targetAssetId)));
+                exit;
+            }
+        } else {
         // Create FixedAsset(s)
         $createdTags = [];
         $existingAssets = $allAssets;
@@ -228,6 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . base_url('assets/index.php?item_class=FixedAsset'));
             exit;
         }
+        }
     }
 }
 
@@ -250,6 +369,27 @@ foreach ($sourceItems as $si) {
 
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 
+$stockableResultItems = [];
+foreach ($allAssets as $a) {
+    $ic = (string)($a['item_class'] ?? '');
+    if (!in_array($ic, ['Material', 'Consumable', 'Inventory'], true)) {
+        continue;
+    }
+    $status = (string)($a['status'] ?? '');
+    if (in_array($status, ['WrittenOff', 'Retired', 'Consumed'], true)) {
+        continue;
+    }
+    $stockableResultItems[] = [
+        'asset_id' => (string)($a['asset_id'] ?? $a['id'] ?? ''),
+        'name' => (string)($a['name'] ?? ''),
+        'asset_tag' => (string)($a['asset_tag'] ?? ''),
+        'item_class' => $ic,
+    ];
+}
+usort($stockableResultItems, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+$postResultType = (string)($_POST['result_type'] ?? 'FixedAsset');
+
 include __DIR__ . '/../includes/header.php';
 ?>
 
@@ -259,11 +399,11 @@ include __DIR__ . '/../includes/header.php';
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>">Catalog</a></li>
-                    <li class="breadcrumb-item active">Assemble asset</li>
+                    <li class="breadcrumb-item active">Assemble / produce</li>
                 </ol>
             </nav>
-            <h1 class="h2 mt-2">Assemble asset</h1>
-            <p class="mb-0 text-gray-600">Consume inventory materials at a location to produce Fixed Asset(s).</p>
+            <h1 class="h2 mt-2">Assemble / produce</h1>
+            <p class="mb-0 text-gray-600">Consume inventory materials at a location to produce fixed assets or stockable items (e.g. pole boxes, ready boards).</p>
         </div>
         <a href="<?php echo base_url('assets/index.php?item_class=FixedAsset'); ?>" class="btn btn-outline-secondary btn-sm">Back to catalog</a>
     </div>
@@ -337,33 +477,57 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
-        <!-- Card B: Resulting Fixed Asset -->
+        <!-- Card B: Result -->
         <div class="card border-0 shadow mb-4">
-            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Resulting Fixed Asset</h2></div>
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Result</h2></div>
             <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Output type</label>
+                        <select class="form-select" name="result_type" id="resultType">
+                            <option value="FixedAsset" <?php echo $postResultType === 'FixedAsset' ? 'selected' : ''; ?>>Fixed Asset</option>
+                            <option value="Stockable" <?php echo $postResultType === 'Stockable' ? 'selected' : ''; ?>>Stockable item (inventory / material)</option>
+                        </select>
+                        <div class="form-text">Use stockable output for pole boxes, ready boards, and other produced inventory.</div>
+                    </div>
+                    <div class="col-md-6 stockable-only">
+                        <label class="form-label">Stockable class</label>
+                        <select class="form-select" name="result_item_class" id="resultItemClass">
+                            <?php foreach (['Inventory' => 'Inventory', 'Material' => 'Material', 'Consumable' => 'Consumable'] as $val => $label): ?>
+                            <option value="<?php echo $val; ?>" <?php echo (($_POST['result_item_class'] ?? 'Inventory') === $val) ? 'selected' : ''; ?>><?php echo $label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 stockable-only mb-3">
+                    <div class="col-12">
+                        <label class="form-label">Add to existing catalog item</label>
+                        <select class="form-select" name="existing_result_asset_id" id="existingResultAsset">
+                            <option value="">Create new item instead…</option>
+                            <?php foreach ($stockableResultItems as $item): ?>
+                            <option value="<?php echo htmlspecialchars($item['asset_id']); ?>" <?php echo (($_POST['existing_result_asset_id'] ?? '') === $item['asset_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($item['name'] . ' (' . $item['asset_tag'] . ')'); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
                 <div class="row g-3">
-                    <div class="col-md-8">
-                        <label class="form-label">Asset name <span class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control" required
+                    <div class="col-md-8 new-result-fields">
+                        <label class="form-label">Item name <span class="text-danger result-name-required">*</span></label>
+                        <input type="text" name="name" id="resultName" class="form-control"
                             value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>"
-                            placeholder="e.g. Powerhouse #14, Assembled Tracker Station 3">
+                            placeholder="e.g. Pole box 3-channel, Ready board 20A">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Qty to produce</label>
                         <input type="number" name="result_qty" class="form-control" min="1" value="<?php echo (int)($_POST['result_qty'] ?? 1); ?>">
-                        <div class="form-text">How many identical units to create.</div>
+                        <div class="form-text">How many identical units to create or add.</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Category <span class="text-danger">*</span></label>
-                        <select name="category_id" class="form-select" required>
+                        <label class="form-label">Category <span class="text-danger category-required">*</span></label>
+                        <select name="category_id" class="form-select" id="resultCategoryId">
                             <option value="">Select…</option>
-                            <?php foreach ($faCategories as $cat):
-                                $catId = (string)($cat['category_id'] ?? $cat['id'] ?? '');
-                            ?>
-                            <option value="<?php echo htmlspecialchars($catId); ?>" <?php echo ($_POST['category_id'] ?? '') === $catId ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($cat['category_name'] ?? ''); ?>
-                            </option>
-                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -374,19 +538,19 @@ include __DIR__ . '/../includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 fixed-only">
                         <label class="form-label">Serial number</label>
                         <input type="text" name="serial_number" class="form-control"
                             value="<?php echo htmlspecialchars($_POST['serial_number'] ?? ''); ?>"
                             placeholder="Optional">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 fixed-only">
                         <label class="form-label">Manufacturer</label>
                         <input type="text" name="manufacturer" class="form-control"
                             value="<?php echo htmlspecialchars($_POST['manufacturer'] ?? ''); ?>"
                             placeholder="Optional">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 fixed-only">
                         <label class="form-label">Model</label>
                         <input type="text" name="model" class="form-control"
                             value="<?php echo htmlspecialchars($_POST['model'] ?? ''); ?>"
@@ -403,7 +567,7 @@ include __DIR__ . '/../includes/header.php';
 
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary" id="submitBtn">
-                <i class="fas fa-wrench me-2"></i>Assemble
+                <i class="fas fa-wrench me-2"></i><span id="submitBtnLabel">Assemble</span>
             </button>
             <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-gray-200">Cancel</a>
         </div>
@@ -417,6 +581,9 @@ var sourceItems = [];
 // Stock data per location
 var srcByLoc = <?php echo json_encode($srcByLoc, JSON_UNESCAPED_SLASHES); ?>;
 var classColors = <?php echo json_encode($classColors); ?>;
+var faCategories = <?php echo json_encode(array_map(fn($c) => ['id' => (string)($c['category_id'] ?? $c['id'] ?? ''), 'name' => (string)($c['category_name'] ?? '')], $faCategories), JSON_UNESCAPED_SLASHES); ?>;
+var stockableCategories = <?php echo json_encode(array_map(fn($c) => ['id' => (string)($c['category_id'] ?? $c['id'] ?? ''), 'name' => (string)($c['category_name'] ?? '')], $stockableCategories), JSON_UNESCAPED_SLASHES); ?>;
+var selectedCategoryId = <?php echo json_encode((string)($_POST['category_id'] ?? '')); ?>;
 
 function escHtml(s) {
     var d = document.createElement('div');
@@ -548,6 +715,44 @@ document.getElementById('assembleForm').addEventListener('submit', function(e) {
 renderSourceItems();
 syncHidden();
 rebuildItemSelect();
+
+function rebuildCategoryOptions() {
+    var type = document.getElementById('resultType').value;
+    var isStockable = type === 'Stockable';
+    var cats = isStockable ? stockableCategories : faCategories;
+    var sel = document.getElementById('resultCategoryId');
+    var cur = sel.value || selectedCategoryId;
+    sel.innerHTML = '<option value="">Select…</option>';
+    cats.forEach(function(cat) {
+        var opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.name;
+        if (cat.id === cur) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function updateResultForm() {
+    var type = document.getElementById('resultType').value;
+    var isStockable = type === 'Stockable';
+    var existing = document.getElementById('existingResultAsset').value;
+    document.querySelectorAll('.stockable-only').forEach(function(el) {
+        el.style.display = isStockable ? '' : 'none';
+    });
+    document.querySelectorAll('.fixed-only').forEach(function(el) {
+        el.style.display = isStockable ? 'none' : '';
+    });
+    document.querySelectorAll('.new-result-fields').forEach(function(el) {
+        el.style.display = (isStockable && existing) ? 'none' : '';
+    });
+    document.getElementById('submitBtnLabel').textContent = isStockable ? 'Produce' : 'Assemble';
+    document.getElementById('resultName').required = !isStockable || !existing;
+    rebuildCategoryOptions();
+}
+
+document.getElementById('resultType').addEventListener('change', updateResultForm);
+document.getElementById('existingResultAsset').addEventListener('change', updateResultForm);
+updateResultForm();
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

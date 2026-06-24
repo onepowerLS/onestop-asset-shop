@@ -97,7 +97,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link <?php echo $current_page === 'assemble' ? 'active' : ''; ?>" href="<?php echo base_url('assets/assemble.php'); ?>">
                                 <i class="fas fa-wrench me-1"></i>
-                                <span class="sidebar-text">Assemble asset</span>
+                                <span class="sidebar-text">Assemble / produce</span>
                             </a>
                         </li>
                     </ul>
