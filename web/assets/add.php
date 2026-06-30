@@ -205,6 +205,48 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
+    <!-- Search before you add -->
+    <div class="card border-0 shadow mb-4" id="catalogSearchCard">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="fs-5 fw-bold mb-0">Search catalog first</h2>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="catalogSearchToggle" aria-expanded="true">
+                <i class="fas fa-chevron-up me-1"></i><span>Hide</span>
+            </button>
+        </div>
+        <div class="card-body" id="catalogSearchBody">
+            <p class="text-gray-600 mb-3">Before adding a new item, search the catalog to avoid duplicates. If you find a match, open it and edit its quantity or location instead of creating a new record.</p>
+            <div class="row g-3 mb-2">
+                <div class="col-md-8">
+                    <label class="form-label">Search catalog</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="catalogSearchInput" class="form-control" placeholder="Name, tag, manufacturer, model, notes, category…" autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Filter by class</label>
+                    <select id="catalogSearchClass" class="form-select">
+                        <option value="">All classes</option>
+                        <option value="Material">Material</option>
+                        <option value="Consumable">Consumable</option>
+                        <option value="Inventory">Inventory</option>
+                        <option value="FixedAsset">Fixed Asset</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0" id="catalogSearchTable">
+                    <thead>
+                        <tr><th>Name</th><th>Tag</th><th>Class</th><th>Category</th><th>Location</th><th>On hand</th><th></th></tr>
+                    </thead>
+                    <tbody id="catalogSearchResults">
+                        <tr><td colspan="7" class="text-center text-gray-500 py-3">Type at least 2 characters to search the catalog.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <form method="POST" action="" id="addItemForm">
         <!-- Step 1: Classification -->
         <div class="card border-0 shadow mb-4">
@@ -234,7 +276,8 @@ include __DIR__ . '/../includes/header.php';
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
                         <label class="form-label">Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="name" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>" required>
+                        <input type="text" class="form-control" name="name" id="itemNameInput" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>" required>
+                        <div id="similarNameHint" class="form-text" style="display:none;"></div>
                     </div>
                     <div class="col-12 col-md-2">
                         <label class="form-label">Legacy ID</label>
@@ -453,6 +496,13 @@ function onClassChange() {
         }
     });
     updateVehicleFields();
+
+    // Keep the search filter in sync with the selected class.
+    var searchClass = document.getElementById('catalogSearchClass');
+    if (searchClass) {
+        searchClass.value = cls || '';
+        runCatalogSearch();
+    }
 }
 function updateVehicleFields() {
     var catVal = document.getElementById('categorySelect').value || '';
@@ -462,6 +512,145 @@ function updateVehicleFields() {
 document.addEventListener('DOMContentLoaded', function() {
     onClassChange();
     document.getElementById('categorySelect').addEventListener('change', updateVehicleFields);
+
+    // Pre-fill search box from ?q= and trigger an initial search.
+    var params = new URLSearchParams(window.location.search);
+    var initialQ = params.get('q') || '';
+    var searchInput = document.getElementById('catalogSearchInput');
+    if (initialQ && searchInput) {
+        searchInput.value = initialQ;
+        runCatalogSearch();
+    }
+});
+
+// ── Catalog search before add ───────────────────────────────────
+var catalogSearchApiUrl = <?php echo json_encode(base_url('api/assets/search.php')); ?>;
+var catalogSearchTimer = null;
+
+function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function runCatalogSearch() {
+    var input = document.getElementById('catalogSearchInput');
+    var cls = document.getElementById('catalogSearchClass').value;
+    var tbody = document.getElementById('catalogSearchResults');
+    if (!input || !tbody) return;
+
+    var q = input.value.trim();
+    if (q.length < 2) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">Type at least 2 characters to search the catalog.</td></tr>';
+        return;
+    }
+
+    var url = catalogSearchApiUrl + '?q=' + encodeURIComponent(q) + '&limit=20';
+    if (cls) url += '&item_class=' + encodeURIComponent(cls);
+
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">Searching…</td></tr>';
+
+    fetch(url, { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data || !data.ok || !data.items || data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">No matching items found. You can add a new one below.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            data.items.forEach(function(item) {
+                var tr = document.createElement('tr');
+                if (item.strong_match) {
+                    tr.className = 'table-warning';
+                }
+                var onHand = item.quantity_on_hand !== undefined ? item.quantity_on_hand : item.quantity;
+                tr.innerHTML =
+                    '<td><strong>' + escapeHtml(item.name) + '</strong>'
+                        + (item.strong_match ? ' <span class="badge bg-warning text-dark ms-1">Similar</span>' : '')
+                        + '</td>'
+                    + '<td><code class="text-muted">' + escapeHtml(item.asset_tag || '—') + '</code></td>'
+                    + '<td><span class="badge bg-secondary">' + escapeHtml(item.item_class) + '</span></td>'
+                    + '<td>' + escapeHtml(item.category_name || '—') + '</td>'
+                    + '<td>' + escapeHtml(item.location_name || '—') + '</td>'
+                    + '<td>' + (onHand !== null ? onHand : '—') + '</td>'
+                    + '<td class="text-end">'
+                        + '<a class="btn btn-sm btn-outline-secondary" href="' + escapeHtml(item.view_url) + '">View</a> '
+                        + '<a class="btn btn-sm btn-outline-primary" href="' + escapeHtml(item.edit_url) + '">Edit</a>'
+                        + '</td>';
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(function() {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">Search failed. Try again.</td></tr>';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var input = document.getElementById('catalogSearchInput');
+    var cls = document.getElementById('catalogSearchClass');
+    var toggle = document.getElementById('catalogSearchToggle');
+    var body = document.getElementById('catalogSearchBody');
+
+    if (input) {
+        input.addEventListener('input', function() {
+            if (catalogSearchTimer) clearTimeout(catalogSearchTimer);
+            catalogSearchTimer = setTimeout(runCatalogSearch, 250);
+        });
+    }
+
+    var nameInput = document.getElementById('itemNameInput');
+    var nameHint = document.getElementById('similarNameHint');
+    var nameTimer = null;
+    if (nameInput && nameHint) {
+        nameInput.addEventListener('input', function() {
+            var v = nameInput.value.trim();
+            if (nameTimer) clearTimeout(nameTimer);
+            if (v.length < 3) {
+                nameHint.style.display = 'none';
+                nameHint.innerHTML = '';
+                return;
+            }
+            nameTimer = setTimeout(function() {
+                var cls = document.querySelector('input[name="item_class"]:checked');
+                var clsVal = cls ? cls.value : '';
+                var url = catalogSearchApiUrl + '?q=' + encodeURIComponent(v) + '&limit=5';
+                if (clsVal) url += '&item_class=' + encodeURIComponent(clsVal);
+                fetch(url, { credentials: 'same-origin' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var matches = (data && data.ok && data.items || []).filter(function(it) { return it.strong_match; });
+                        if (matches.length === 0) {
+                            nameHint.style.display = 'none';
+                            nameHint.innerHTML = '';
+                            return;
+                        }
+                        var links = matches.map(function(m) {
+                            return '<a href="' + escapeHtml(m.view_url) + '" target="_blank">' + escapeHtml(m.name) + ' (' + escapeHtml(m.asset_tag) + ')</a>';
+                        });
+                        nameHint.style.display = '';
+                        nameHint.className = 'form-text text-warning';
+                        nameHint.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Similar item'
+                            + (matches.length > 1 ? 's' : '')
+                            + ' already in catalog: ' + links.join(', ') + '. Consider editing that record instead.';
+                    })
+                    .catch(function() {
+                        nameHint.style.display = 'none';
+                        nameHint.innerHTML = '';
+                    });
+            }, 400);
+        });
+    }
+    if (cls) {
+        cls.addEventListener('change', runCatalogSearch);
+    }
+    if (toggle && body) {
+        toggle.addEventListener('click', function() {
+            var expanded = body.style.display !== 'none';
+            body.style.display = expanded ? 'none' : '';
+            toggle.querySelector('span').textContent = expanded ? 'Show' : 'Hide';
+            toggle.querySelector('i').className = expanded ? 'fas fa-chevron-down me-1' : 'fas fa-chevron-up me-1';
+        });
+    }
 });
 </script>
 

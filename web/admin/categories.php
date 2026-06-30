@@ -67,6 +67,55 @@ if ($_GET['delete'] ?? '') {
     exit;
 }
 
+// Seed additional consumable categories (idempotent — skips existing codes).
+if (($_GET['seed_consumables'] ?? '') === '1' && ($_SESSION['role'] ?? '') === 'Admin') {
+    $newCategories = [
+        ['code' => 'CON-MNT', 'name' => 'Maintenance Supplies', 'dept' => 'O&M', 'desc' => 'Lubricants, fasteners, tape, cable ties, sealant, adhesives'],
+        ['code' => 'CON-LUB', 'name' => 'Lubricants & Fluids', 'dept' => 'O&M', 'desc' => 'Engine oil, grease, hydraulic fluid, coolant, brake fluid'],
+        ['code' => 'CON-FUE', 'name' => 'Fuel', 'dept' => 'General', 'desc' => 'Petrol, diesel, gas for generators and vehicles'],
+        ['code' => 'CON-PRN', 'name' => 'Print & Stationery', 'dept' => 'General', 'desc' => 'Paper, toner, ink, pens, notebooks, printer consumables'],
+        ['code' => 'CON-ITC', 'name' => 'IT Consumables', 'dept' => 'General', 'desc' => 'Toner, ink, cables, adapters, storage media, batteries'],
+        ['code' => 'CON-MSC', 'name' => 'Miscellaneous Consumables', 'dept' => 'General', 'desc' => 'General consumables not covered by other categories'],
+        ['code' => 'CON-SAF', 'name' => 'Safety & First Aid', 'dept' => 'General', 'desc' => 'First aid kits, fire extinguisher refills, signage, spotters'],
+        ['code' => 'CON-FOD', 'name' => 'Food & Catering', 'dept' => 'General', 'desc' => 'Site rations, water, catering supplies for field work'],
+    ];
+    $existingByCode = [];
+    foreach ($categories as $cat) {
+        $code = strtoupper(trim((string)($cat['category_code'] ?? '')));
+        if ($code !== '') {
+            $existingByCode[$code] = $cat;
+        }
+    }
+    $created = 0;
+    $skipped = 0;
+    foreach ($newCategories as $new) {
+        $code = strtoupper($new['code']);
+        if (isset($existingByCode[$code])) {
+            $skipped++;
+            continue;
+        }
+        $data = [
+            'category_code' => $new['code'],
+            'category_name' => $new['name'],
+            'item_class' => 'Consumable',
+            'department_scope' => $new['dept'],
+            'description' => $new['desc'],
+            'useful_life_years' => null,
+            'depreciation_method' => 'None',
+            'reorder_enabled' => 1,
+            'active' => 1,
+            'created_at' => date('c'),
+        ];
+        $r = am_firestore_create_document('pr_master_categories', $data);
+        if ($r['ok']) {
+            $created++;
+        }
+    }
+    $_SESSION['flash_success'] = "Seeded consumable categories: {$created} created, {$skipped} already existed.";
+    header('Location: ' . base_url('admin/categories.php'));
+    exit;
+}
+
 $editCategory = null;
 if ($editId) {
     foreach ($categories as $c) {
@@ -97,6 +146,10 @@ include __DIR__ . '/../includes/header.php';
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center py-4">
         <h1 class="h2">Manage Categories</h1>
+        <a href="<?php echo base_url('admin/categories.php?seed_consumables=1'); ?>" class="btn btn-outline-success btn-sm"
+           onclick="return confirm('Add missing consumable categories (Maintenance, Lubricants, Fuel, Print, IT, Safety, Food, Misc)? Existing codes are skipped.')">
+            <i class="fas fa-seedling me-1"></i>Seed consumable categories
+        </a>
     </div>
 
     <?php if ($flash): ?>
