@@ -140,6 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'warranty_expiry' => trim($_POST['warranty_expiry'] ?? ''),
             'condition_status' => trim($_POST['condition_status'] ?? 'Good'),
             'status' => trim($_POST['status'] ?? ($asset['status'] ?? 'Available')),
+            'allocated_department' => trim($_POST['allocated_department'] ?? ''),
+            'allocated_project' => trim($_POST['allocated_project'] ?? ''),
             'quantity' => max(1, (int)($_POST['quantity'] ?? 1)),
             'unit_of_measure' => trim($_POST['unit_of_measure'] ?? 'EA'),
             'asset_tag' => $assetTag,
@@ -328,11 +330,29 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Status</label>
-                        <select class="form-select" name="status">
+                        <select class="form-select" name="status" id="assetStatusSelect">
                             <?php foreach ($statusOptions as $s): ?>
                             <option value="<?php echo $s; ?>" <?php echo (string)($vals['status'] ?? '') === $s ? 'selected' : ''; ?>><?php echo $s; ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                </div>
+                <div class="row g-3 mt-0" id="allocatedDepartmentRow" style="display:none;">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Allocated to department</label>
+                        <select class="form-select" name="allocated_department" id="allocatedDepartment">
+                            <option value="">—</option>
+                            <?php foreach (['RET', 'FAC', 'O&M', 'IT', 'General', 'Finance', 'HR', 'Procurement', 'Fleet'] as $d): ?>
+                            <option value="<?php echo $d; ?>" <?php echo (string)($vals['allocated_department'] ?? '') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Shown only when Status is Allocated, CheckedOut, InProject, or Deployed.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Project / concession (optional)</label>
+                        <input type="text" class="form-control" name="allocated_project" id="allocatedProject"
+                            value="<?php echo htmlspecialchars((string)($vals['allocated_project'] ?? '')); ?>"
+                            placeholder="e.g. Sehlabathebe, Powerhouse #14, IT bench">
                     </div>
                 </div>
             </div>
@@ -558,9 +578,20 @@ function updateVehicleFields() {
     var isVehicle = /^FA-VEH/.test(catVal);
     document.getElementById('vehicleFields').style.display = isVehicle ? '' : 'none';
 }
+function updateAllocatedDepartmentVisibility() {
+    var sel = document.getElementById('assetStatusSelect');
+    if (!sel) return;
+    var showFor = ['Allocated', 'CheckedOut', 'InProject', 'Deployed'];
+    var show = showFor.indexOf(sel.value) !== -1;
+    var row = document.getElementById('allocatedDepartmentRow');
+    if (row) row.style.display = show ? '' : 'none';
+}
 document.addEventListener('DOMContentLoaded', function() {
     onClassChange();
     document.getElementById('categorySelect').addEventListener('change', updateVehicleFields);
+    var statusSel = document.getElementById('assetStatusSelect');
+    if (statusSel) statusSel.addEventListener('change', updateAllocatedDepartmentVisibility);
+    updateAllocatedDepartmentVisibility();
 });
 </script>
 

@@ -207,8 +207,17 @@ include __DIR__ . '/../includes/header.php';
                                         'Missing' => 'danger', default => 'secondary'
                                     };
                                 ?>"><?php echo htmlspecialchars($asset['status'] ?? 'Unknown'); ?></span>
+                                <?php if (in_array((string)($asset['status'] ?? ''), ['Allocated', 'CheckedOut', 'InProject', 'Deployed'], true) && !empty($asset['allocated_department'])): ?>
+                                <span class="badge bg-secondary ms-1"><?php echo htmlspecialchars($asset['allocated_department']); ?></span>
+                                <?php endif; ?>
                             </p>
                         </div>
+                        <?php if (in_array((string)($asset['status'] ?? ''), ['Allocated', 'CheckedOut', 'InProject', 'Deployed'], true) && !empty($asset['allocated_project'])): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Project / concession</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['allocated_project']); ?></p>
+                        </div>
+                        <?php endif; ?>
                         <div class="col-6 col-md-4">
                             <small class="text-gray-500">Category</small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($category['category_name'] ?? 'N/A'); ?></p>
