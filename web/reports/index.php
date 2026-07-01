@@ -24,9 +24,9 @@ include __DIR__ . '/../includes/sidebar.php';
     <div class="py-4">
         <h2 class="h4 mb-4">Reports &amp; Export</h2>
 
-        <div class="row g-4">
+        <div class="row g-4" data-tutorial="tutorial-reports-grid">
             <!-- Asset Register -->
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4" data-tutorial="tutorial-reports-asset-card">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
                         <h5><i class="fas fa-clipboard-list text-primary me-2"></i>Asset Register</h5>

@@ -52,6 +52,8 @@ require_once __DIR__ . '/../config/firebase.php';
         });
     </script>
     
+<?php if (is_logged_in()) { include __DIR__ . '/tutorial_scripts.php'; } ?>
+
     <!-- Volt peer deps (volt.js expects these globals — not bundled in the npm src file) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script>
@@ -77,6 +79,9 @@ require_once __DIR__ . '/../config/firebase.php';
 
     onAuthStateChanged(auth, async function (user) {
         if (!user) return;
+        if (document.body.dataset.amFirestoreReauth !== '1') {
+            sessionStorage.removeItem('am_fs_reauth_done');
+        }
         try {
             var idToken = await user.getIdToken(true);
             await fetch(<?php echo json_encode(base_url('auth/refresh-session.php')); ?>, {

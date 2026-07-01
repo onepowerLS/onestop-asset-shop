@@ -120,6 +120,13 @@ Tests run automatically on push to `develop` or `main`:
 - [ ] Admin approve/reject buttons work
 - [ ] Fulfilled status records fulfilled_date
 
+#### Inventory dispatch (`dispatch-new.php`, `api/dispatch/search-items.php`)
+- [ ] **Request country** drives catalog search: hint under search box shows the same country label as the dropdown
+- [ ] Changing **Request country** updates the hint and search API `country_id` (destination sites still filter correctly)
+- [ ] Search returns items that match main catalog country rules (including assets where country is inferred from location when `country_id` is empty)
+- [ ] Search finds items by manufacturer, model, notes, category name, location name/code (not only name/tag/description)
+- [ ] Known LSO (or other) warehouse item appears when Request country matches that country
+
 #### QR Labels (web/admin/qr-labels.php)
 - [ ] Coverage stats (assigned, pending, percentage)
 - [ ] Items without QR listed with Generate button

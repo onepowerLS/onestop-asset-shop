@@ -1,13 +1,15 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
 
-$page_title = 'Requests';
+$page_title = 'Ready board requests';
 $errors = [];
 $showForm = isset($_GET['new']) || !empty($errors);
 
-$requests = am_firestore_get_collection('pr_master_requests', 2000);
+$requests = am_firestore_get_collection('am_core_requests', 2000);
+$requests = array_values(array_filter($requests, fn($r) => ($r['workflow_type'] ?? '') === 'ready_board'));
 $countries = am_firestore_get_collection('pr_master_countries', 500);
 $locations = am_get_pr_sites();
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
@@ -20,24 +22,48 @@ foreach ($countries as $c) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    am_require_can_mutate();
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create') {
-        $itemClass = trim($_POST['item_class'] ?? '');
+        // Ready boards are always Inventory class — requesters no longer pick the class.
+        $itemClass = 'Inventory';
         $deptScope = trim($_POST['department_scope'] ?? 'General');
         $description = trim($_POST['description'] ?? '');
         $countryId = trim($_POST['country_id'] ?? '');
         $priority = trim($_POST['priority'] ?? 'Normal');
+        $quantity = max(1, (int)($_POST['quantity'] ?? 1));
+        $siteCode = trim($_POST['site_code'] ?? '');
+        $receiverName = trim($_POST['receiver_name'] ?? '');
+        $receiverEmail = trim($_POST['receiver_email'] ?? '');
 
         if ($description === '') $errors[] = 'Description is required.';
         if ($countryId === '') $errors[] = 'Country is required.';
-        if (!in_array($itemClass, ['FixedAsset', 'Material', 'Consumable', 'Inventory'])) $errors[] = 'Item class is required.';
+        if ($quantity < 1) $errors[] = 'Quantity must be at least 1.';
 
         if (empty($errors)) {
             $reqNum = 'REQ-' . date('Y') . '-' . str_pad((string)(count($requests) + 1), 4, '0', STR_PAD_LEFT);
 
+            $payload = [
+                'item_class' => $itemClass,
+                'department_scope' => $deptScope,
+                'description' => $description,
+                'priority' => $priority,
+                'quantity' => $quantity,
+                'site_code' => $siteCode,
+                'receiver_name' => $receiverName,
+                'receiver_email' => $receiverEmail,
+                'required_date' => $_POST['required_date'] ?? '',
+                'notes' => trim($_POST['notes'] ?? ''),
+                'location_id' => trim($_POST['location_id'] ?? ''),
+            ];
+
+            $summary = 'Ready boards ×' . $quantity . ($siteCode ? ' → ' . $siteCode : '') . ' — ' . substr($description, 0, 80);
+
             $data = [
                 'request_number' => $reqNum,
+                'workflow_type' => 'ready_board',
+                'workflow_label' => 'Ready board request',
                 'item_class' => $itemClass,
                 'department_scope' => $deptScope,
                 'requested_by' => $_SESSION['user_id'] ?? '',
@@ -46,12 +72,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'priority' => $priority,
                 'status' => 'Submitted',
                 'description' => $description,
+                'summary' => $summary,
+                'quantity' => $quantity,
+                'site_code' => $siteCode,
+                'receiver_name' => $receiverName,
+                'receiver_email' => $receiverEmail,
                 'requested_date' => date('c'),
                 'required_date' => $_POST['required_date'] ?? '',
                 'notes' => trim($_POST['notes'] ?? ''),
+                'payload' => $payload,
             ];
 
-            $result = am_firestore_create_document('pr_master_requests', $data);
+            $result = am_firestore_create_document('am_core_requests', $data);
             if ($result['ok']) {
                 $_SESSION['flash_success'] = 'Request ' . $reqNum . ' submitted.';
                 header('Location: ' . base_url('requests/index.php'));
@@ -70,12 +102,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newStatus === 'Fulfilled') {
                 $updateData['fulfilled_date'] = date('c');
             }
-            am_firestore_update_document('pr_master_requests', $docId, $updateData);
+            am_firestore_update_document('am_core_requests', $docId, $updateData);
             $_SESSION['flash_success'] = 'Request status updated to ' . $newStatus . '.';
         }
         header('Location: ' . base_url('requests/index.php'));
         exit;
     }
+}
+
+if (am_is_auditor_readonly()) {
+    $showForm = false;
 }
 
 $statusFilter = $_GET['status'] ?? '';
@@ -107,14 +143,21 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="py-4">
-    <div class="d-flex justify-content-between align-items-center py-4">
+    <div class="d-flex justify-content-between align-items-center py-4" data-tutorial="tutorial-requests-header">
         <div>
-            <h1 class="h2">Requests</h1>
-            <p class="mb-0"><?php echo count($filtered); ?> requests</p>
+            <h1 class="h2">Ready board requests</h1>
+            <p class="mb-0"><?php echo count($filtered); ?> ready board requests</p>
+            <p class="small text-muted mb-0 mt-1">
+                For ready boards and other AM service requests, use
+                <a href="<?php echo base_url('requests/workflow-index.php'); ?>">Service workflows</a>
+                (replaces the <a href="https://docs.google.com/forms/d/1F-Hfa_HdRidRd3BOPEiG-6f4Zha-AWdTdGFG8-6iTUI/viewform" target="_blank" rel="noopener">legacy Google Form</a>).
+            </p>
         </div>
+        <?php if (!am_is_auditor_readonly()): ?>
         <a href="<?php echo base_url('requests/index.php?new=1'); ?>" class="btn btn-sm btn-gray-800">
             <i class="fas fa-plus me-2"></i>New Request
         </a>
+        <?php endif; ?>
     </div>
 
     <?php if ($flash): ?>
@@ -159,17 +202,18 @@ include __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="action" value="create">
                 <div class="row g-3">
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Item Class <span class="text-danger">*</span></label>
-                        <select class="form-select" name="item_class" required>
-                            <?php foreach ($classLabels as $k => $v): ?>
-                            <option value="<?php echo $k; ?>" <?php echo ($_POST['item_class'] ?? '') === $k ? 'selected' : ''; ?>><?php echo $v; ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="quantity" min="1" value="<?php echo htmlspecialchars($_POST['quantity'] ?? '1'); ?>" required>
+                        <div class="form-text">Number of ready boards needed.</div>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Concession / site</label>
+                        <input type="text" class="form-control" name="site_code" value="<?php echo htmlspecialchars($_POST['site_code'] ?? ''); ?>" placeholder="e.g. SEH, MAT, HQ">
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="form-label">Department</label>
                         <select class="form-select" name="department_scope">
-                            <?php foreach (['General', 'RET', 'FAC', 'O&M', 'All'] as $d): ?>
+                            <?php foreach (['General', 'RET', 'FAC', 'O&M', 'IT'] as $d): ?>
                             <option value="<?php echo $d; ?>" <?php echo ($_POST['department_scope'] ?? 'General') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
                             <?php endforeach; ?>
                         </select>
@@ -195,15 +239,23 @@ include __DIR__ . '/../includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 col-md-9">
                         <label class="form-label">Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" name="description" rows="3" required placeholder="Describe what you need..."><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                        <textarea class="form-control" name="description" rows="2" required placeholder="Describe what you need..."><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Required By</label>
                         <input type="date" class="form-control" name="required_date" value="<?php echo htmlspecialchars($_POST['required_date'] ?? ''); ?>">
                     </div>
-                    <div class="col-12 col-md-8">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Receiver name</label>
+                        <input type="text" class="form-control" name="receiver_name" value="<?php echo htmlspecialchars($_POST['receiver_name'] ?? ''); ?>">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Receiver email</label>
+                        <input type="text" class="form-control" name="receiver_email" value="<?php echo htmlspecialchars($_POST['receiver_email'] ?? ''); ?>">
+                    </div>
+                    <div class="col-12">
                         <label class="form-label">Additional Notes</label>
                         <input type="text" class="form-control" name="notes" value="<?php echo htmlspecialchars($_POST['notes'] ?? ''); ?>">
                     </div>
@@ -223,23 +275,22 @@ include __DIR__ . '/../includes/header.php';
             <div class="table-responsive">
                 <table class="table table-hover" id="requestsTable">
                     <thead>
-                        <tr><th>Request #</th><th>Class</th><th>Description</th><th>Country</th><th>Priority</th><th>Status</th><th>Date</th><?php if ($isAdmin): ?><th>Actions</th><?php endif; ?></tr>
+                        <tr><th>Request #</th><th>Qty</th><th>Site</th><th>Country</th><th>Priority</th><th>Status</th><th>Date</th><?php if ($isAdmin): ?><th>Actions</th><?php endif; ?></tr>
                     </thead>
                     <tbody>
                         <?php if (empty($filtered)): ?>
-                        <tr><td colspan="<?php echo $isAdmin ? 8 : 7; ?>" class="text-center text-gray-500 py-4">No requests found.</td></tr>
+                        <tr><td colspan="<?php echo $isAdmin ? 9 : 8; ?>" class="text-center text-gray-500 py-4">No requests found.</td></tr>
                         <?php else: ?>
                         <?php foreach ($filtered as $req):
                             $docId = (string)($req['id'] ?? '');
-                            $cls = (string)($req['item_class'] ?? '');
                             $status = (string)($req['status'] ?? '');
                             $priColors = ['Low' => 'secondary', 'Normal' => 'primary', 'High' => 'warning', 'Urgent' => 'danger'];
                             $statColors = ['Draft' => 'secondary', 'Submitted' => 'primary', 'Approved' => 'success', 'Rejected' => 'danger', 'Fulfilled' => 'info', 'Cancelled' => 'secondary'];
                         ?>
                         <tr>
-                            <td><strong><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></strong></td>
-                            <td><span class="badge bg-<?php echo $classColors[$cls] ?? 'secondary'; ?>"><?php echo htmlspecialchars($classLabels[$cls] ?? $cls); ?></span></td>
-                            <td><?php echo htmlspecialchars(substr((string)($req['description'] ?? ''), 0, 80)); ?></td>
+                            <td><a href="<?php echo base_url('requests/workflow-view.php?id=' . urlencode($docId)); ?>" class="fw-bold"><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></a></td>
+                            <td><?php echo (int)($req['quantity'] ?? 0); ?></td>
+                            <td><?php echo htmlspecialchars((string)($req['site_code'] ?? '—')); ?></td>
                             <td><?php echo htmlspecialchars(($countryById[(string)($req['requested_for_country'] ?? '')] ?? [])['country_code'] ?? '—'); ?></td>
                             <td><span class="badge bg-<?php echo $priColors[$req['priority'] ?? ''] ?? 'secondary'; ?>"><?php echo htmlspecialchars($req['priority'] ?? ''); ?></span></td>
                             <td><span class="badge bg-<?php echo $statColors[$status] ?? 'secondary'; ?>"><?php echo htmlspecialchars($status); ?></span></td>
@@ -260,12 +311,7 @@ include __DIR__ . '/../includes/header.php';
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject"><i class="fas fa-times"></i></button>
                                 </form>
                                 <?php elseif ($status === 'Approved'): ?>
-                                <form method="POST" action="" class="d-inline">
-                                    <input type="hidden" name="action" value="update_status">
-                                    <input type="hidden" name="doc_id" value="<?php echo htmlspecialchars($docId); ?>">
-                                    <input type="hidden" name="new_status" value="Fulfilled">
-                                    <button type="submit" class="btn btn-sm btn-outline-info" title="Mark Fulfilled"><i class="fas fa-check-double"></i></button>
-                                </form>
+                                <a class="btn btn-sm btn-outline-info" href="<?php echo base_url('requests/workflow-view.php?id=' . urlencode($docId)); ?>" title="Fulfill"><i class="fas fa-check-double"></i></a>
                                 <?php endif; ?>
                             </td>
                             <?php endif; ?>
@@ -279,10 +325,12 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
 <script>
 $(document).ready(function() {
-    $('#requestsTable').DataTable({ pageLength: 25, order: [[6, 'desc']] });
+    var t = $('#requestsTable');
+    if (t.find('tbody td[colspan]').length) return;
+    t.DataTable({ pageLength: 25, order: [[7, 'desc']] });
 });
 </script>
-
-<?php include __DIR__ . '/../includes/footer.php'; ?>

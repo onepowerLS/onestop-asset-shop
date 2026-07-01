@@ -1,0 +1,2540 @@
+[
+  {
+    "msisdn_normalized": "26657219984",
+    "msisdn_display": "26657219984",
+    "contact_value": "60",
+    "pool": "Neo1",
+    "sim_location": "Mafeteng",
+    "person_assigned": "Neo1 project Comunication",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "locate",
+    "legacy_import": {
+      "workbook_sheet": "Neo1"
+    },
+    "created_at": "2026-04-13T15:59:51.605100+00:00",
+    "updated_at": "2026-04-13T15:59:51.605100+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658806506",
+    "msisdn_display": "26658806506",
+    "contact_value": "335",
+    "pool": "Facilities",
+    "sim_location": "HQ",
+    "person_assigned": "Facilities",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Facilities"
+    },
+    "created_at": "2026-04-13T15:59:51.643566+00:00",
+    "updated_at": "2026-04-13T15:59:51.643566+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658806505",
+    "msisdn_display": "26658806505",
+    "contact_value": "335",
+    "pool": "Facilities",
+    "sim_location": "HQ",
+    "person_assigned": "Facilities",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Facilities"
+    },
+    "created_at": "2026-04-13T15:59:51.643644+00:00",
+    "updated_at": "2026-04-13T15:59:51.643644+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657531975",
+    "msisdn_display": "26657531975",
+    "contact_value": "60",
+    "pool": "HQ",
+    "sim_location": "Ha Makebe",
+    "person_assigned": "makebe security guard phone",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658051+00:00",
+    "updated_at": "2026-04-13T15:59:51.658051+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657755403",
+    "msisdn_display": "26657755403",
+    "contact_value": "898.51",
+    "pool": "HQ",
+    "sim_location": "Thetsane(main Phone)",
+    "person_assigned": "HQ",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658104+00:00",
+    "updated_at": "2026-04-13T15:59:51.658104+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658342168",
+    "msisdn_display": "26658342168",
+    "contact_value": "600",
+    "pool": "HQ",
+    "sim_location": "Thetsane HQ",
+    "person_assigned": "Call Center(customer care phone",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658142+00:00",
+    "updated_at": "2026-04-13T15:59:51.658142+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658803507",
+    "msisdn_display": "26658803507",
+    "contact_value": "240",
+    "pool": "HQ",
+    "sim_location": "Flexi 120 + 10GB",
+    "person_assigned": "Engineering phone (WEST)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658171+00:00",
+    "updated_at": "2026-04-13T15:59:51.658171+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658808402",
+    "msisdn_display": "26658808402",
+    "contact_value": "180",
+    "pool": "HQ",
+    "sim_location": "Thetsane",
+    "person_assigned": "HR phone(in the office",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658206+00:00",
+    "updated_at": "2026-04-13T15:59:51.658206+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659005798",
+    "msisdn_display": "26659005798",
+    "contact_value": "60",
+    "pool": "HQ",
+    "sim_location": "Thetsane",
+    "person_assigned": "HQ gate with the guard",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658237+00:00",
+    "updated_at": "2026-04-13T15:59:51.658237+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659436506",
+    "msisdn_display": "26659436506",
+    "contact_value": "320",
+    "pool": "HQ",
+    "sim_location": "makebe field site",
+    "person_assigned": "Teboho Noko",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: response from Teboho: The Phone 59436506 (which you said is written MAK field .....) was bought for me when we were busy with MAK construction and I am still using it even after Ha Makebe for all the other sites and general Onepower works coordinations.  ",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658275+00:00",
+    "updated_at": "2026-04-13T15:59:51.658275+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26650891168",
+    "msisdn_display": "26650891168",
+    "contact_value": "110",
+    "pool": "HQ",
+    "sim_location": "Security System SIM",
+    "person_assigned": "",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658305+00:00",
+    "updated_at": "2026-04-13T15:59:51.658305+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601824",
+    "msisdn_display": "26656601824",
+    "contact_value": "235",
+    "pool": "HQ",
+    "sim_location": "Thetsane HQ",
+    "person_assigned": "Raphoka 03",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658339+00:00",
+    "updated_at": "2026-04-13T15:59:51.658339+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658902941",
+    "msisdn_display": "26658902941",
+    "contact_value": "180",
+    "pool": "HQ",
+    "sim_location": "Survey 1()",
+    "person_assigned": "Phone with EHS",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658365+00:00",
+    "updated_at": "2026-04-13T15:59:51.658365+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601835",
+    "msisdn_display": "26656601835",
+    "contact_value": "284.84",
+    "pool": "HQ",
+    "sim_location": "Thetsane HQ",
+    "person_assigned": "com41(Kelebone)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658395+00:00",
+    "updated_at": "2026-04-13T15:59:51.658395+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659740629",
+    "msisdn_display": "26659740629",
+    "contact_value": "",
+    "pool": "HQ",
+    "sim_location": "Tlhanyaku",
+    "person_assigned": "O&M",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: tlh sms gate way phone and its still active (motebang confirmed)",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658428+00:00",
+    "updated_at": "2026-04-13T15:59:51.658428+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659741018",
+    "msisdn_display": "26659741018",
+    "contact_value": "",
+    "pool": "HQ",
+    "sim_location": "Matsoaing",
+    "person_assigned": "O&M",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: matsoaing sms gate way phone and its still active (motebang confirmed)",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658461+00:00",
+    "updated_at": "2026-04-13T15:59:51.658461+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659741445",
+    "msisdn_display": "26659741445",
+    "contact_value": "99",
+    "pool": "HQ",
+    "sim_location": "Matsoaing",
+    "person_assigned": "O&M",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: mashai sms gate way phone and its still active (motebang confirmed)",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658498+00:00",
+    "updated_at": "2026-04-13T15:59:51.658498+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659742251",
+    "msisdn_display": "26659742251",
+    "contact_value": "",
+    "pool": "HQ",
+    "sim_location": "LEB",
+    "person_assigned": "O&M",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: LEB sms gate way phone and its still active (motebang confirmed)",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658546+00:00",
+    "updated_at": "2026-04-13T15:59:51.658546+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26650329689",
+    "msisdn_display": "2665032 9689",
+    "contact_value": "",
+    "pool": "HQ",
+    "sim_location": "Thetsane HQ(EE)",
+    "person_assigned": "Test phone",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: not on the plan",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658591+00:00",
+    "updated_at": "2026-04-13T15:59:51.658591+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26650329017",
+    "msisdn_display": "26650329017",
+    "contact_value": "50",
+    "pool": "HQ",
+    "sim_location": "MAK SMS GATE WAY",
+    "person_assigned": "Com10",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: Motebang said its makebe sms gate way phone and its still active",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658627+00:00",
+    "updated_at": "2026-04-13T15:59:51.658627+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658300578",
+    "msisdn_display": "26658300578",
+    "contact_value": "10gb +120 airtime ",
+    "pool": "HQ",
+    "sim_location": "IT Phone",
+    "person_assigned": "Motebang Lekhooana",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: with Motebang",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658659+00:00",
+    "updated_at": "2026-04-13T15:59:51.658659+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658382174",
+    "msisdn_display": "26658382174",
+    "contact_value": "120 top up flexi (8926601070015861017)",
+    "pool": "HQ",
+    "sim_location": "Thetsane HQ (PUECO)",
+    "person_assigned": "PUECO SIM mme Moo gave it to Motebang",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658691+00:00",
+    "updated_at": "2026-04-13T15:59:51.658691+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658311297",
+    "msisdn_display": "26658311297",
+    "contact_value": "8926601070015860000     99",
+    "pool": "HQ",
+    "sim_location": "Lesobeng sim",
+    "person_assigned": "Lesobeng sim Motebang can explain better on where the sim is located",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "HQ"
+    },
+    "created_at": "2026-04-13T15:59:51.658719+00:00",
+    "updated_at": "2026-04-13T15:59:51.658719+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658662433",
+    "msisdn_display": "26658662433",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "SEB  (top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.662946+00:00",
+    "updated_at": "2026-04-13T15:59:51.662946+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658665506",
+    "msisdn_display": "26658665506",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "TLH (top up flexi 60 + 4GB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.662990+00:00",
+    "updated_at": "2026-04-13T15:59:51.662990+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658665682",
+    "msisdn_display": "26658665682",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "MAS (top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation Foso",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663029+00:00",
+    "updated_at": "2026-04-13T15:59:51.663029+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658671423",
+    "msisdn_display": "26658671423",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "top up flexi 60 + 4GB",
+    "person_assigned": "reticulation(Leloka)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: response form Teboho: Rethabile and Leloko have their phones because they are also not based on one site, they move from site to site as I, David and Matt agreed and that is also best to for them to have phones for coordinations.   ",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663068+00:00",
+    "updated_at": "2026-04-13T15:59:51.663068+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658674657",
+    "msisdn_display": "26658674657",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "KET (top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663106+00:00",
+    "updated_at": "2026-04-13T15:59:51.663106+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658690601",
+    "msisdn_display": "26658690601",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "SHE (top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663143+00:00",
+    "updated_at": "2026-04-13T15:59:51.663143+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658692798",
+    "msisdn_display": "26658692798",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "MAT(top up flexi 60 + 4GB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663179+00:00",
+    "updated_at": "2026-04-13T15:59:51.663179+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658695274",
+    "msisdn_display": "26658695274",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "KET top up flexi 60 + 4GB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663215+00:00",
+    "updated_at": "2026-04-13T15:59:51.663215+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658697054",
+    "msisdn_display": "26658697054",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "LEB  (top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663252+00:00",
+    "updated_at": "2026-04-13T15:59:51.663252+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658655320",
+    "msisdn_display": "26658655320",
+    "contact_value": "99",
+    "pool": "Reticulation",
+    "sim_location": "Sebapala MAT 10GB",
+    "person_assigned": "reticulation (10G)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663291+00:00",
+    "updated_at": "2026-04-13T15:59:51.663291+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658653701",
+    "msisdn_display": "26658653701",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "SHG  top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663327+00:00",
+    "updated_at": "2026-04-13T15:59:51.663327+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658653702",
+    "msisdn_display": "26658653702",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "Rethabile Lebajwa top up flexi 60 + 4GB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "Actions: response from Teboho: Rethabile and Leloko have their phones because they are also not based on one site, they move from site to site as I, David and Matt agreed and that is also best to for them to have phones for coordinations.   ",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663364+00:00",
+    "updated_at": "2026-04-13T15:59:51.663364+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658653704",
+    "msisdn_display": "26658653704",
+    "contact_value": "250",
+    "pool": "Reticulation",
+    "sim_location": "RIB (top up flexi 120 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663401+00:00",
+    "updated_at": "2026-04-13T15:59:51.663401+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658653705",
+    "msisdn_display": "26658653705",
+    "contact_value": "250",
+    "pool": "Reticulation",
+    "sim_location": "MAT (top up flexi 120 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663436+00:00",
+    "updated_at": "2026-04-13T15:59:51.663436+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658623359",
+    "msisdn_display": "26658623359",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "SHE(hamafoka) top up flexi 60 + 4GB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663474+00:00",
+    "updated_at": "2026-04-13T15:59:51.663474+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656837118",
+    "msisdn_display": "26656837118",
+    "contact_value": "130",
+    "pool": "Reticulation",
+    "sim_location": "4GB TOS",
+    "person_assigned": "reticulation team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663513+00:00",
+    "updated_at": "2026-04-13T15:59:51.663513+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658655318",
+    "msisdn_display": "26658655318",
+    "contact_value": "99",
+    "pool": "Reticulation",
+    "sim_location": "4 GB SEB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663550+00:00",
+    "updated_at": "2026-04-13T15:59:51.663550+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658803510",
+    "msisdn_display": "26658803510",
+    "contact_value": "105.38",
+    "pool": "Reticulation",
+    "sim_location": "SHE 10GB",
+    "person_assigned": "LETSEKA",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663587+00:00",
+    "updated_at": "2026-04-13T15:59:51.663587+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654491",
+    "msisdn_display": "26658654491",
+    "contact_value": "99",
+    "pool": "Reticulation",
+    "sim_location": "10g",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663627+00:00",
+    "updated_at": "2026-04-13T15:59:51.663627+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "56383657",
+    "msisdn_display": "56383657",
+    "contact_value": "99",
+    "pool": "Reticulation",
+    "sim_location": "4GB",
+    "person_assigned": "RIB",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663663+00:00",
+    "updated_at": "2026-04-13T15:59:51.663663+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658692610",
+    "msisdn_display": "26658692610",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "TOS (top up flexi 60 + 4GB)",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "could not",
+    "notes": "Actions: TOS site phone for RET",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663701+00:00",
+    "updated_at": "2026-04-13T15:59:51.663701+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658679075",
+    "msisdn_display": "26658679075",
+    "contact_value": "190",
+    "pool": "Reticulation",
+    "sim_location": "MAS top up flexi 60 + 4GB",
+    "person_assigned": "reticulation",
+    "status": "Active",
+    "locate_status": "could not",
+    "notes": "Actions: MAS Security phone",
+    "legacy_import": {
+      "workbook_sheet": "Reticulation"
+    },
+    "created_at": "2026-04-13T15:59:51.663737+00:00",
+    "updated_at": "2026-04-13T15:59:51.663737+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654480",
+    "msisdn_display": "26658654480",
+    "contact_value": "99",
+    "pool": "Trackers",
+    "sim_location": "Jeep 2",
+    "person_assigned": "Jeep 2",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.667715+00:00",
+    "updated_at": "2026-04-13T15:59:51.667715+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654481",
+    "msisdn_display": "26658654481",
+    "contact_value": "99",
+    "pool": "Trackers",
+    "sim_location": "hardbody offroad",
+    "person_assigned": "hardbody offroad",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.667791+00:00",
+    "updated_at": "2026-04-13T15:59:51.667791+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654486",
+    "msisdn_display": "26658654486",
+    "contact_value": "99",
+    "pool": "Trackers",
+    "sim_location": "Pajero Mitsubishi",
+    "person_assigned": "Pajero",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.667875+00:00",
+    "updated_at": "2026-04-13T15:59:51.667875+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656009091",
+    "msisdn_display": "26656009091",
+    "contact_value": "75",
+    "pool": "Trackers",
+    "sim_location": "tracker 1g",
+    "person_assigned": "in sino truck (now used by v6)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.667943+00:00",
+    "updated_at": "2026-04-13T15:59:51.667943+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656001850",
+    "msisdn_display": "26656001850",
+    "contact_value": "75",
+    "pool": "Trackers",
+    "sim_location": "Tracker 1g",
+    "person_assigned": "(to be used for 36 tracker)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.667972+00:00",
+    "updated_at": "2026-04-13T15:59:51.667972+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57230227",
+    "msisdn_display": "57230227",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "R2 ford ranger",
+    "person_assigned": "A374 BBV",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668034+00:00",
+    "updated_at": "2026-04-13T15:59:51.668034+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57228165",
+    "msisdn_display": "57228165",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "Toyota hilux raider",
+    "person_assigned": "D753 BBJ",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668104+00:00",
+    "updated_at": "2026-04-13T15:59:51.668104+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57230214",
+    "msisdn_display": "57230214",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "Pajero Mitsubishi",
+    "person_assigned": "A700 BBV",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668172+00:00",
+    "updated_at": "2026-04-13T15:59:51.668172+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57232216",
+    "msisdn_display": "57232216",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "Jeep 3",
+    "person_assigned": "A755 BCM",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668249+00:00",
+    "updated_at": "2026-04-13T15:59:51.668249+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57228233",
+    "msisdn_display": "57228233",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "R1 Ford Ranger",
+    "person_assigned": "A838 BCF",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668309+00:00",
+    "updated_at": "2026-04-13T15:59:51.668309+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57232217",
+    "msisdn_display": "57232217",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "Xtrail 1",
+    "person_assigned": "A668 BBF",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668384+00:00",
+    "updated_at": "2026-04-13T15:59:51.668384+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654483",
+    "msisdn_display": "26658654483",
+    "contact_value": "99",
+    "pool": "Trackers",
+    "sim_location": "Raider",
+    "person_assigned": "Raider",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668462+00:00",
+    "updated_at": "2026-04-13T15:59:51.668462+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654484",
+    "msisdn_display": "26658654484",
+    "contact_value": "99",
+    "pool": "Trackers",
+    "sim_location": "R2 ford ranger",
+    "person_assigned": "2",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668518+00:00",
+    "updated_at": "2026-04-13T15:59:51.668518+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658305845",
+    "msisdn_display": "26658305845",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "X2 tracer",
+    "person_assigned": "D892 BBT    (8926601070014579519)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668612+00:00",
+    "updated_at": "2026-04-13T15:59:51.668612+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658307418",
+    "msisdn_display": "26658307418",
+    "contact_value": "75 LSL FOR 1GB",
+    "pool": "Trackers",
+    "sim_location": "JMC",
+    "person_assigned": "4664 BFG  (89266010700158661526)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668686+00:00",
+    "updated_at": "2026-04-13T15:59:51.668686+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770311",
+    "msisdn_display": "26658770311",
+    "contact_value": "99",
+    "pool": "Trackers",
+    "sim_location": "Surf 2 traker",
+    "person_assigned": "Surf 2",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Trackers"
+    },
+    "created_at": "2026-04-13T15:59:51.668761+00:00",
+    "updated_at": "2026-04-13T15:59:51.668761+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657122621",
+    "msisdn_display": "26657122621",
+    "contact_value": "20",
+    "pool": "Smart meter",
+    "sim_location": "Smart Meter",
+    "person_assigned": "",
+    "status": "Unknown",
+    "locate_status": "locate",
+    "notes": "Keep active currently being used in the LTE module testing for the gateway",
+    "legacy_import": {
+      "workbook_sheet": "Smart meter"
+    },
+    "created_at": "2026-04-13T15:59:51.688217+00:00",
+    "updated_at": "2026-04-13T15:59:51.688217+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26650002912",
+    "msisdn_display": "26650002912",
+    "contact_value": "173",
+    "pool": "Clinics",
+    "sim_location": "BOB Clinic",
+    "person_assigned": "(Router)clinic",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.709688+00:00",
+    "updated_at": "2026-04-13T15:59:51.709688+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656185611",
+    "msisdn_display": "26656185611",
+    "contact_value": "130",
+    "pool": "Clinics",
+    "sim_location": "MET Clinic",
+    "person_assigned": "MET Clinic",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.709758+00:00",
+    "updated_at": "2026-04-13T15:59:51.709758+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657923927",
+    "msisdn_display": "26657923927",
+    "contact_value": "436",
+    "pool": "Clinics",
+    "sim_location": "TLH Clinic",
+    "person_assigned": "Router",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.709817+00:00",
+    "updated_at": "2026-04-13T15:59:51.709817+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658634688",
+    "msisdn_display": "26658634688",
+    "contact_value": "130",
+    "pool": "Clinics",
+    "sim_location": "KET Clinic",
+    "person_assigned": "Router",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.709870+00:00",
+    "updated_at": "2026-04-13T15:59:51.709870+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770872",
+    "msisdn_display": "26658770872",
+    "contact_value": "173",
+    "pool": "Clinics",
+    "sim_location": "NKAU Clinic",
+    "person_assigned": "Router",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.709928+00:00",
+    "updated_at": "2026-04-13T15:59:51.709928+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659654620",
+    "msisdn_display": "26659654620",
+    "contact_value": "130",
+    "pool": "Clinics",
+    "sim_location": "LEB Clinic",
+    "person_assigned": "Router",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.709987+00:00",
+    "updated_at": "2026-04-13T15:59:51.709987+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657306875",
+    "msisdn_display": "26657306875",
+    "contact_value": "173",
+    "pool": "Clinics",
+    "sim_location": "MAN Clinic",
+    "person_assigned": "MAN Clinic(Router)",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710040+00:00",
+    "updated_at": "2026-04-13T15:59:51.710040+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654175",
+    "msisdn_display": "26658654175",
+    "contact_value": "511.18",
+    "pool": "Clinics",
+    "sim_location": "TLH gen site",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710095+00:00",
+    "updated_at": "2026-04-13T15:59:51.710095+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654186",
+    "msisdn_display": "26658654186",
+    "contact_value": "511.18",
+    "pool": "Clinics",
+    "sim_location": "Matsoaing GEN SITE",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710150+00:00",
+    "updated_at": "2026-04-13T15:59:51.710150+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "57294443",
+    "msisdn_display": "57294443",
+    "contact_value": "replaced because it was not on contract",
+    "pool": "Clinics",
+    "sim_location": "KET Police",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710203+00:00",
+    "updated_at": "2026-04-13T15:59:51.710203+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658659647",
+    "msisdn_display": "26658659647",
+    "contact_value": "upgraded -Uncapped Bronze (35Mbps) ",
+    "pool": "Clinics",
+    "sim_location": "ha makebe",
+    "person_assigned": "makebe router",
+    "status": "Active",
+    "locate_status": "located",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710255+00:00",
+    "updated_at": "2026-04-13T15:59:51.710255+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654485",
+    "msisdn_display": "26658654485",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "ket meter police meter",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710314+00:00",
+    "updated_at": "2026-04-13T15:59:51.710314+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770277",
+    "msisdn_display": "26658770277",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "methalaneng meter",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710369+00:00",
+    "updated_at": "2026-04-13T15:59:51.710369+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770279",
+    "msisdn_display": "26658770279",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "bobete meter",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710421+00:00",
+    "updated_at": "2026-04-13T15:59:51.710421+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770281",
+    "msisdn_display": "26658770281",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "manemaneng meter",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710470+00:00",
+    "updated_at": "2026-04-13T15:59:51.710470+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770283",
+    "msisdn_display": "26658770283",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "Tlh meter for clinic",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710523+00:00",
+    "updated_at": "2026-04-13T15:59:51.710523+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770284",
+    "msisdn_display": "26658770284",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "Leb clinic meter",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710582+00:00",
+    "updated_at": "2026-04-13T15:59:51.710582+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770299",
+    "msisdn_display": "26658770299",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "leb councel",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710644+00:00",
+    "updated_at": "2026-04-13T15:59:51.710644+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770300",
+    "msisdn_display": "26658770300",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "mas primary school",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710703+00:00",
+    "updated_at": "2026-04-13T15:59:51.710703+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770305",
+    "msisdn_display": "26658770305",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "sehonghong primary",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.710758+00:00",
+    "updated_at": "2026-04-13T15:59:51.710758+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601789",
+    "msisdn_display": "26656601789",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "Mashai gensite",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712193+00:00",
+    "updated_at": "2026-04-13T15:59:51.712193+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654490",
+    "msisdn_display": "26658654490",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "LESOTHO SKY BIKES METER",
+    "person_assigned": "o & m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712244+00:00",
+    "updated_at": "2026-04-13T15:59:51.712244+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658654477",
+    "msisdn_display": "26658654477",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "shg base station",
+    "person_assigned": "o&m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712292+00:00",
+    "updated_at": "2026-04-13T15:59:51.712292+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770353",
+    "msisdn_display": "26658770353",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "SEH POWER HOUSE ROUTER",
+    "person_assigned": "o&m team",
+    "status": "Active",
+    "locate_status": "Locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712342+00:00",
+    "updated_at": "2026-04-13T15:59:51.712342+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770306",
+    "msisdn_display": "26658770306",
+    "contact_value": "Upgraded- Uncapped Bronze (35Mbps) ",
+    "pool": "Clinics",
+    "sim_location": "KET SITE requested by Tshabalala",
+    "person_assigned": "o&m team",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712367+00:00",
+    "updated_at": "2026-04-13T15:59:51.712367+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658770354",
+    "msisdn_display": "26658770354",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "TOS powerhouse connection",
+    "person_assigned": "TOS powerhouse connection",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712396+00:00",
+    "updated_at": "2026-04-13T15:59:51.712396+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658343515",
+    "msisdn_display": "26658343515",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "O&M GDP",
+    "person_assigned": "O&M GDP",
+    "status": "Unknown",
+    "locate_status": "",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712482+00:00",
+    "updated_at": "2026-04-13T15:59:51.712482+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658343516",
+    "msisdn_display": "26658343516",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "O&M GDP",
+    "person_assigned": "O&M GDP",
+    "status": "Unknown",
+    "locate_status": "",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712542+00:00",
+    "updated_at": "2026-04-13T15:59:51.712542+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658343517",
+    "msisdn_display": "26658343517",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "O&M GDP",
+    "person_assigned": "O&M GDP",
+    "status": "Unknown",
+    "locate_status": "",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712591+00:00",
+    "updated_at": "2026-04-13T15:59:51.712591+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658343518",
+    "msisdn_display": "26658343518",
+    "contact_value": "99",
+    "pool": "Clinics",
+    "sim_location": "O&M GDP",
+    "person_assigned": "O&M GDP",
+    "status": "Unknown",
+    "locate_status": "",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712639+00:00",
+    "updated_at": "2026-04-13T15:59:51.712639+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26658370663",
+    "msisdn_display": "26658370663",
+    "contact_value": "159  (20gb)",
+    "pool": "Clinics",
+    "sim_location": "Leb commissioning",
+    "person_assigned": "",
+    "status": "Unknown",
+    "locate_status": "",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Clinics"
+    },
+    "created_at": "2026-04-13T15:59:51.712727+00:00",
+    "updated_at": "2026-04-13T15:59:51.712727+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26650002953",
+    "msisdn_display": "26650002953",
+    "contact_value": "60",
+    "pool": "Cars",
+    "sim_location": "HQ (phone in the office)",
+    "person_assigned": "xtrail",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.751966+00:00",
+    "updated_at": "2026-04-13T15:59:51.751966+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601820",
+    "msisdn_display": "26656601820",
+    "contact_value": "235",
+    "pool": "Cars",
+    "sim_location": "HQ",
+    "person_assigned": "Sino truck",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.752061+00:00",
+    "updated_at": "2026-04-13T15:59:51.752061+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657517692",
+    "msisdn_display": "26657517692",
+    "contact_value": "60",
+    "pool": "Cars",
+    "sim_location": "36 truck",
+    "person_assigned": "In 36 truck",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.752113+00:00",
+    "updated_at": "2026-04-13T15:59:51.752113+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656660005",
+    "msisdn_display": "26656660005",
+    "contact_value": "180",
+    "pool": "Cars",
+    "sim_location": "In Pajero",
+    "person_assigned": "In Pajero",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.752165+00:00",
+    "updated_at": "2026-04-13T15:59:51.752165+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601844",
+    "msisdn_display": "26656601844",
+    "contact_value": "285",
+    "pool": "Cars",
+    "sim_location": "In X-trail,Tlhanyaku",
+    "person_assigned": "Com17",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.752252+00:00",
+    "updated_at": "2026-04-13T15:59:51.752252+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601802",
+    "msisdn_display": "26656601802",
+    "contact_value": "235",
+    "pool": "Cars",
+    "sim_location": "Reticulation,Matsoaing(In Raider)",
+    "person_assigned": "Com37",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.752337+00:00",
+    "updated_at": "2026-04-13T15:59:51.752337+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601827",
+    "msisdn_display": "26656601827",
+    "contact_value": "235",
+    "pool": "Cars",
+    "sim_location": "Reticulation (Leloko ketane R1)",
+    "person_assigned": "Com35",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Cars"
+    },
+    "created_at": "2026-04-13T15:59:51.752424+00:00",
+    "updated_at": "2026-04-13T15:59:51.752424+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601788",
+    "msisdn_display": "26656601788",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Ha Mokone",
+    "person_assigned": "In the office,Com34",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.757704+00:00",
+    "updated_at": "2026-04-13T15:59:51.757704+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601790",
+    "msisdn_display": "26656601790",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Mathuaneng ,Tlhanyaku",
+    "person_assigned": "Com28",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.757788+00:00",
+    "updated_at": "2026-04-13T15:59:51.757788+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601793",
+    "msisdn_display": "26656601793",
+    "contact_value": "284.99",
+    "pool": "Com",
+    "sim_location": "Tlhanyaku Platberg",
+    "person_assigned": "Com30",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.757872+00:00",
+    "updated_at": "2026-04-13T15:59:51.757872+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601797",
+    "msisdn_display": "26656601797",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Mafulane",
+    "person_assigned": "Com32",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.757958+00:00",
+    "updated_at": "2026-04-13T15:59:51.757958+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601799",
+    "msisdn_display": "26656601799",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Thoteng,Tlhanyaku",
+    "person_assigned": "Com29",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758118+00:00",
+    "updated_at": "2026-04-13T15:59:51.758118+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601806",
+    "msisdn_display": "26656601806",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Matsoaing,Liphakoeng",
+    "person_assigned": "Com38 (in the office)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758277+00:00",
+    "updated_at": "2026-04-13T15:59:51.758277+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601811",
+    "msisdn_display": "26656601811",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Ha Setefane, Matsoaing",
+    "person_assigned": "Com44 (in the office)",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758416+00:00",
+    "updated_at": "2026-04-13T15:59:51.758416+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601813",
+    "msisdn_display": "26656601813",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Ha Mahlatsi",
+    "person_assigned": "Com21",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758504+00:00",
+    "updated_at": "2026-04-13T15:59:51.758504+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601815",
+    "msisdn_display": "26656601815",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Ha Tebalo",
+    "person_assigned": "Com22",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758599+00:00",
+    "updated_at": "2026-04-13T15:59:51.758599+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601818",
+    "msisdn_display": "26656601818",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Ha Setala",
+    "person_assigned": "Com24",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758691+00:00",
+    "updated_at": "2026-04-13T15:59:51.758691+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601821",
+    "msisdn_display": "26656601821",
+    "contact_value": "310",
+    "pool": "Com",
+    "sim_location": "Likhang tlh",
+    "person_assigned": "Com27",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758779+00:00",
+    "updated_at": "2026-04-13T15:59:51.758779+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601822",
+    "msisdn_display": "26656601822",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Mashai,Khotsong",
+    "person_assigned": "Com18",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758871+00:00",
+    "updated_at": "2026-04-13T15:59:51.758871+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601825",
+    "msisdn_display": "26656601825",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Tumelo Makhetha(Pm)",
+    "person_assigned": "Com01",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.758956+00:00",
+    "updated_at": "2026-04-13T15:59:51.758956+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601826",
+    "msisdn_display": "26656601826",
+    "contact_value": "275.2",
+    "pool": "Com",
+    "sim_location": "Mongali Tlali (pm lead",
+    "person_assigned": "Com02",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760339+00:00",
+    "updated_at": "2026-04-13T15:59:51.760339+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601831",
+    "msisdn_display": "26656601831",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Mashai,Ha Boomo",
+    "person_assigned": "Com07",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760435+00:00",
+    "updated_at": "2026-04-13T15:59:51.760435+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601845",
+    "msisdn_display": "26656601845",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Ha Lelingoana",
+    "person_assigned": "Com19",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760608+00:00",
+    "updated_at": "2026-04-13T15:59:51.760608+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601836",
+    "msisdn_display": "26656601836",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Lebung",
+    "person_assigned": "Com11",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760702+00:00",
+    "updated_at": "2026-04-13T15:59:51.760702+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601838",
+    "msisdn_display": "26656601838",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Ha Poko",
+    "person_assigned": "Com14",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760785+00:00",
+    "updated_at": "2026-04-13T15:59:51.760785+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601842",
+    "msisdn_display": "26656601842",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Ha Molaoa",
+    "person_assigned": "Com16",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760871+00:00",
+    "updated_at": "2026-04-13T15:59:51.760871+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601841",
+    "msisdn_display": "26656601841",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Aupolasi",
+    "person_assigned": "Com15",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.760954+00:00",
+    "updated_at": "2026-04-13T15:59:51.760954+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601837",
+    "msisdn_display": "26656601837",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Seruting",
+    "person_assigned": "Com12",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.761038+00:00",
+    "updated_at": "2026-04-13T15:59:51.761038+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601816",
+    "msisdn_display": "26656601816",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Tlhanyaku,Motlomo",
+    "person_assigned": "Com23",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.761121+00:00",
+    "updated_at": "2026-04-13T15:59:51.761121+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601800",
+    "msisdn_display": "26656601800",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "O&M customer care phone",
+    "person_assigned": "Com39 IN THE OFFICE",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.761205+00:00",
+    "updated_at": "2026-04-13T15:59:51.761205+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601819",
+    "msisdn_display": "26656601819",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "tlhanyaku security guard",
+    "person_assigned": "com",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.761288+00:00",
+    "updated_at": "2026-04-13T15:59:51.761288+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601805",
+    "msisdn_display": "26656601805",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Matsoaing,Masuaneng",
+    "person_assigned": "Com42 IN THE OFFICE",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.761478+00:00",
+    "updated_at": "2026-04-13T15:59:51.761478+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601808",
+    "msisdn_display": "26656601808",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Matsoaing,Sekoting",
+    "person_assigned": "Com43 in the office",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.762851+00:00",
+    "updated_at": "2026-04-13T15:59:51.762851+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601810",
+    "msisdn_display": "26656601810",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "HQ in the office",
+    "person_assigned": "com 40",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.762936+00:00",
+    "updated_at": "2026-04-13T15:59:51.762936+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601801",
+    "msisdn_display": "26656601801",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Linareng MAT",
+    "person_assigned": "com 26 IN THE OFFICE",
+    "status": "Active",
+    "locate_status": "locate",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763020+00:00",
+    "updated_at": "2026-04-13T15:59:51.763020+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601839",
+    "msisdn_display": "26656601839",
+    "contact_value": "285",
+    "pool": "Com",
+    "sim_location": "Tlokoeng",
+    "person_assigned": "Com13",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763394+00:00",
+    "updated_at": "2026-04-13T15:59:51.763394+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601832",
+    "msisdn_display": "26656601832",
+    "contact_value": "284.38",
+    "pool": "Com",
+    "sim_location": "Mashai,Moreneng",
+    "person_assigned": "Com08",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763478+00:00",
+    "updated_at": "2026-04-13T15:59:51.763478+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601829",
+    "msisdn_display": "26656601829",
+    "contact_value": "283",
+    "pool": "Com",
+    "sim_location": "St . Theresa",
+    "person_assigned": "Com05",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763565+00:00",
+    "updated_at": "2026-04-13T15:59:51.763565+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601830",
+    "msisdn_display": "26656601830",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Sekhaupane",
+    "person_assigned": "Com06",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763648+00:00",
+    "updated_at": "2026-04-13T15:59:51.763648+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601807",
+    "msisdn_display": "26656601807",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Mashai, Tseko",
+    "person_assigned": "Com45",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763734+00:00",
+    "updated_at": "2026-04-13T15:59:51.763734+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601812",
+    "msisdn_display": "26656601812",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Sehonghong,Khomo ea mollo",
+    "person_assigned": "Com20",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763816+00:00",
+    "updated_at": "2026-04-13T15:59:51.763816+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601846",
+    "msisdn_display": "26656601846",
+    "contact_value": "284.97",
+    "pool": "Com",
+    "sim_location": "Taung",
+    "person_assigned": "Com04",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.763899+00:00",
+    "updated_at": "2026-04-13T15:59:51.763899+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601795",
+    "msisdn_display": "26656601795",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "HQ()",
+    "person_assigned": "Com31",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.765580+00:00",
+    "updated_at": "2026-04-13T15:59:51.765580+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601796",
+    "msisdn_display": "26656601796",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "Customer Support",
+    "person_assigned": "Com33",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.765667+00:00",
+    "updated_at": "2026-04-13T15:59:51.765667+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26657619084",
+    "msisdn_display": "26657619084",
+    "contact_value": "20",
+    "pool": "Com",
+    "sim_location": "",
+    "person_assigned": "",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.765749+00:00",
+    "updated_at": "2026-04-13T15:59:51.765749+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659192239",
+    "msisdn_display": "26659192239",
+    "contact_value": "20",
+    "pool": "Com",
+    "sim_location": "",
+    "person_assigned": "",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.765832+00:00",
+    "updated_at": "2026-04-13T15:59:51.765832+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26659403301",
+    "msisdn_display": "26659403301",
+    "contact_value": "20",
+    "pool": "Com",
+    "sim_location": "",
+    "person_assigned": "",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.765926+00:00",
+    "updated_at": "2026-04-13T15:59:51.765926+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  },
+  {
+    "msisdn_normalized": "26656601834",
+    "msisdn_display": "26656601834",
+    "contact_value": "235",
+    "pool": "Com",
+    "sim_location": "",
+    "person_assigned": "",
+    "status": "Active",
+    "locate_status": "couldn't",
+    "notes": "",
+    "legacy_import": {
+      "workbook_sheet": "Com"
+    },
+    "created_at": "2026-04-13T15:59:51.766013+00:00",
+    "updated_at": "2026-04-13T15:59:51.766013+00:00",
+    "created_by": "import_sim_workbook.py",
+    "updated_by": "import_sim_workbook.py"
+  }
+]
