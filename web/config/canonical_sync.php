@@ -241,7 +241,7 @@ function am_canonical_hr_base_url(): string {
 function am_canonical_pull_hr_employees(?string $since = null): array {
     $key = trim((string) am_env('HR_API_KEY_AM_PORTAL', ''));
     $url = am_canonical_hr_base_url() . '/api/employees/directory';
-    if ($since !== '') {
+    if ($since !== null && $since !== '') {
         $url .= '?since=' . rawurlencode($since);
     }
     $r = am_canonical_http_get($url, 'X-API-Key', $key);
@@ -255,7 +255,7 @@ function am_canonical_pull_hr_employees(?string $since = null): array {
 function am_canonical_pull_hr_departments(?string $since = null): array {
     $key = trim((string) am_env('HR_API_KEY_AM_PORTAL', ''));
     $url = am_canonical_hr_base_url() . '/api/departments';
-    if ($since !== '') {
+    if ($since !== null && $since !== '') {
         $url .= '?since=' . rawurlencode($since);
     }
     $r = am_canonical_http_get($url, 'X-API-Key', $key);
@@ -408,7 +408,14 @@ function am_canonical_refresh_all(string $mode = 'full'): array {
         if ($type === 'sites') {
             continue;   // push-driven
         }
-        $out[$type] = am_canonical_refresh($type, $mode);
+        try {
+            $out[$type] = am_canonical_refresh($type, $mode);
+        } catch (\Throwable $e) {
+            $err = $type . ': ' . $e->getMessage();
+            am_canonical_record_state($type, $mode, 0, $err);
+            am_canonical_record_event($type, $mode, 0, $err);
+            $out[$type] = ['ok' => false, 'count' => 0, 'mode' => $mode, 'error' => $err];
+        }
     }
     return $out;
 }
