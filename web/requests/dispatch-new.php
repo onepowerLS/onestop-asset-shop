@@ -277,6 +277,14 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="site_code">Site <span class="text-danger">*</span></label>
+                        <?php if (empty($sites)): ?>
+                        <div class="alert alert-danger py-2 mb-2 small">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            No sites loaded from PR portal for your country scope.
+                            Check <a href="<?php echo base_url('admin/locations.php'); ?>">Admin → Locations</a> or add sites in the
+                            <a href="https://pr.1pwrafrica.com" target="_blank" rel="noopener">PR portal</a>.
+                        </div>
+                        <?php endif; ?>
                         <select name="site_code" id="site_code" class="form-select" required>
                             <option value="">Select site…</option>
                             <?php foreach ($sites as $s):

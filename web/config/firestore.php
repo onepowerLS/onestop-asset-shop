@@ -546,6 +546,36 @@ function am_get_pr_sites(): array {
     $seen = [];
     $locations = [];
 
+    // 0. `am_reference_sites` — direct PR fanout cache (preferred when available)
+    $fanoutSites = am_firestore_get_collection('am_reference_sites', 1000);
+    foreach ($fanoutSites as $s) {
+        $orgId = strtolower((string)($s['organizationId'] ?? ''));
+        if (!isset($orgToCountry[$orgId])) continue;
+        $countryCode = $orgToCountry[$orgId];
+
+        $code = strtoupper(trim((string)($s['code'] ?? '')));
+        $name = trim((string)($s['name'] ?? ''));
+        if ($code === '' || $name === '') continue;
+
+        $key = $code . '|' . $countryCode;
+        if (isset($seen[$key])) continue;
+        $seen[$key] = true;
+
+        $locations[] = [
+            'id'                   => $s['id'] ?? strtolower($orgId . '_' . $code),
+            'location_code'        => strtoupper($countryCode) . '-' . $code,
+            'location_name'        => $name,
+            'location_type'        => 'Site',
+            'country_code'         => $countryCode,
+            'region'               => (string)($s['region'] ?? ''),
+            'parent_location_code' => '',
+            'active'               => ($s['active'] ?? true) ? 1 : 0,
+            'latitude'             => isset($s['latitude']) ? (float)$s['latitude'] : null,
+            'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
+            'organization_id'      => $orgId,
+        ];
+    }
+
     // 1. `sites` collection — Lesotho field sites (canonical)
     $sites = am_firestore_get_collection('sites', 500);
     foreach ($sites as $s) {
@@ -566,6 +596,9 @@ function am_get_pr_sites(): array {
             'region'               => $s['region'] ?? '',
             'parent_location_code' => '',
             'active'               => ($s['active'] ?? true) ? 1 : 0,
+            'latitude'             => isset($s['latitude']) ? (float)$s['latitude'] : null,
+            'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
+            'organization_id'      => $orgId,
         ];
     }
 
@@ -594,6 +627,9 @@ function am_get_pr_sites(): array {
             'region'               => '',
             'parent_location_code' => '',
             'active'               => ($s['active'] ?? true) ? 1 : 0,
+            'latitude'             => isset($s['latitude']) ? (float)$s['latitude'] : null,
+            'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
+            'organization_id'      => $orgId,
         ];
     }
 

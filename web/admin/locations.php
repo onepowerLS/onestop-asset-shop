@@ -44,8 +44,14 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="alert alert-light border mb-4">
         <i class="fas fa-info-circle me-2 text-primary"></i>
-        Location data is read live from the PR portal's <code>sites</code> and <code>referenceData_sites</code> collections.
+        Location data is read live from the PR portal's <code>sites</code> and <code>referenceData_sites</code> collections
+        (plus the <code>am_reference_sites</code> fanout cache).
         To add, rename, or remove a site, update it in the PR portal &mdash; changes appear here automatically.
+        <?php if (empty($locations)): ?>
+        <br><strong class="text-danger">No locations were returned.</strong>
+        This usually means the Firestore token was rejected (401/403) or the PR portal collections are empty.
+        Refresh the page once to retry; if still empty, contact the PR/Ops owner to verify sites exist for your country.
+        <?php endif; ?>
     </div>
 
     <?php foreach ($byCountry as $cc => $locs):

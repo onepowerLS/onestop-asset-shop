@@ -102,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $lines = am_loadout_normalize_lines($lineRows, $assetById);
 
-        if (in_array($status, ['Packed', 'Shipped', 'Delivered'], true) && $destinationSiteId === '') {
-            $errors[] = 'Select a destination site for status "' . $status . '".';
+        if ($status !== 'Cancelled' && $destinationSiteId === '') {
+            $errors[] = 'Destination site is required' . ($status === 'Draft' ? ' (even for drafts)' : ' for status "' . $status . '".');
         }
         if (in_array($status, ['Packed', 'Shipped', 'Delivered'], true) && empty($lines)) {
             $errors[] = 'Add at least one line item for status "' . $status . '".';
@@ -293,8 +293,16 @@ include __DIR__ . '/../includes/header.php';
                     <input type="text" name="origin_label" class="form-control" value="<?php echo htmlspecialchars($fv['origin_label']); ?>">
                 </div>
                 <div class="col-md-8">
-                    <label class="form-label">Destination site</label>
-                    <select name="destination_site_id" class="form-select">
+                    <label class="form-label">Destination site <span class="text-danger">*</span></label>
+                    <?php if (empty($sites)): ?>
+                    <div class="alert alert-danger py-2 mb-2">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        No sites loaded from PR portal. The destination list is empty.
+                        See <a href="<?php echo base_url('admin/locations.php'); ?>">Admin → Locations</a> to verify the sync,
+                        or add sites in the <a href="https://pr.1pwrafrica.com" target="_blank" rel="noopener">PR portal</a>.
+                    </div>
+                    <?php endif; ?>
+                    <select name="destination_site_id" class="form-select" required>
                         <option value="">— select —</option>
                         <?php foreach ($sites as $s): ?>
                         <?php
