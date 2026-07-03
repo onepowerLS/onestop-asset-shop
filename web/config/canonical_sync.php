@@ -24,6 +24,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/firebase.php';
 require_once __DIR__ . '/firestore.php';
+// Mints a Firebase ID token from the service account on demand (the .env
+// FIREBASE_ADMIN_BEARER_TOKEN is a placeholder on AM; tokens are minted, not
+// stored). Falls back to the env var if a long-lived bearer is configured.
+if (file_exists(__DIR__ . '/firebase_admin_token.php')) {
+    require_once __DIR__ . '/firebase_admin_token.php';
+}
 
 // ── Source + type registry ───────────────────────────────────────────
 
@@ -48,6 +54,15 @@ const AM_CANONICAL_DEFAULT_TTL = [
 ];
 
 function am_canonical_admin_token(): string {
+    // Prefer a freshly minted Firebase ID token (service account) — AM does not
+    // store a long-lived admin bearer. Falls back to FIREBASE_ADMIN_BEARER_TOKEN
+    // if a long-lived bearer is configured.
+    if (function_exists('am_firebase_admin_token')) {
+        $minted = trim((string) am_firebase_admin_token());
+        if ($minted !== '') {
+            return $minted;
+        }
+    }
     return trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
 }
 

@@ -550,7 +550,14 @@ function am_get_pr_sites(): array {
     //    bearer so dropdowns populate even when the user's Firebase session has
     //    expired (the original Metro empty-dropdown bug). Falls through to the
     //    legacy session-token reads below only if the cache is empty.
-    $adminToken = trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
+    $adminToken = '';
+    if (file_exists(__DIR__ . '/firebase_admin_token.php')) {
+        require_once __DIR__ . '/firebase_admin_token.php';
+        $adminToken = function_exists('am_firebase_admin_token') ? trim((string) am_firebase_admin_token()) : '';
+    }
+    if ($adminToken === '') {
+        $adminToken = trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
+    }
     $fanoutSites = $adminToken !== ''
         ? am_firestore_get_collection('am_reference_sites', 1000, $adminToken)
         : am_firestore_get_collection('am_reference_sites', 1000);

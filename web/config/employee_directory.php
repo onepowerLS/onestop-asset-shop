@@ -154,9 +154,14 @@ function am_employee_directory_load(): array {
     // from HR's /api/employees/directory by canonical_sync) so receiver names
     // resolve even when the user's Firebase session has expired. Falls back to
     // the legacy direct Firestore reads only if the cache is empty.
-    $adminToken = function_exists('am_env')
-        ? trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''))
-        : '';
+    $adminToken = '';
+    if (file_exists(__DIR__ . '/firebase_admin_token.php')) {
+        require_once __DIR__ . '/firebase_admin_token.php';
+        $adminToken = function_exists('am_firebase_admin_token') ? trim((string) am_firebase_admin_token()) : '';
+    }
+    if ($adminToken === '') {
+        $adminToken = function_exists('am_env') ? trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', '')) : '';
+    }
     if ($adminToken !== '' && function_exists('am_firestore_get_collection')) {
         $cached = am_firestore_get_collection('am_reference_employees', 10000, $adminToken);
         if (!empty($cached)) {
