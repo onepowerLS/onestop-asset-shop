@@ -54,9 +54,18 @@ const AM_CANONICAL_DEFAULT_TTL = [
 ];
 
 function am_canonical_admin_token(): string {
-    // Prefer a freshly minted Firebase ID token (service account) — AM does not
-    // store a long-lived admin bearer. Falls back to FIREBASE_ADMIN_BEARER_TOKEN
-    // if a long-lived bearer is configured.
+    // Use a Google OAuth2 access token (Firebase Admin SDK service account) for
+    // cache reads AND writes. Firestore REST treats the service-account OAuth2
+    // token as ADMIN — security rules are bypassed — so writes to am_reference_*
+    // succeed (the service account is the project owner; it is not a Firebase
+    // Auth "AM admin" user, so an ID token would be denied by the isAmAdmin()
+    // write rule). Falls back to the ID-token helper / env bearer if unavailable.
+    if (function_exists('am_firestore_admin_access_token')) {
+        $at = trim((string) am_firestore_admin_access_token());
+        if ($at !== '') {
+            return $at;
+        }
+    }
     if (function_exists('am_firebase_admin_token')) {
         $minted = trim((string) am_firebase_admin_token());
         if ($minted !== '') {
