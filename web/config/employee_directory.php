@@ -150,6 +150,21 @@ function am_employee_directory_load(): array {
         return $cache;
     }
 
+    // Prefer the AM-owned admin-bearer cache (am_reference_employees, pulled
+    // from HR's /api/employees/directory by canonical_sync) so receiver names
+    // resolve even when the user's Firebase session has expired. Falls back to
+    // the legacy direct Firestore reads only if the cache is empty.
+    $adminToken = function_exists('am_env')
+        ? trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''))
+        : '';
+    if ($adminToken !== '' && function_exists('am_firestore_get_collection')) {
+        $cached = am_firestore_get_collection('am_reference_employees', 10000, $adminToken);
+        if (!empty($cached)) {
+            $cache = array_values(array_filter($cached, fn($r) => is_array($r)));
+            return $cache;
+        }
+    }
+
     $hr = am_firestore_get_collection('pr_master_employees', 10000);
     if ($hr === []) {
         $hr = am_firestore_get_collection('am_core_employees', 10000);

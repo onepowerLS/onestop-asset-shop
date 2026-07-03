@@ -331,6 +331,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/canonical-sync.php'); ?>">
+                                <span class="sidebar-text">Canonical sync</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/categories.php'); ?>">
                                 <span class="sidebar-text">Categories</span>
                             </a>

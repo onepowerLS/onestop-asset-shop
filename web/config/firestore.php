@@ -546,8 +546,14 @@ function am_get_pr_sites(): array {
     $seen = [];
     $locations = [];
 
-    // 0. `am_reference_sites` — direct PR fanout cache (preferred when available)
-    $fanoutSites = am_firestore_get_collection('am_reference_sites', 1000);
+    // 0. `am_reference_sites` — AM-owned cache (preferred). Read with the admin
+    //    bearer so dropdowns populate even when the user's Firebase session has
+    //    expired (the original Metro empty-dropdown bug). Falls through to the
+    //    legacy session-token reads below only if the cache is empty.
+    $adminToken = trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
+    $fanoutSites = $adminToken !== ''
+        ? am_firestore_get_collection('am_reference_sites', 1000, $adminToken)
+        : am_firestore_get_collection('am_reference_sites', 1000);
     foreach ($fanoutSites as $s) {
         $orgId = strtolower((string)($s['organizationId'] ?? ''));
         if (!isset($orgToCountry[$orgId])) continue;
@@ -574,6 +580,15 @@ function am_get_pr_sites(): array {
             'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
             'organization_id'      => $orgId,
         ];
+    }
+
+    // Cache-first short-circuit: if the admin-bearer cache had data, skip the
+    // legacy session-token reads entirely.
+    if (!empty($locations)) {
+        usort($locations, fn($a, $b) =>
+            strcmp($a['country_code'], $b['country_code']) ?: strcmp($a['location_name'], $b['location_name'])
+        );
+        return $locations;
     }
 
     // 1. `sites` collection — Lesotho field sites (canonical)

@@ -292,6 +292,19 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── AM canonical reference cache (API-pulled from PR/HR/FM) ──────
+    //    See docs/CANONICAL_DATA_SYNC_PLAN.md. Catch-all already covers
+    //    these; explicit blocks document AM ownership.
+
+    match /am_reference_organizations/{docId} { allow read, write: if request.auth != null; }
+    match /am_reference_countries/{docId}    { allow read, write: if request.auth != null; }
+    match /am_reference_employees/{docId}    { allow read, write: if request.auth != null; }
+    match /am_reference_departments/{docId}  { allow read, write: if request.auth != null; }
+    match /am_reference_vehicles/{docId}     { allow read, write: if request.auth != null; }
+    match /am_reference_sites/{docId}        { allow read, write: if request.auth != null; }
+    match /am_canonical_sync_state/{docId}   { allow read, write: if request.auth != null; }
+    match /am_canonical_sync_events/{docId}  { allow read, write: if request.auth != null; }
+
     // ── Catch-all: allow authenticated access to any other
     //    collection (referenceData_*, etc.) ───────────────────────
 
