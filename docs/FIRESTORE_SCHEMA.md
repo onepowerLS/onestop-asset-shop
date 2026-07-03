@@ -172,6 +172,33 @@ Archive of items deleted from the catalog via **Assets → View → Delete** (Ma
 | `delete_reason` | string | Optional reason captured at delete time |
 | `status` | string | `archived` |
 
+### am_core_whats_new
+
+Entries for the "What's New" login primer and archive. See `docs/SYSTEM_SPECS.md` for the policy on when to add entries. Admin CRUD: `web/admin/whats-new.php`. API: `web/api/whats-new/unseen.php`, `web/api/whats-new/dismiss.php`. Public archive: `web/whats-new.php`.
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | string | Headline |
+| `summary` | string | One or two sentences |
+| `details` | string | HTML body (`<p>`, `<ul>`, `<li>`, `<strong>` allowed) |
+| `category` | string | `feature`, `improvement`, `fix`, `reconfigure` |
+| `icon` | string | FontAwesome icon class, e.g. `fa-bullhorn` |
+| `deep_link` | string | Optional path/URL the user can open from the popup |
+| `released_at` | string | ISO timestamp — popup ordering and "since last login" |
+| `active` | integer | 0 or 1 — only active entries appear in popup and archive |
+| `created_at` | string | ISO timestamp |
+| `updated_at` | string | ISO timestamp |
+
+### am_core_whats_new_dismissals
+
+Per-user dismissal records — one row per user × entry. Dismissing a popup writes one row per entry the user was shown.
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | string | Firebase uid / session user id |
+| `entry_id` | string | `am_core_whats_new` doc id |
+| `dismissed_at` | string | ISO timestamp |
+
 ### pr_master_categories
 
 Reference data for item categories. AM reads these; Procurement manages them.

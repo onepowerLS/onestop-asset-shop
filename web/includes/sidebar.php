@@ -299,6 +299,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-text">Help</span>
                 </a>
             </li>
+            <li class="nav-item <?php echo $current_page === 'whats-new' ? 'active' : ''; ?>">
+                <a href="<?php echo base_url('whats-new.php'); ?>" class="nav-link ps-4">
+                    <span class="sidebar-text small text-gray-400">What's new</span>
+                </a>
+            </li>
 
             <?php if (is_logged_in() && ($_SESSION['role'] ?? '') === 'Admin'): ?>
             <li class="nav-item">
@@ -333,6 +338,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/duplicate-assets.php'); ?>">
                                 <span class="sidebar-text">Duplicate assets</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/whats-new.php'); ?>">
+                                <span class="sidebar-text">What's New</span>
                             </a>
                         </li>
                         <li class="nav-item">

@@ -52,7 +52,7 @@ require_once __DIR__ . '/../config/firebase.php';
         });
     </script>
     
-<?php if (is_logged_in()) { include __DIR__ . '/tutorial_scripts.php'; } ?>
+<?php if (is_logged_in()) { include __DIR__ . '/tutorial_scripts.php'; include __DIR__ . '/whats_new_modal.php'; } ?>
 
     <!-- Volt peer deps (volt.js expects these globals — not bundled in the npm src file) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
