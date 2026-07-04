@@ -52,9 +52,21 @@ function is_logged_in() {
     return isset($_SESSION['user_id']);
 }
 
-// Helper function to require login
+// Helper function to require login.
+// Centralized auth: unauthenticated users sign in at Nexus, which SSOs them
+// back to /sso.php (custom-token receiver). ?fallback=1 keeps the local
+// login form reachable for emergencies (e.g. Nexus outage).
 function require_login() {
     if (!is_logged_in()) {
-        redirect('login.php');
+        if (($_GET['fallback'] ?? '') === '1') {
+            redirect('login.php?fallback=1');
+        }
+        $return = (string)($_SERVER['REQUEST_URI'] ?? '/index.php');
+        if ($return === '' || $return[0] !== '/' || strpos($return, '//') === 0) {
+            $return = '/index.php';
+        }
+        $receiver = 'https://am.1pwrafrica.com/sso.php?return=' . urlencode($return);
+        header('Location: https://nexus.1pwrafrica.com/sso/authorize?tool=am&redirect_uri=' . urlencode($receiver));
+        exit;
     }
 }
