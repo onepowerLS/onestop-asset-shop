@@ -10,6 +10,15 @@ if (is_logged_in()) {
     redirect('index.php');
 }
 
+// Centralized auth: the local form is an emergency fallback only
+// (?fallback=1, e.g. Nexus outage). Normal sign-in happens at Nexus, which
+// SSOs back via /sso.php.
+if (($_GET['fallback'] ?? '') !== '1') {
+    header('Location: https://nexus.1pwrafrica.com/sso/authorize?tool=am&redirect_uri='
+        . urlencode('https://am.1pwrafrica.com/sso.php?return=' . urlencode('/index.php')));
+    exit;
+}
+
 $error = (string)($_SESSION['auth_error'] ?? '');
 unset($_SESSION['auth_error']);
 

@@ -50,3 +50,13 @@ Firebase session has expired.
 - New cache types: add a pull client in `web/config/canonical_sync.php` + a
   `match` block in `nexus-portal/firestore.rules`.
 - AM-owned collections: `am_core_*`, `am_reference_*`, `am_canonical_sync_*`.
+
+## Nexus SSO (centralized auth)
+
+Nexus (`nexus.1pwrafrica.com`) is the IdP. `require_login()`
+(`web/config/app.php`) redirects unauthenticated users to
+`/sso/authorize?tool=am&redirect_uri=https://am.1pwrafrica.com/sso.php?return=<path>`;
+`web/sso.php` exchanges the custom token client-side (`signInWithCustomToken`)
+and reuses `POST /auth/firebase-login.php` to create the PHP session.
+**Emergency fallback:** `/login.php?fallback=1` (Firebase email/password).
+Full flow + outage procedure: `nexus-portal/docs/NEXUS_AUTH_RUNBOOK.md`.
