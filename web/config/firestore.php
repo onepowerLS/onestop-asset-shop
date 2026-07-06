@@ -672,21 +672,42 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
         return ['ok' => false, 'data' => []];
     }
 
-    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($cfg['project_id']) .
-        '/databases/(default)/documents/users/' . rawurlencode($uid);
+    require_once __DIR__ . '/country_scope.php';
+    $base = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($cfg['project_id']) .
+        '/databases/(default)/documents/';
 
-    $result = am_http_get_json($url, ['Authorization: Bearer ' . $idToken]);
-    if (!$result['ok']) {
-        return ['ok' => false, 'data' => []];
+    // Canonical identity is nexus_users (managed in Nexus). Read it first and
+    // map systemAccess.pr -> role/permissionLevel; fall back to the legacy
+    // `users` doc during transition. Both are the user's own doc, so the
+    // Firestore rules allow the read (isOwnDocument).
+    $data = null;
+    $nx = am_http_get_json($base . 'nexus_users/' . rawurlencode($uid), ['Authorization: Bearer ' . $idToken]);
+    if ($nx['ok']) {
+        $nxData = am_firestore_document_to_array($nx['json']);
+        $sa = $nxData['systemAccess'] ?? null;
+        if (is_array($sa) && isset($sa['pr'])) {
+            $pr = is_array($sa['pr']) ? $sa['pr'] : [];
+            $data = $nxData;
+            $data['role'] = (string)($pr['role'] ?? '');
+            $data['permissionLevel'] = $pr['permissionLevel'] ?? null;
+            if (!isset($data['capabilities']) && isset($pr['capabilities'])) {
+                $data['capabilities'] = $pr['capabilities'];
+            }
+        }
+    }
+    if ($data === null) {
+        $result = am_http_get_json($base . 'users/' . rawurlencode($uid), ['Authorization: Bearer ' . $idToken]);
+        if (!$result['ok']) {
+            return ['ok' => false, 'data' => []];
+        }
+        $data = am_firestore_document_to_array($result['json']);
     }
 
-    $data = am_firestore_document_to_array($result['json']);
     $caps = $data['capabilities'] ?? [];
     if (!is_array($caps)) {
         $caps = [];
     }
 
-    require_once __DIR__ . '/country_scope.php';
     $amCountryAccess = am_extract_am_country_access_codes($data);
 
     return [
