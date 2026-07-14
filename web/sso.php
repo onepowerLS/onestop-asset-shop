@@ -91,6 +91,13 @@ if ($return === '' || $return[0] !== '/' || strpos($return, '//') === 0) {
             fail('Invalid sign-on link.');
             return;
         }
+
+        // Pick up language preference from Nexus SSO launch
+        const lang = params.get('lang');
+        if (lang === 'fr' || lang === 'en') {
+            document.cookie = 'am_lang=' + lang + ';path=/;max-age=31536000;samesite=lax';
+        }
+
         try {
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
