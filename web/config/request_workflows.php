@@ -67,11 +67,80 @@ function am_request_workflow_templates(): array {
                     'required' => true,
                 ],
             ],
-            'inventory_dispatch' => [
-                'label'       => 'Dispatch request',
-                'description' => 'Request items dispatched from HQ/warehouse to a site within your country. Catalog search follows Request country (same country rules as the main asset list). Select items, quantities, site, and receiver.',
-                'country_code' => '',  // resolved dynamically from user scope
-                'fields'      => [],  // custom form — see dispatch-new.php
+        ],
+        'inventory_dispatch' => [
+            'label'       => 'Dispatch request',
+            'description' => 'Request items dispatched from HQ/warehouse to a site within your country. Catalog search follows Request country (same country rules as the main asset list). Select items, quantities, site, and receiver.',
+            'country_code' => '',  // resolved dynamically from user scope
+            'fields'      => [],  // custom form — see dispatch-new.php
+        ],
+        'it_equipment_request' => [
+            'label'       => 'IT Equipment Request',
+            'description' => 'IT productivity asset requisition originated from the IS&T Helpdesk portal.',
+            'country_code' => '',  // resolved dynamically from user scope
+            'fields'      => [
+                [
+                    'name'     => 'submitter_name',
+                    'type'     => 'text',
+                    'label'    => 'Full name of requester',
+                    'required' => true,
+                ],
+                [
+                    'name'     => 'submitter_email',
+                    'type'     => 'email',
+                    'label'    => 'Email',
+                    'required' => true,
+                ],
+                [
+                    'name'     => 'equipment_category',
+                    'type'     => 'select',
+                    'label'    => 'Equipment category',
+                    'required' => true,
+                    'options'  => ['Tablet', 'Phone', 'Computer', 'Printer', 'Screen', 'Peripheral', 'Modem', 'Router', 'Other'],
+                ],
+                [
+                    'name'     => 'equipment_request_type',
+                    'type'     => 'select',
+                    'label'    => 'Request type',
+                    'required' => true,
+                    'options'  => ['New Equipment', 'Replacement', 'Repair', 'Loan'],
+                ],
+                [
+                    'name'     => 'justification',
+                    'type'     => 'text',
+                    'label'    => 'Justification',
+                    'required' => true,
+                ],
+                [
+                    'name'     => 'specifications',
+                    'type'     => 'text',
+                    'label'    => 'Specifications / preferences',
+                    'required' => false,
+                ],
+                [
+                    'name'     => 'site_code',
+                    'type'     => 'text',
+                    'label'    => 'Destination site code',
+                    'required' => true,
+                ],
+                [
+                    'name'     => 'receiver_name',
+                    'type'     => 'text',
+                    'label'    => 'Receiver name',
+                    'required' => true,
+                ],
+                [
+                    'name'     => 'receiver_email',
+                    'type'     => 'email',
+                    'label'    => 'Receiver email',
+                    'required' => true,
+                ],
+                [
+                    'name'     => 'ist_ticket_id',
+                    'type'     => 'text',
+                    'label'    => 'IS&T ticket ID',
+                    'required' => true,
+                ],
             ],
         ],
     ];
@@ -95,6 +164,12 @@ function am_workflow_summary_line(string $type, array $payload): string {
         $items = count($payload['line_items'] ?? []);
         $site = (string)($payload['site_code'] ?? '');
         return $items . ' item(s) → ' . $site;
+    }
+    if ($type === 'it_equipment_request') {
+        $cat = (string)($payload['equipment_category'] ?? '');
+        $reqType = (string)($payload['equipment_request_type'] ?? '');
+        $site = (string)($payload['site_code'] ?? '');
+        return ($reqType ? $reqType . ' — ' : '') . ($cat ? $cat : 'Equipment') . ($site ? ' → ' . $site : '');
     }
     $t = am_request_workflow_template($type);
     return (string)($t['label'] ?? $type);

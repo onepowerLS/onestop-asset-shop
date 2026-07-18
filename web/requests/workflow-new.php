@@ -18,6 +18,11 @@ if ($type === 'ready_board') {
     header('Location: ' . base_url('requests/index.php?new=1'));
     exit;
 }
+if ($type === 'it_equipment_request') {
+    $_SESSION['flash_error'] = 'IT equipment requests must be submitted through the IS&T Helpdesk portal.';
+    header('Location: ' . base_url('requests/workflow-index.php'));
+    exit;
+}
 $template = am_request_workflow_template($type);
 if (!$template) {
     $_SESSION['flash_error'] = 'Unknown workflow type.';

@@ -118,6 +118,12 @@ include __DIR__ . '/../includes/header.php';
     <div class="alert alert-danger alert-dismissible fade show"><?php echo htmlspecialchars($flashErr); ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>
 
+    <div class="d-flex justify-content-end mb-3">
+        <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url('requests/workflow-index.php?type=it_equipment_request'); ?>">
+            <i class="fas fa-laptop me-1"></i> IT Equipment Requests
+        </a>
+    </div>
+
     <div class="row mb-4">
         <?php
         $statusConfig = [
@@ -182,8 +188,8 @@ include __DIR__ . '/../includes/header.php';
                             <td><?php echo htmlspecialchars(($countryById[$cid] ?? [])['country_code'] ?? '—'); ?></td>
                             <td><span class="badge bg-<?php echo $statColors[$status] ?? 'secondary'; ?>"><?php echo htmlspecialchars($status); ?></span></td>
                             <td><?php echo htmlspecialchars(substr((string)($req['requested_date'] ?? ''), 0, 10)); ?></td>
-                            <td><?php $isDisp = ($req['workflow_type'] ?? '') === 'inventory_dispatch'; ?>
-                                <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url($isDisp ? 'requests/dispatch-view.php' : 'requests/workflow-view.php'); ?>?id=<?php echo urlencode($docId); ?>">View</a></td>
+                            <td><?php $wfType = $req['workflow_type'] ?? ''; $isDisp = $wfType === 'inventory_dispatch'; $isEquip = $wfType === 'it_equipment_request'; ?>
+                                <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url($isDisp ? 'requests/dispatch-view.php' : ($isEquip ? 'requests/equipment-view.php' : 'requests/workflow-view.php')); ?>?id=<?php echo urlencode($docId); ?>">View</a></td>
                             <?php if ($canProcess): ?>
                             <td class="text-end">
                                 <?php if ($isDisp): ?>

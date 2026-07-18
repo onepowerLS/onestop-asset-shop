@@ -29,6 +29,10 @@ if (!is_array($payload)) {
 }
 
 $wfType = (string)($req['workflow_type'] ?? '');
+if ($wfType === 'it_equipment_request') {
+    header('Location: ' . base_url('requests/equipment-view.php?id=' . urlencode($docId)));
+    exit;
+}
 $template = am_request_workflow_template($wfType);
 $fieldLabels = [];
 if ($template) {
