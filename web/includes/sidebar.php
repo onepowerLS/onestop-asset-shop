@@ -3,6 +3,7 @@
  * Sidebar Navigation
  */
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/locale.php';
 $current_page = basename($_SERVER['PHP_SELF'], '.php');
 ?>
 <nav id="sidebarMenu" class="sidebar d-lg-block bg-gray-800 text-white collapse" data-simplebar>
@@ -14,13 +15,13 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </div>
                 <div class="d-block">
                     <?php if (is_logged_in()): ?>
-                        <h2 class="h5 mb-3">Hi, <?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?></h2>
+                        <h2 class="h5 mb-3"><?php echo htmlspecialchars(am_ui('sidebar_hi')); ?>, <?php echo htmlspecialchars($_SESSION['username'] ?? am_ui('nav_guest')); ?></h2>
                         <a href="<?php echo base_url('logout.php'); ?>" class="btn btn-secondary btn-sm d-inline-flex align-items-center">
                             <i class="fas fa-sign-out-alt me-1"></i>
-                            Sign Out
+                            <?php echo htmlspecialchars(am_ui('sidebar_sign_out')); ?>
                         </a>
                     <?php else: ?>
-                        <a href="<?php echo base_url('login.php'); ?>" class="btn btn-secondary btn-sm d-inline-flex align-items-center">Sign In</a>
+                        <a href="<?php echo base_url('login.php'); ?>" class="btn btn-secondary btn-sm d-inline-flex align-items-center"><?php echo htmlspecialchars(am_ui('sidebar_sign_in')); ?></a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -35,7 +36,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             <li class="nav-item">
                 <a href="<?php echo base_url(); ?>" class="nav-link d-flex align-items-center">
                     <span class="sidebar-icon" style="font-weight:700;font-size:1.4rem;color:#1976d2;">1PWR</span>
-                    <span class="sidebar-text ms-1" style="font-weight:500;">Asset Management</span>
+                    <span class="sidebar-text ms-1" style="font-weight:500;"><?php echo htmlspecialchars(am_ui('sidebar_brand')); ?></span>
                 </a>
             </li>
 
@@ -44,7 +45,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-home"></i>
                     </span>
-                    <span class="sidebar-text">Dashboard</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_dashboard')); ?></span>
                 </a>
             </li>
 
@@ -57,7 +58,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <span class="sidebar-icon">
                             <i class="fas fa-th-large"></i>
                         </span>
-                        <span class="sidebar-text">Catalog</span>
+                        <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_catalog')); ?></span>
                     </span>
                     <span class="link-arrow">
                         <i class="fas fa-chevron-right"></i>
@@ -67,37 +68,37 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <ul class="flex-column nav">
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('assets/index.php'); ?>" data-tutorial="nav-assets-all">
-                                <span class="sidebar-text">All Items</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_all_items')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $classParam === 'FixedAsset' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=FixedAsset'); ?>">
                                 <i class="fas fa-building me-1 text-primary"></i>
-                                <span class="sidebar-text">Fixed Assets</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_fixed_assets')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $classParam === 'Material' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Material'); ?>">
                                 <i class="fas fa-cubes me-1 text-warning"></i>
-                                <span class="sidebar-text">Materials</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_materials')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $classParam === 'Consumable' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Consumable'); ?>">
                                 <i class="fas fa-recycle me-1 text-info"></i>
-                                <span class="sidebar-text">Consumables</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_consumables')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $classParam === 'Inventory' ? 'active' : ''; ?>" href="<?php echo base_url('assets/index.php?item_class=Inventory'); ?>">
                                 <i class="fas fa-boxes-stacked me-1 text-success"></i>
-                                <span class="sidebar-text">Inventory</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_inventory')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $current_page === 'assemble' ? 'active' : ''; ?>" href="<?php echo base_url('assets/assemble.php'); ?>">
                                 <i class="fas fa-wrench me-1"></i>
-                                <span class="sidebar-text">Assemble / produce</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_assemble')); ?></span>
                             </a>
                         </li>
                     </ul>
@@ -114,7 +115,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <span class="sidebar-icon">
                             <i class="fas fa-clipboard-list"></i>
                         </span>
-                        <span class="sidebar-text">Requests</span>
+                        <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_requests')); ?></span>
                     </span>
                     <span class="link-arrow">
                         <i class="fas fa-chevron-right"></i>
@@ -124,22 +125,22 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <ul class="flex-column nav">
                         <li class="nav-item">
                             <a class="nav-link <?php echo $current_page === 'requests' ? 'active' : ''; ?>" href="<?php echo base_url('requests/index.php'); ?>" data-tutorial="nav-requests-procurement">
-                                <span class="sidebar-text">Ready board request</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_ready_board')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo in_array($current_page, ['workflow-index', 'workflow-new', 'workflow-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/workflow-index.php'); ?>" data-tutorial="nav-requests-workflows">
-                                <span class="sidebar-text">Service workflows</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_service_workflows')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo in_array($current_page, ['dispatch-new', 'dispatch-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/dispatch-new.php'); ?>">
-                                <span class="sidebar-text">Dispatch request</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_dispatch_request')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo in_array($current_page, ['archived-ret', 'archived-ret-view'], true) ? 'active' : ''; ?>" href="<?php echo base_url('requests/archived-ret.php'); ?>">
-                                <span class="sidebar-text">RET archives</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_ret_archives')); ?></span>
                             </a>
                         </li>
                     </ul>
@@ -151,7 +152,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-warehouse"></i>
                     </span>
-                    <span class="sidebar-text">Stock Levels</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_stock_levels')); ?></span>
                 </a>
             </li>
 
@@ -163,14 +164,14 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $inReviews ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-reviews" style="cursor:pointer;">
                     <span>
                         <span class="sidebar-icon"><i class="fas fa-clone"></i></span>
-                        <span class="sidebar-text">Data quality</span>
+                        <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_data_quality')); ?></span>
                     </span>
                     <span class="link-arrow"><i class="fas fa-chevron-right"></i></span>
                 </span>
                 <div class="multi-level collapse <?php echo $inReviews ? 'show' : ''; ?>" id="submenu-reviews">
                     <ul class="flex-column nav">
                         <li class="nav-item">
-                            <a class="nav-link <?php echo str_contains((string)($_SERVER['PHP_SELF'] ?? ''), 'duplicate-review') ? 'active' : ''; ?>" href="<?php echo base_url('reviews/duplicate-review.php'); ?>">Duplicate review</a>
+                            <a class="nav-link <?php echo str_contains((string)($_SERVER['PHP_SELF'] ?? ''), 'duplicate-review') ? 'active' : ''; ?>" href="<?php echo base_url('reviews/duplicate-review.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_duplicate_review')); ?></a>
                         </li>
                     </ul>
                 </div>
@@ -183,7 +184,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-hand-holding"></i>
                     </span>
-                    <span class="sidebar-text">Check-Out/In</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_checkout')); ?></span>
                 </a>
             </li>
             <?php endif; ?>
@@ -196,7 +197,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-dolly"></i>
                     </span>
-                    <span class="sidebar-text">Load-out manifests</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_loadout')); ?></span>
                 </a>
             </li>
 
@@ -209,20 +210,20 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <span class="nav-link collapsed d-flex justify-content-between align-items-center <?php echo $telecomOpen ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#submenu-telecom" style="cursor:pointer;" data-tutorial="nav-telecom">
                     <span>
                         <span class="sidebar-icon"><i class="fas fa-sim-card"></i></span>
-                        <span class="sidebar-text">Telecom</span>
+                        <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_telecom')); ?></span>
                     </span>
                     <span class="link-arrow"><i class="fas fa-chevron-right"></i></span>
                 </span>
                 <div class="multi-level collapse <?php echo $telecomOpen ? 'show' : ''; ?>" id="submenu-telecom">
                     <ul class="flex-column nav">
                         <li class="nav-item">
-                            <a class="nav-link <?php echo $inSim ? 'active' : ''; ?>" href="<?php echo base_url('sim/index.php'); ?>">SIM registry</a>
+                            <a class="nav-link <?php echo $inSim ? 'active' : ''; ?>" href="<?php echo base_url('sim/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_sim_registry')); ?></a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo $inPhoneReq ? 'active' : ''; ?>" href="<?php echo base_url('phone-requests/index.php'); ?>">Phone requests</a>
+                            <a class="nav-link <?php echo $inPhoneReq ? 'active' : ''; ?>" href="<?php echo base_url('phone-requests/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_phone_requests')); ?></a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo base_url('it/index.php'); ?>">IT Helpdesk</a>
+                            <a class="nav-link" href="<?php echo base_url('it/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_it_helpdesk')); ?></a>
                         </li>
                     </ul>
                 </div>
@@ -233,7 +234,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-chart-bar"></i>
                     </span>
-                    <span class="sidebar-text">Reports</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_reports')); ?></span>
                 </a>
             </li>
 
@@ -242,7 +243,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-clipboard-list"></i>
                     </span>
-                    <span class="sidebar-text">Mutation log</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_mutation_log')); ?></span>
                 </a>
             </li>
 
@@ -252,20 +253,20 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-tablet-screen-button"></i>
                     </span>
-                    <span class="sidebar-text">Tablet Mode</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_tablet_mode')); ?></span>
                 </a>
             </li>
             <?php endif; ?>
 
             <li class="nav-item mt-4 mb-1">
-                <small class="nav-link text-gray-500 text-uppercase fw-bold py-1" style="font-size:0.7rem;letter-spacing:0.05em;">Switch Tool</small>
+                <small class="nav-link text-gray-500 text-uppercase fw-bold py-1" style="font-size:0.7rem;letter-spacing:0.05em;"><?php echo htmlspecialchars(am_ui('sidebar_switch_tool')); ?></small>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="https://pr.1pwrafrica.com/" target="_blank" rel="noopener">
                     <span class="sidebar-icon">
                         <i class="fas fa-file-invoice text-warning"></i>
                     </span>
-                    <span class="sidebar-text">Procurement</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_procurement')); ?></span>
                 </a>
             </li>
             <li class="nav-item">
@@ -273,7 +274,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-clipboard-check text-info"></i>
                     </span>
-                    <span class="sidebar-text">Job Cards</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_job_cards')); ?></span>
                 </a>
             </li>
 
@@ -282,12 +283,12 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-graduation-cap"></i>
                     </span>
-                    <span class="sidebar-text">Start tutorial</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_start_tutorial')); ?></span>
                 </a>
             </li>
             <li class="nav-item <?php echo $current_page === 'tutorial' ? 'active' : ''; ?>">
                 <a href="<?php echo base_url('tutorial.php'); ?>" class="nav-link ps-4">
-                    <span class="sidebar-text small text-gray-400">Text guide</span>
+                    <span class="sidebar-text small text-gray-400"><?php echo htmlspecialchars(am_ui('sidebar_text_guide')); ?></span>
                 </a>
             </li>
 
@@ -296,12 +297,12 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <span class="sidebar-icon">
                         <i class="fas fa-question-circle"></i>
                     </span>
-                    <span class="sidebar-text">Help</span>
+                    <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_help')); ?></span>
                 </a>
             </li>
             <li class="nav-item <?php echo $current_page === 'whats-new' ? 'active' : ''; ?>">
                 <a href="<?php echo base_url('whats-new.php'); ?>" class="nav-link ps-4">
-                    <span class="sidebar-text small text-gray-400">What's new</span>
+                    <span class="sidebar-text small text-gray-400"><?php echo htmlspecialchars(am_ui('sidebar_whats_new')); ?></span>
                 </a>
             </li>
 
@@ -312,7 +313,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <span class="sidebar-icon">
                             <i class="fas fa-cog"></i>
                         </span>
-                        <span class="sidebar-text">Admin</span>
+                        <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_admin')); ?></span>
                     </span>
                     <span class="link-arrow">
                         <i class="fas fa-chevron-right"></i>
@@ -322,62 +323,62 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     <ul class="flex-column nav">
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/employees.php'); ?>">
-                                <span class="sidebar-text">Employees</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_employees')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/locations.php'); ?>">
-                                <span class="sidebar-text">Locations</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_locations')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/canonical-sync.php'); ?>">
-                                <span class="sidebar-text">Canonical sync</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_canonical_sync')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/categories.php'); ?>">
-                                <span class="sidebar-text">Categories</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_categories')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/duplicate-assets.php'); ?>">
-                                <span class="sidebar-text">Duplicate assets</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_duplicate_assets')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/whats-new.php'); ?>">
-                                <span class="sidebar-text">What's New</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_whats_new_admin')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/ugp-parts.php'); ?>">
-                                <span class="sidebar-text">UGP parts alignment</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_ugp_parts')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/qr-labels.php'); ?>">
-                                <span class="sidebar-text">QR Labels</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_qr_labels')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/migrate.php'); ?>">
-                                <span class="sidebar-text">Data Migration</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_data_migration')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/migrate-vehicles.php'); ?>">
-                                <span class="sidebar-text">Migrate vehicles</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_migrate_vehicles')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/migrate-odometer.php'); ?>">
-                                <span class="sidebar-text">Migrate odometer</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_migrate_odometer')); ?></span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/provision-auditor.php'); ?>">
-                                <span class="sidebar-text">Provision auditor</span>
+                                <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_provision_auditor')); ?></span>
                             </a>
                         </li>
                     </ul>

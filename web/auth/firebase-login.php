@@ -64,6 +64,7 @@ if ($idToken !== '' && $uid !== '') {
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
+    $_SESSION['organization_id']       = (string)($profileData['organizationId'] ?? '');
     $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
 
     $allow = $profileData['amCountryAccess'] ?? [];
@@ -71,6 +72,11 @@ if ($idToken !== '' && $uid !== '') {
         $allow = [];
     }
     $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $orgAccess = $profileData['amOrgAccess'] ?? [];
+    if (!is_array($orgAccess) || empty($orgAccess)) {
+        $orgAccess = am_org_ids_from_country_codes($_SESSION['am_country_allow']);
+    }
+    $_SESSION['am_org_allow'] = am_apply_default_org_allow_if_empty($orgAccess);
     $_SESSION['am_country_filter'] = 'all';
     am_locale_bootstrap();
 
@@ -135,6 +141,7 @@ if ($identifier !== '' && $password !== '') {
     $_SESSION['permission_level']      = $profileData['permissionLevel'] ?? null;
     $_SESSION['department']            = (string)($profileData['department'] ?? '');
     $_SESSION['organization']          = (string)($profileData['organization'] ?? '');
+    $_SESSION['organization_id']       = (string)($profileData['organizationId'] ?? '');
     $_SESSION['capabilities']          = is_array($profileData['capabilities'] ?? null) ? $profileData['capabilities'] : [];
 
     $allow = $profileData['amCountryAccess'] ?? [];
@@ -142,6 +149,11 @@ if ($identifier !== '' && $password !== '') {
         $allow = [];
     }
     $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $orgAccess = $profileData['amOrgAccess'] ?? [];
+    if (!is_array($orgAccess) || empty($orgAccess)) {
+        $orgAccess = am_org_ids_from_country_codes($_SESSION['am_country_allow']);
+    }
+    $_SESSION['am_org_allow'] = am_apply_default_org_allow_if_empty($orgAccess);
     $_SESSION['am_country_filter'] = 'all';
     am_locale_bootstrap();
 

@@ -23,7 +23,7 @@ if ($countryId === '') {
     exit;
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 if (!am_user_may_access_country_id($countryId, $countries)) {
     echo json_encode(['ok' => false, 'error' => 'Country not in your scope', 'items' => []]);
     exit;

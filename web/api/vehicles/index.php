@@ -12,6 +12,7 @@
 
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../config/firestore.php';
+require_once __DIR__ . '/../../config/country_scope.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -27,7 +28,7 @@ $vehicleCategories = ['FA-VEH', 'FA-VEH-4X4', 'FA-VEH-TRUCK', 'FA-VEH-TRAILER', 
 
 // Fetch all assets and filter to vehicles
 $assets = am_firestore_get_collection('am_core_assets', 2000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $locations = am_get_pr_sites();
 
 $countryById = [];

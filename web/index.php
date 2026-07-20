@@ -10,11 +10,11 @@ require_once __DIR__ . '/config/locale.php';
 require_login();
 am_ensure_country_scope_from_session();
 
-$page_title = 'Dashboard';
+$page_title = am_ui('dashboard_title');
 
 // Firestore-backed dashboard statistics
 $assets = am_firestore_get_collection('am_core_assets', 1000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $transactions = am_firestore_get_collection('am_core_transactions', 1000);
 $requests = am_firestore_get_collection('pr_master_requests', 1000);
 
@@ -162,14 +162,14 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
     <?php endif; ?>
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
         <div class="d-block mb-4 mb-md-0">
-            <h1 class="h2">Dashboard</h1>
-            <p class="mb-0">Welcome to OneStop Asset Shop - Consolidated Asset Management</p>
+            <h1 class="h2"><?php echo htmlspecialchars(am_ui('dashboard_title')); ?></h1>
+            <p class="mb-0"><?php echo htmlspecialchars(am_ui('dashboard_welcome')); ?></p>
         </div>
         <?php if (!am_is_auditor_readonly()): ?>
         <div class="btn-toolbar mb-2 mb-md-0">
             <a href="<?php echo base_url('assets/add.php'); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center">
                 <i class="fas fa-plus me-2"></i>
-                Add New Asset
+                <?php echo htmlspecialchars(am_ui('dashboard_add_asset')); ?>
             </a>
         </div>
         <?php endif; ?>
@@ -188,7 +188,7 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Total Items</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_total_items')); ?></h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo number_format($totalAssets); ?></h3>
                             </div>
                         </div>
@@ -208,7 +208,7 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Pending Requests</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_pending_requests')); ?></h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo number_format($pendingRequests); ?></h3>
                             </div>
                         </div>
@@ -228,7 +228,7 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Countries</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_countries')); ?></h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo count($assetsByCountry); ?></h3>
                             </div>
                         </div>
@@ -248,7 +248,7 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Available</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_available')); ?></h2>
                                 <h3 class="fw-extrabold mb-2">
                                     <?php 
                                     $available = array_filter($assetsByStatus, fn($s) => $s['status'] === 'Available');
@@ -266,10 +266,10 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
     <!-- Item Classification Breakdown -->
     <?php
     $classConfig = [
-        'FixedAsset'  => ['label' => 'Fixed Assets',  'icon' => 'fa-building',       'color' => 'primary',   'desc' => 'PP&E: vehicles, equipment, infrastructure'],
-        'Material'    => ['label' => 'Materials',      'icon' => 'fa-cubes',          'color' => 'warning',   'desc' => 'Construction & installation inputs'],
-        'Consumable'  => ['label' => 'Consumables',    'icon' => 'fa-recycle',        'color' => 'info',      'desc' => 'Operational supplies, PPE, office'],
-        'Inventory'   => ['label' => 'Inventory',      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => 'Meters, ready boards, spare parts'],
+        'FixedAsset'  => ['label' => am_ui('class_fixed_assets'),  'icon' => 'fa-building',       'color' => 'primary',   'desc' => am_ui('desc_fixed_assets')],
+        'Material'    => ['label' => am_ui('class_materials'),      'icon' => 'fa-cubes',          'color' => 'warning',   'desc' => am_ui('desc_materials')],
+        'Consumable'  => ['label' => am_ui('class_consumables'),    'icon' => 'fa-recycle',        'color' => 'info',      'desc' => am_ui('desc_consumables')],
+        'Inventory'   => ['label' => am_ui('class_inventory'),      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => am_ui('desc_inventory')],
     ];
     ?>
     <div class="row mb-4" data-tutorial="tutorial-dashboard-class">
@@ -298,7 +298,7 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
-                            <h2 class="fs-5 fw-bold mb-0">Assets by Country</h2>
+                            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('dashboard_assets_by_country')); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -307,8 +307,8 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Country</th>
-                                    <th class="text-end">Count</th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_country')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('th_count')); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -336,7 +336,7 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
-                            <h2 class="fs-5 fw-bold mb-0">Assets by Status</h2>
+                            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('dashboard_assets_by_status')); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -345,8 +345,8 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Status</th>
-                                    <th class="text-end">Count</th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_status')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('th_count')); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -388,10 +388,10 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
-                            <h2 class="fs-5 fw-bold mb-0">Recent Transactions</h2>
+                            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('dashboard_recent_transactions')); ?></h2>
                         </div>
                         <div class="col text-end">
-                            <a href="<?php echo base_url('transactions/index.php'); ?>" class="btn btn-sm btn-primary">View All</a>
+                            <a href="<?php echo base_url('transactions/index.php'); ?>" class="btn btn-sm btn-primary"><?php echo htmlspecialchars(am_ui('dashboard_view_all')); ?></a>
                         </div>
                     </div>
                 </div>
@@ -400,17 +400,17 @@ window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Asset</th>
-                                    <th>QR Code</th>
-                                    <th>Device</th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_date')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_type')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_asset')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_qr_code')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_device')); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($recentTransactions)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center text-gray-500">No recent transactions</td>
+                                    <td colspan="5" class="text-center text-gray-500"><?php echo htmlspecialchars(am_ui('dashboard_no_transactions')); ?></td>
                                 </tr>
                                 <?php else: ?>
                                 <?php foreach ($recentTransactions as $txn): ?>

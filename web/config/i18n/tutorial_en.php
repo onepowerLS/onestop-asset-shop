@@ -20,7 +20,7 @@ return [
             'id' => 'app-shell',
             'title' => 'Orientation: sidebar and tools',
             'steps' => [
-                ['text' => 'After login, note the left sidebar: Dashboard, Catalog, Requests, Stock, Check-Out/In, Load-out manifests, Telecom (SIM registry, phone requests, IT Helpdesk), Reports, Tablet, Help, and external links to Procurement and Job Cards.', 'href' => '', 'link_label' => ''],
+                ['text' => 'You sign in through Nexus (nexus.1pwrafrica.com), the 1PWR single sign-on portal. After login, note the left sidebar: Dashboard, Catalog, Requests, Stock, Check-Out/In, Load-out manifests, Telecom (SIM registry, phone requests, IT Helpdesk), Reports, Tablet, Help, and external links to Procurement and Job Cards.', 'href' => '', 'link_label' => ''],
                 ['text' => 'Use the top bar on small screens to open the menu. Your role controls which actions you can perform (see Help → Roles).', 'href' => '', 'link_label' => ''],
                 ['text' => 'Open the Dashboard to see totals, classification cards, and recent transactions.', 'href' => 'index.php', 'link_label' => 'Dashboard'],
             ],

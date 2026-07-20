@@ -168,10 +168,12 @@ function am_employee_directory_load(): array {
             $cache = array_values(array_filter($cached, fn($r) => is_array($r)));
             return $cache;
         }
+        error_log('[am_employee_directory_load] Fallback: am_reference_employees cache empty, reading legacy collections');
     }
 
     $hr = am_firestore_get_collection('pr_master_employees', 10000);
     if ($hr === []) {
+        error_log('[am_employee_directory_load] Fallback: pr_master_employees empty, trying am_core_employees');
         $hr = am_firestore_get_collection('am_core_employees', 10000);
     }
 
@@ -181,6 +183,10 @@ function am_employee_directory_load(): array {
         if ($chunk !== []) {
             $portal = array_merge($portal, $chunk);
         }
+    }
+
+    if (!empty($portal)) {
+        error_log('[am_employee_directory_load] Fallback: merging ' . count($portal) . ' portal users from users/nexus_users');
     }
 
     $cache = am_employee_directory_merge_hr_and_portal($hr, $portal);

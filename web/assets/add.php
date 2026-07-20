@@ -4,15 +4,16 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/duplicate_assets.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/locale.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
 
-$page_title = 'Add New Item';
+$page_title = am_ui('btn_add_new_item');
 $errors = [];
 $success = false;
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 
@@ -92,12 +93,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         am_require_asset_country_mutate($countryId, $countries);
 
+        $orgId = am_resolve_org_id_for_country($countryCode);
+
         $data = [
             'name' => $name,
             'description' => $description,
             'item_class' => $itemClass,
             'category_id' => $categoryId,
             'country_id' => $countryId,
+            'organization_id' => $orgId,
             'location_id' => $locationId,
             'serial_number' => $serialNumber,
             'manufacturer' => $manufacturer,
@@ -169,14 +173,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $itemClassOptions = [
-    'FixedAsset' => ['label' => 'Fixed Asset', 'icon' => 'fa-building', 'color' => 'primary',
-        'hint' => 'PP&E with useful life >1 year, capitalized and depreciated (vehicles, equipment, IT)'],
-    'Material' => ['label' => 'Material', 'icon' => 'fa-cubes', 'color' => 'warning',
-        'hint' => 'Construction/installation inputs expensed to project (wire, poles, panels)'],
-    'Consumable' => ['label' => 'Consumable', 'icon' => 'fa-recycle', 'color' => 'info',
-        'hint' => 'Operational supplies expensed on use (PPE, office supplies, maintenance)'],
-    'Inventory' => ['label' => 'Inventory', 'icon' => 'fa-boxes-stacked', 'color' => 'success',
-        'hint' => 'Finished goods held for deployment or sale (meters, ready boards, spare parts)'],
+    'FixedAsset' => ['label' => am_ui('class_fixed_asset'), 'icon' => 'fa-building', 'color' => 'primary',
+        'hint' => am_ui('hint_fixed_asset')],
+    'Material' => ['label' => am_ui('class_material'), 'icon' => 'fa-cubes', 'color' => 'warning',
+        'hint' => am_ui('hint_material')],
+    'Consumable' => ['label' => am_ui('class_consumable'), 'icon' => 'fa-recycle', 'color' => 'info',
+        'hint' => am_ui('hint_consumable')],
+    'Inventory' => ['label' => am_ui('class_inventory'), 'icon' => 'fa-boxes-stacked', 'color' => 'success',
+        'hint' => am_ui('hint_inventory')],
 ];
 
 include __DIR__ . '/../includes/header.php';
@@ -187,11 +191,11 @@ include __DIR__ . '/../includes/header.php';
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>">Catalog</a></li>
-                    <li class="breadcrumb-item active">Add New Item</li>
+                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_catalog')); ?></a></li>
+                    <li class="breadcrumb-item active"><?php echo htmlspecialchars(am_ui('btn_add_new_item')); ?></li>
                 </ol>
             </nav>
-            <h1 class="h2 mt-2">Add New Item</h1>
+            <h1 class="h2 mt-2"><?php echo htmlspecialchars(am_ui('btn_add_new_item')); ?></h1>
         </div>
     </div>
 
@@ -208,19 +212,19 @@ include __DIR__ . '/../includes/header.php';
     <!-- Search before you add -->
     <div class="card border-0 shadow mb-4" id="catalogSearchCard">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="fs-5 fw-bold mb-0">Search catalog first</h2>
+            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('form_search_catalog_first')); ?></h2>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="catalogSearchToggle" aria-expanded="true">
-                <i class="fas fa-chevron-up me-1"></i><span>Hide</span>
+                <i class="fas fa-chevron-up me-1"></i><span><?php echo htmlspecialchars(am_ui('form_hide')); ?></span>
             </button>
         </div>
         <div class="card-body" id="catalogSearchBody">
-            <p class="text-gray-600 mb-3">Before adding a new item, search the catalog to avoid duplicates. If you find a match, open it and edit its quantity or location instead of creating a new record.</p>
+            <p class="text-gray-600 mb-3"><?php echo htmlspecialchars(am_ui('form_search_catalog_blurb')); ?></p>
             <div class="row g-3 mb-2">
                 <div class="col-md-8">
-                    <label class="form-label">Search catalog</label>
+                    <label class="form-label"><?php echo htmlspecialchars(am_ui('form_search_catalog_label')); ?></label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" id="catalogSearchInput" class="form-control" placeholder="Name, tag, manufacturer, model, notes, category…" autocomplete="off">
+                        <input type="text" id="catalogSearchInput" class="form-control" placeholder="<?php echo htmlspecialchars(am_ui('form_search_catalog_placeholder')); ?>" autocomplete="off">
                     </div>
                 </div>
                 <div class="col-md-4">

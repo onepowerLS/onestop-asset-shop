@@ -25,18 +25,18 @@ $catalogView = (isset($_GET['catalog_view']) && $_GET['catalog_view'] === 'group
 $canCatalogGroup = ($itemClassFilter === '' || in_array($itemClassFilter, am_inventory_stockable_classes(), true));
 
 $itemClassLabels = [
-    'FixedAsset'  => 'Fixed Assets',
-    'Material'    => 'Materials',
-    'Consumable'  => 'Consumables',
-    'Inventory'   => 'Inventory',
+    'FixedAsset'  => am_ui('class_fixed_assets'),
+    'Material'    => am_ui('class_materials'),
+    'Consumable'  => am_ui('class_consumables'),
+    'Inventory'   => am_ui('class_inventory'),
 ];
 $page_title = $itemClassFilter && isset($itemClassLabels[$itemClassFilter])
     ? $itemClassLabels[$itemClassFilter]
-    : 'All Items';
+    : am_ui('class_all_items');
 
 // Firestore collections (split sources of truth)
 $assetsRaw = am_firestore_get_collection('am_core_assets', 10000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
@@ -169,7 +169,7 @@ if ($catalogView === 'grouped' && $canCatalogGroup) {
 $countries = array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $categories = array_values(array_filter($categories, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 $statuses = ['Available', 'Allocated', 'CheckedOut', 'InProject', 'Consumed', 'Deployed', 'Missing', 'WrittenOff', 'Retired'];
-$itemClasses = ['FixedAsset' => 'Fixed Assets', 'Material' => 'Materials', 'Consumable' => 'Consumables', 'Inventory' => 'Inventory'];
+$itemClasses = ['FixedAsset' => am_ui('class_fixed_assets'), 'Material' => am_ui('class_materials'), 'Consumable' => am_ui('class_consumables'), 'Inventory' => am_ui('class_inventory')];
 
 $catalogFlatQs = array_filter($_GET, fn($v) => $v !== '' && $v !== null && $v !== []);
 unset($catalogFlatQs['catalog_view']);
@@ -194,24 +194,24 @@ include __DIR__ . '/../includes/header.php';
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group me-2 mb-2" role="group" aria-label="Catalog view">
-                <a href="<?php echo htmlspecialchars($catalogFlatUrl); ?>" class="btn btn-sm <?php echo $catalogView === 'flat' ? 'btn-primary' : 'btn-outline-primary'; ?>">Each record</a>
-                <a href="<?php echo htmlspecialchars($catalogGroupedUrl); ?>" class="btn btn-sm <?php echo $catalogView === 'grouped' ? 'btn-primary' : 'btn-outline-primary'; ?>" title="Merge stockable lines by part + location">Grouped</a>
+                <a href="<?php echo htmlspecialchars($catalogFlatUrl); ?>" class="btn btn-sm <?php echo $catalogView === 'flat' ? 'btn-primary' : 'btn-outline-primary'; ?>"><?php echo htmlspecialchars(am_ui('assets_each_record')); ?></a>
+                <a href="<?php echo htmlspecialchars($catalogGroupedUrl); ?>" class="btn btn-sm <?php echo $catalogView === 'grouped' ? 'btn-primary' : 'btn-outline-primary'; ?>" title=""><?php echo htmlspecialchars(am_ui('assets_grouped')); ?></a>
             </div>
             <?php if (!am_is_auditor_readonly()): ?>
             <a href="<?php echo base_url('assets/add.php' . ($itemClassFilter ? '?item_class=' . urlencode($itemClassFilter) : '')); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2" data-tutorial="tutorial-assets-add">
                 <i class="fas fa-plus me-2"></i>
-                Add New Item
+                <?php echo htmlspecialchars(am_ui('assets_add_new')); ?>
             </a>
-            <button class="btn btn-sm btn-primary d-inline-flex align-items-center" onclick="labelPrinter.generateLabel(prompt('Enter Asset ID:'))">
+            <button class="btn btn-sm btn-primary d-inline-flex align-items-center" onclick="labelPrinter.generateLabel(prompt('<?php echo htmlspecialchars(am_ui('assets_enter_asset_id')); ?>'))">
                 <i class="fas fa-print me-2"></i>
-                Print QR Label
+                <?php echo htmlspecialchars(am_ui('assets_print_qr')); ?>
             </button>
             <?php endif; ?>
         </div>
     </div>
 
     <?php if ($catalogView === 'grouped' && !$canCatalogGroup): ?>
-    <div class="alert alert-info py-2">Grouped catalog applies to <strong>Materials, Consumables, and Inventory</strong>. With a Fixed Asset filter, each record is listed separately.</div>
+    <div class="alert alert-info py-2"><?php echo am_ui('assets_grouped_notice'); ?></div>
     <?php endif; ?>
 
     <!-- Filters -->
@@ -222,13 +222,13 @@ include __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="catalog_view" value="grouped">
                 <?php endif; ?>
                 <div class="col-12 col-md-3">
-                    <label class="form-label">Search</label>
-                    <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="Name, manufacturer, model, notes, serial, tag, QR…">
+                    <label class="form-label"><?php echo htmlspecialchars(am_ui('assets_search')); ?></label>
+                    <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="<?php echo htmlspecialchars(am_ui('assets_search_placeholder')); ?>">
                 </div>
                 <div class="col-12 col-md-2">
-                    <label class="form-label">Classification</label>
+                    <label class="form-label"><?php echo htmlspecialchars(am_ui('assets_classification')); ?></label>
                     <select class="form-select" name="item_class">
-                        <option value="">All Classes</option>
+                        <option value=""><?php echo htmlspecialchars(am_ui('assets_all_classes')); ?></option>
                         <?php foreach ($itemClasses as $classKey => $classLabel): ?>
                         <option value="<?php echo $classKey; ?>" <?php echo $itemClassFilter === $classKey ? 'selected' : ''; ?>>
                             <?php echo $classLabel; ?>
@@ -237,9 +237,9 @@ include __DIR__ . '/../includes/header.php';
                     </select>
                 </div>
                 <div class="col-12 col-md-2">
-                    <label class="form-label">Category</label>
+                    <label class="form-label"><?php echo htmlspecialchars(am_ui('th_category')); ?></label>
                     <select class="form-select" name="category">
-                        <option value="">All Categories</option>
+                        <option value=""><?php echo htmlspecialchars(am_ui('assets_all_categories')); ?></option>
                         <?php foreach ($categories as $category):
                             $catId = (string)($category['category_id'] ?? $category['id'] ?? '');
                         ?>
@@ -250,9 +250,9 @@ include __DIR__ . '/../includes/header.php';
                     </select>
                 </div>
                 <div class="col-6 col-md-1">
-                    <label class="form-label">Country</label>
+                    <label class="form-label"><?php echo htmlspecialchars(am_ui('th_country')); ?></label>
                     <select class="form-select" name="country">
-                        <option value="">All</option>
+                        <option value=""><?php echo htmlspecialchars(am_ui('assets_all')); ?></option>
                         <?php foreach ($countriesPick as $country):
                             $cntId = (string)($country['country_id'] ?? $country['id'] ?? '');
                         ?>
@@ -263,9 +263,9 @@ include __DIR__ . '/../includes/header.php';
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label">Status</label>
+                    <label class="form-label"><?php echo htmlspecialchars(am_ui('th_status')); ?></label>
                     <select class="form-select" name="status">
-                        <option value="">All</option>
+                        <option value=""><?php echo htmlspecialchars(am_ui('assets_all')); ?></option>
                         <?php foreach ($statuses as $status): ?>
                         <option value="<?php echo $status; ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>>
                             <?php echo $status; ?>
@@ -275,7 +275,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="col-12 col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-2"></i>Filter
+                        <i class="fas fa-filter me-2"></i><?php echo htmlspecialchars(am_ui('assets_filter')); ?>
                     </button>
                 </div>
             </form>
@@ -290,28 +290,28 @@ include __DIR__ . '/../includes/header.php';
                     <?php if ($catalogGrouped !== null): ?>
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th class="text-end">Records</th>
-                            <th class="text-end">Qty</th>
-                            <th>UIDs / tags</th>
-                            <th>Class</th>
-                            <th>Category</th>
-                            <th>Country</th>
-                            <th>Location</th>
-                            <th>Actions</th>
+                            <th><?php echo htmlspecialchars(am_ui('th_name')); ?></th>
+                            <th class="text-end"><?php echo htmlspecialchars(am_ui('th_records')); ?></th>
+                            <th class="text-end"><?php echo htmlspecialchars(am_ui('th_qty')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_uids_tags')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_class')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_category')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_country')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_location')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_actions')); ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($catalogGrouped)): ?>
                         <tr>
                             <td colspan="9" class="text-center text-gray-500 py-4">
-                                No items found.<?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a><?php endif; ?>
+                                <?php echo htmlspecialchars(am_ui('assets_no_items')); ?><?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>"><?php echo htmlspecialchars(am_ui('assets_add_first')); ?></a><?php endif; ?>
                             </td>
                         </tr>
                         <?php else: ?>
                         <?php
                         $gClassColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
-                        $gClassLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+                        $gClassLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui('class_material'), 'Consumable' => am_ui('class_consumable'), 'Inventory' => am_ui('class_inventory')];
                         foreach ($catalogGrouped as $g):
                             $rep = (string)($g['representative_id'] ?? '');
                             $cls = (string)($g['cls'] ?? '');
@@ -348,7 +348,7 @@ include __DIR__ . '/../includes/header.php';
                             </td>
                             <td>
                                 <?php if ($rep !== ''): ?>
-                                <a href="<?php echo base_url('assets/view.php?id=' . urlencode($rep)); ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
+                                <a href="<?php echo base_url('assets/view.php?id=' . urlencode($rep)); ?>" class="btn btn-sm btn-outline-primary" title="<?php echo htmlspecialchars(am_ui('common_view')); ?>"><i class="fas fa-eye"></i></a>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -358,23 +358,23 @@ include __DIR__ . '/../includes/header.php';
                     <?php else: ?>
                     <thead>
                         <tr>
-                            <th>QR Code</th>
-                            <th>Asset Tag</th>
-                            <th>Legacy ID</th>
-                            <th>Name</th>
-                            <th>Class</th>
-                            <th>Category</th>
-                            <th>Country</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th><?php echo htmlspecialchars(am_ui('th_qr_code')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_asset_tag')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_legacy_id')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_name')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_class')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_category')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_country')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_location')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_status')); ?></th>
+                            <th><?php echo htmlspecialchars(am_ui('th_actions')); ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($assets)): ?>
                         <tr>
                             <td colspan="10" class="text-center text-gray-500 py-4">
-                                No items found.<?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>">Add your first item</a><?php endif; ?>
+                                <?php echo htmlspecialchars(am_ui('assets_no_items')); ?><?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>"><?php echo htmlspecialchars(am_ui('assets_add_first')); ?></a><?php endif; ?>
                             </td>
                         </tr>
                         <?php else: ?>
@@ -385,7 +385,7 @@ include __DIR__ . '/../includes/header.php';
                                     <code class="text-primary"><?php echo htmlspecialchars($asset['qr_code_id']); ?></code>
                                 <?php elseif (!am_is_auditor_readonly()): ?>
                                     <button class="btn btn-sm btn-outline-primary" onclick="generateQR(<?php echo $asset['asset_id']; ?>)">
-                                        <i class="fas fa-qrcode me-1"></i>Generate
+                                        <i class="fas fa-qrcode me-1"></i><?php echo htmlspecialchars(am_ui('assets_generate')); ?>
                                     </button>
                                 <?php else: ?>
                                     <span class="text-gray-400">—</span>
@@ -412,7 +412,7 @@ include __DIR__ . '/../includes/header.php';
                             <td>
                                 <?php
                                 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
-                                $classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+                                $classLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui('class_material'), 'Consumable' => am_ui('class_consumable'), 'Inventory' => am_ui('class_inventory')];
                                 $cls = $asset['item_class'] ?? '';
                                 ?>
                                 <span class="badge bg-<?php echo $classColors[$cls] ?? 'secondary'; ?>">
@@ -462,20 +462,20 @@ include __DIR__ . '/../includes/header.php';
                                     <?php echo htmlspecialchars($asset['status']); ?>
                                 </span>
                                 <?php if ($asset['allocation_count'] > 0): ?>
-                                    <br><small class="text-gray-500"><?php echo $asset['allocation_count']; ?> allocation(s)</small>
+                                    <br><small class="text-gray-500"><?php echo $asset['allocation_count']; ?> <?php echo htmlspecialchars(am_ui('assets_allocations')); ?></small>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="<?php echo base_url('assets/view.php?id=' . $asset['asset_id']); ?>" class="btn btn-sm btn-outline-primary" title="View">
+                                    <a href="<?php echo base_url('assets/view.php?id=' . $asset['asset_id']); ?>" class="btn btn-sm btn-outline-primary" title="<?php echo htmlspecialchars(am_ui('common_view')); ?>">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <?php if (!am_is_auditor_readonly()): ?>
-                                    <a href="<?php echo base_url('assets/edit.php?id=' . $asset['asset_id']); ?>" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    <a href="<?php echo base_url('assets/edit.php?id=' . $asset['asset_id']); ?>" class="btn btn-sm btn-outline-secondary" title="<?php echo htmlspecialchars(am_ui('common_edit')); ?>">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     <?php if ($asset['qr_code_id']): ?>
-                                    <button class="btn btn-sm btn-outline-success" onclick="labelPrinter.generateLabel(<?php echo $asset['asset_id']; ?>)" title="Print Label">
+                                    <button class="btn btn-sm btn-outline-success" onclick="labelPrinter.generateLabel(<?php echo $asset['asset_id']; ?>)" title="<?php echo htmlspecialchars(am_ui('common_print_label')); ?>">
                                         <i class="fas fa-print"></i>
                                     </button>
                                     <?php endif; ?>

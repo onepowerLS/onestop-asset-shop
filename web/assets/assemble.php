@@ -16,7 +16,7 @@ $page_title = 'Assemble / produce';
 $errors = [];
 
 // ── Reference data ──────────────────────────────────────────────
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
 $countries = am_countries_for_user_select($countries);
 
@@ -227,6 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'item_class' => $resultItemClass,
                     'category_id' => $resultCategoryId,
                     'country_id' => $assemblyCountryId,
+                    'organization_id' => am_resolve_org_id_for_country($countryCode),
                     'location_id' => $assemblyLocationCode,
                     'location_name' => $asmLocName,
                     'condition_status' => $conditionStatus,
@@ -310,6 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'item_class' => 'FixedAsset',
                 'category_id' => $resultCategoryId,
                 'country_id' => $assemblyCountryId,
+                'organization_id' => am_resolve_org_id_for_country($countryCode),
                 'location_id' => $assemblyLocationCode,
                 'location_name' => $asmLocName,
                 'serial_number' => $serialNumber,

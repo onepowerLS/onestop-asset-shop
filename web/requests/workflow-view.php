@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     }
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $cid = (string)($req['requested_for_country'] ?? '');
 $countryLabel = '—';
 foreach ($countries as $c) {

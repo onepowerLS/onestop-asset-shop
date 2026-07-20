@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../config/authz.php';
 require_once __DIR__ . '/../../config/firestore.php';
+require_once __DIR__ . '/../../config/country_scope.php';
 
 header('Content-Type: application/json');
 
@@ -38,7 +39,7 @@ if (!empty($asset['qr_code_id'])) {
     exit;
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countryCode = 'UNK';
 $countryId = (string)($asset['country_id'] ?? '');
 foreach ($countries as $c) {

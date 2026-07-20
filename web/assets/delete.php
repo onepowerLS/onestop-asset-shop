@@ -29,7 +29,7 @@ if ($assetId === '') {
     exit;
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $asset = am_firestore_get_document('am_core_assets', $assetId);
 if (!$asset || !is_array($asset)) {
     $_SESSION['flash_error'] = 'Item not found or already deleted.';

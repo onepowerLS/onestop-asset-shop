@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/request_workflows.php';
 require_login();
 
@@ -34,6 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'update_status') {
         $newStatus = trim($_POST['new_status'] ?? '');
+        $alsoApprove = false;
+        if ($newStatus === 'approve_and_fulfill') {
+            $newStatus = 'Fulfilled';
+            $alsoApprove = true;
+        }
         if (in_array($newStatus, ['Approved', 'Rejected', 'Fulfilled', 'Cancelled'], true)) {
             $update = ['status' => $newStatus];
             $workPayload = $req['payload'] ?? [];
@@ -113,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $available = max(0, $srcQoh - $srcAlloc);
 
                     // Approved: reserve available quantity.
-                    if ($newStatus === 'Approved') {
+                    if ($newStatus === 'Approved' || $alsoApprove) {
                         $allocQty = min($reqQty, $available);
                         $shortQty = max(0, $reqQty - $allocQty);
                         $items[$idx]['allocated_quantity'] = $allocQty;
@@ -158,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Fulfilled: move allocated qty when present, else best-effort available qty.
                     if ($newStatus === 'Fulfilled') {
-                        $allocQty = (int)($li['allocated_quantity'] ?? 0);
+                        $allocQty = $alsoApprove ? (int)($items[$idx]['allocated_quantity'] ?? 0) : (int)($li['allocated_quantity'] ?? 0);
                         $moveQty = $allocQty > 0 ? $allocQty : min($reqQty, $available);
                         $unfulfilled = max(0, $reqQty - $moveQty);
                         $items[$idx]['fulfilled_quantity'] = $moveQty;
@@ -228,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $workPayload['line_items'] = array_values($items);
-                if ($newStatus === 'Approved') {
+                if ($newStatus === 'Approved' || $alsoApprove) {
                     $workPayload['allocation_applied_at'] = date('c');
                     if (!empty($shortNotes)) {
                         $workPayload['allocation_note'] = 'Partially apportioned: ' . implode('; ', $shortNotes);
@@ -267,8 +273,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $update['fulfilled_date'] = date('c');
                 }
             }
+
+            // Cancelled: release allocated stock back to inventory.
+            if ($newStatus === 'Cancelled' && $status === 'Approved') {
+                $items = $workPayload['line_items'] ?? [];
+                if (!is_array($items)) {
+                    $items = [];
+                }
+                $allInvLevels = am_firestore_get_collection('am_core_inventory_levels', 5000);
+                $invByKey = [];
+                foreach ($allInvLevels as $inv) {
+                    $iaid = (string)($inv['asset_id'] ?? '');
+                    $iloc = (string)($inv['location_id'] ?? '');
+                    $icid = (string)($inv['country_id'] ?? '');
+                    if ($iaid !== '' && $iloc !== '') {
+                        $invByKey[$iaid . '|' . $iloc . '|' . $icid] = $inv;
+                    }
+                }
+                $reqCountryId = (string)($req['requested_for_country'] ?? '');
+                $allLocations = am_get_pr_sites();
+                $allAssets = am_firestore_get_collection('am_core_assets', 10000);
+                $assetById = [];
+                foreach ($allAssets as $a) {
+                    $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
+                    if ($aid !== '') {
+                        $assetById[$aid] = $a;
+                    }
+                }
+                $locByAnyKey = [];
+                foreach ($allLocations as $l) {
+                    $lid = (string)($l['id'] ?? $l['location_id'] ?? '');
+                    $lcode = (string)($l['location_code'] ?? '');
+                    if ($lid !== '') {
+                        $locByAnyKey[$lid] = $l;
+                    }
+                    if ($lcode !== '' && $lcode !== $lid) {
+                        $locByAnyKey[$lcode] = $l;
+                    }
+                }
+                foreach ($items as $idx => $li) {
+                    $liAssetId = (string)($li['asset_id'] ?? '');
+                    $allocQty = (int)($li['allocated_quantity'] ?? 0);
+                    if ($liAssetId === '' || $allocQty <= 0) {
+                        continue;
+                    }
+                    $asset = $assetById[$liAssetId] ?? [];
+                    $srcLocId = (string)($asset['location_id'] ?? '');
+                    $srcLoc = $locByAnyKey[$srcLocId] ?? [];
+                    $srcLocationCode = (string)($srcLoc['location_code'] ?? $srcLocId);
+                    if ($srcLocationCode === '') {
+                        continue;
+                    }
+                    $srcKey = $liAssetId . '|' . $srcLocationCode . '|' . $reqCountryId;
+                    $srcInv = $invByKey[$srcKey] ?? null;
+                    if ($srcInv) {
+                        $newAlloc = max(0, (int)($srcInv['quantity_allocated'] ?? 0) - $allocQty);
+                        am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
+                            'quantity_allocated' => $newAlloc,
+                            'updated_at' => date('c'),
+                        ]);
+                    }
+                    $items[$idx]['allocated_quantity'] = 0;
+                    $items[$idx]['short_quantity'] = 0;
+                    $items[$idx]['allocation_released_at'] = date('c');
+                }
+                $workPayload['line_items'] = array_values($items);
+                $workPayload['allocation_released_at'] = date('c');
+                unset($workPayload['allocation_note']);
+                $update['payload'] = $workPayload;
+            }
             am_firestore_update_document('am_core_requests', $docId, $update);
-            $_SESSION['flash_success'] = 'Status updated to ' . $newStatus . '.';
+            $_SESSION['flash_success'] = $alsoApprove ? 'Request approved and fulfilled.' : ('Status updated to ' . $newStatus . '.');
             header('Location: ' . base_url('requests/dispatch-view.php?id=' . urlencode($docId)));
             exit;
         }
@@ -283,7 +358,7 @@ if (!is_array($payload)) $payload = [];
 $lineItems = $payload['line_items'] ?? [];
 if (!is_array($lineItems)) $lineItems = [];
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $cid = (string)($req['requested_for_country'] ?? '');
 $countryLabel = '—';
 foreach ($countries as $c) {
@@ -327,21 +402,36 @@ include __DIR__ . '/../includes/header.php';
         </div>
         <div class="d-flex gap-2">
             <?php if ($canProcess && $status === 'Submitted'): ?>
-            <form method="post" class="d-inline">
+            <form method="post" class="d-inline" onsubmit="return confirm('Approve this request and reserve stock?')">
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="new_status" value="Approved">
                 <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>Approve</button>
             </form>
-            <form method="post" class="d-inline">
+            <form method="post" class="d-inline" onsubmit="return confirm('Approve and fulfill this request now? Stock will be moved to the destination immediately.')">
+                <input type="hidden" name="action" value="update_status">
+                <input type="hidden" name="new_status" value="approve_and_fulfill">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-check-double me-1"></i>Approve &amp; Fulfill</button>
+            </form>
+            <form method="post" class="d-inline" onsubmit="return confirm('Reject this request?')">
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="new_status" value="Rejected">
                 <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-times me-1"></i>Reject</button>
             </form>
+            <form method="post" class="d-inline" onsubmit="return confirm('Cancel this request?')">
+                <input type="hidden" name="action" value="update_status">
+                <input type="hidden" name="new_status" value="Cancelled">
+                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fas fa-ban me-1"></i>Cancel</button>
+            </form>
             <?php elseif ($canProcess && $status === 'Approved'): ?>
-            <form method="post" class="d-inline">
+            <form method="post" class="d-inline" onsubmit="return confirm('Mark this request as fulfilled? Stock will be moved to the destination.')">
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="new_status" value="Fulfilled">
                 <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-check-double me-1"></i>Mark fulfilled</button>
+            </form>
+            <form method="post" class="d-inline" onsubmit="return confirm('Cancel this request? Allocated stock will be released.')">
+                <input type="hidden" name="action" value="update_status">
+                <input type="hidden" name="new_status" value="Cancelled">
+                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fas fa-ban me-1"></i>Cancel</button>
             </form>
             <?php endif; ?>
             <a href="<?php echo base_url('requests/workflow-index.php'); ?>" class="btn btn-outline-secondary btn-sm">Back to list</a>
@@ -356,11 +446,19 @@ include __DIR__ . '/../includes/header.php';
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead>
-                            <tr><th>#</th><th>Item</th><th>Tag</th><th>Class</th><th class="text-end">Qty</th><th>Unit</th></tr>
+                            <tr>
+                                <th>#</th><th>Item</th><th>Tag</th><th>Class</th><th class="text-end">Qty</th><th>Unit</th>
+                                <?php if ($status === 'Approved' || $status === 'Fulfilled'): ?>
+                                <th class="text-end">Allocated</th>
+                                <?php endif; ?>
+                                <?php if ($status === 'Fulfilled'): ?>
+                                <th class="text-end">Fulfilled</th>
+                                <?php endif; ?>
+                            </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($lineItems)): ?>
-                            <tr><td colspan="6" class="text-center text-gray-500 py-4">No line items.</td></tr>
+                            <tr><td colspan="<?php echo $status === 'Fulfilled' ? 8 : ($status === 'Approved' ? 7 : 6); ?>" class="text-center text-gray-500 py-4">No line items.</td></tr>
                             <?php else: ?>
                             <?php foreach ($lineItems as $idx => $li):
                                 $aid = (string)($li['asset_id'] ?? '');
@@ -381,6 +479,22 @@ include __DIR__ . '/../includes/header.php';
                                 <td><span class="badge bg-<?php echo $classBadges[$cls] ?? 'secondary'; ?>"><?php echo htmlspecialchars($cls ?: '—'); ?></span></td>
                                 <td class="text-end fw-bold"><?php echo (int)($li['quantity'] ?? 0); ?></td>
                                 <td><?php echo htmlspecialchars($li['unit'] ?? 'EA'); ?></td>
+                                <?php if ($status === 'Approved' || $status === 'Fulfilled'): ?>
+                                <td class="text-end"><?php
+                                    $alloc = (int)($li['allocated_quantity'] ?? 0);
+                                    $short = (int)($li['short_quantity'] ?? 0);
+                                    echo $alloc;
+                                    if ($short > 0) { echo ' <span class="text-danger small">(short ' . $short . ')</span>'; }
+                                ?></td>
+                                <?php endif; ?>
+                                <?php if ($status === 'Fulfilled'): ?>
+                                <td class="text-end"><?php
+                                    $fulfilled = (int)($li['fulfilled_quantity'] ?? 0);
+                                    $unfulfilled = (int)($li['unfulfilled_quantity'] ?? 0);
+                                    echo $fulfilled;
+                                    if ($unfulfilled > 0) { echo ' <span class="text-warning small">(' . $unfulfilled . ' pending)</span>'; }
+                                ?></td>
+                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                             <?php endif; ?>
@@ -430,6 +544,14 @@ include __DIR__ . '/../includes/header.php';
                     <p class="mb-1"><?php echo htmlspecialchars($status); ?></p>
                     <?php if (!empty($req['fulfilled_date'])): ?>
                     <p class="mb-0 small text-gray-600">Fulfilled: <?php echo htmlspecialchars(substr((string)$req['fulfilled_date'], 0, 10)); ?></p>
+                    <?php endif; ?>
+                    <?php if (!empty($payload['allocation_note'])): ?>
+                    <hr class="my-2">
+                    <p class="mb-0 small text-warning"><i class="fas fa-triangle-exclamation me-1"></i><?php echo htmlspecialchars($payload['allocation_note']); ?></p>
+                    <?php endif; ?>
+                    <?php if (!empty($payload['allocation_applied_at']) && $status === 'Approved'): ?>
+                    <hr class="my-2">
+                    <p class="mb-0 small text-gray-600"><i class="fas fa-box me-1"></i>Stock allocated: <?php echo htmlspecialchars(substr((string)$payload['allocation_applied_at'], 0, 10)); ?></p>
                     <?php endif; ?>
                     <hr class="my-2">
                     <p class="mb-0 small text-gray-500">Request #: <?php echo htmlspecialchars($req['request_number'] ?? ''); ?></p>

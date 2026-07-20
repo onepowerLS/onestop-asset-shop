@@ -22,7 +22,7 @@ function am_mutation_log_countries(): array {
     if ($c !== null) {
         return $c;
     }
-    $c = am_firestore_get_collection('pr_master_countries', 200);
+    $c = am_get_countries(200);
     return is_array($c) ? $c : [];
 }
 

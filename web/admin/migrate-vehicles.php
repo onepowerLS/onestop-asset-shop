@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
 
 if (($_SESSION['role'] ?? '') !== 'Admin') {
@@ -77,6 +78,9 @@ function seed_vehicle_categories(): array {
             $seeded[$code] = $byCode[$code]['id'] ?? $code;
             continue;
         }
+        // R5: PR is now sole author of pr_master_categories. This one-time
+        // migration script may still seed missing vehicle categories, but
+        // new categories should be created via PR admin going forward.
         $result = am_firestore_create_document('pr_master_categories', [
             'category_code'     => $code,
             'category_name'     => $name,
@@ -242,7 +246,7 @@ $stats = ['imported' => 0, 'skipped' => 0, 'errors' => 0];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$mysqlError && !empty($mysqlVehicles)) {
     $catIds = seed_vehicle_categories();
-    $countries = am_firestore_get_collection('pr_master_countries', 500);
+    $countries = am_get_countries();
     $countryById = [];
     foreach ($countries as $c) {
         $cid = (string)($c['country_id'] ?? $c['id'] ?? '');

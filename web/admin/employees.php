@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
 
 if (($_SESSION['role'] ?? '') !== 'Admin') {
@@ -11,7 +12,7 @@ if (($_SESSION['role'] ?? '') !== 'Admin') {
 
 $page_title = 'Employees';
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countryById = [];
 foreach ($countries as $c) {
     $cid = (string)($c['country_id'] ?? $c['id'] ?? '');

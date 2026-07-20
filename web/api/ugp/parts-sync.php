@@ -19,6 +19,7 @@
 require_once __DIR__ . '/../../config/firebase.php';
 require_once __DIR__ . '/../../config/firestore.php';
 require_once __DIR__ . '/../../config/ugp_parts.php';
+require_once __DIR__ . '/../../config/country_scope.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -81,7 +82,7 @@ if ($countryId === '' || !is_array($parts)) {
     exit;
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500, $token);
+$countries = am_get_countries();
 $categories = am_firestore_get_collection('pr_master_categories', 1000, $token);
 $allAssets = am_firestore_get_collection('am_core_assets', 2000, $token);
 

@@ -196,6 +196,7 @@ function am_ugp_sync_single_part(array $part, array $ctx): array {
         'item_class' => 'Inventory',
         'category_id' => $catId,
         'country_id' => $countryId,
+        'organization_id' => am_resolve_org_id_for_country($ccode),
         'location_id' => trim((string)($part['location_id'] ?? '')),
         'condition_status' => 'New',
         'status' => 'Available',

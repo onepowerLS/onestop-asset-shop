@@ -537,11 +537,8 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
 // maintained by the PR / Ops team.
 
 function am_get_pr_sites(): array {
-    $orgToCountry = [
-        '1pwr_lesotho' => 'LSO',
-        '1pwr_benin'   => 'BEN',
-        '1pwr_zambia'  => 'ZMB',
-    ];
+    require_once __DIR__ . '/country_scope.php';
+    $orgToCountry = am_org_to_country_map();
 
     $seen = [];
     $locations = [];
@@ -597,6 +594,8 @@ function am_get_pr_sites(): array {
         );
         return $locations;
     }
+
+    error_log('[am_get_pr_sites] Fallback: am_reference_sites cache empty, reading legacy sites + referenceData_sites');
 
     // 1. `sites` collection — Lesotho field sites (canonical)
     $sites = am_firestore_get_collection('sites', 500);
@@ -709,6 +708,10 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
     }
 
     $amCountryAccess = am_extract_am_country_access_codes($data);
+    $amOrgAccess = am_extract_am_org_access($data);
+    if (empty($amOrgAccess)) {
+        $amOrgAccess = am_org_ids_from_country_codes($amCountryAccess);
+    }
 
     return [
         'ok' => true,
@@ -719,9 +722,11 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
             'permissionLevel' => $data['permissionLevel'] ?? null,
             'department' => (string)($data['department'] ?? ''),
             'organization' => (string)($data['organization'] ?? ''),
+            'organizationId' => (string)($data['organizationId'] ?? $data['organization_id'] ?? ''),
             'isActive' => $data['isActive'] ?? true,
             'capabilities' => $caps,
             'amCountryAccess' => $amCountryAccess,
+            'amOrgAccess' => $amOrgAccess,
         ],
     ];
 }

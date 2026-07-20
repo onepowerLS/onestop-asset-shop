@@ -11,7 +11,7 @@ am_ensure_country_scope_from_session();
 $page_title = 'Stock Levels';
 
 $assets = am_firestore_get_collection('am_core_assets', 4000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 $inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 4000);

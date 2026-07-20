@@ -12,7 +12,7 @@ $page_title = 'Service workflows';
 $templates = am_request_workflow_templates();
 
 $requests = am_firestore_get_collection('am_core_requests', 2000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countryById = [];
 foreach ($countries as $c) {
     $cid = (string)($c['country_id'] ?? $c['id'] ?? '');

@@ -34,11 +34,15 @@ return [
             'icon' => 'fa-sign-in-alt',
             'title' => 'Logging In',
             'html' => '
-<p>Go to <strong>am.1pwrafrica.com</strong>. Enter your 1PWR email address and password. The app uses Firebase — the same credentials as Procurement and Job Cards.</p>
-<p>If you previously used a <strong>username</strong> (not an email), that can still work: the system resolves your account from the legacy mapping.</p>
+<p>Go to <strong>am.1pwrafrica.com</strong>. You will be redirected to <strong>Nexus</strong> (<code>nexus.1pwrafrica.com</code>), the 1PWR single sign-on portal. Sign in there with your 1PWR email and password, and you will be sent back to Asset Management automatically.</p>
+<p>Nexus is the same sign-on used by Procurement, Job Cards, and other 1PWR tools — one account, one login for everything.</p>
+<div class="alert alert-info mb-2">
+    <i class="fas fa-info-circle me-1"></i>
+    <strong>Fallback login:</strong> If Nexus is unavailable, add <code>?fallback=1</code> to the URL (e.g. <code>am.1pwrafrica.com/?fallback=1</code>) to use the local Firebase email/password login.
+</div>
 <div class="alert alert-info mb-0">
     <i class="fas fa-info-circle me-1"></i>
-    <strong>Forgot your password?</strong> Use “Forgot Password?” on the login page, or contact your administrator.
+    <strong>Forgot your password?</strong> Reset it on the Nexus portal, or contact your administrator.
 </div>',
         ],
         [
@@ -287,7 +291,7 @@ return [
         <tr><td><strong>Auditor</strong></td><td>Read-only UI; cannot check out or mutate data (writes blocked in UI)</td></tr>
     </tbody>
 </table>
-<p class="mb-0">Your role comes from <strong>permissionLevel</strong> in the shared Firebase user profile. Ask an administrator to change it.</p>',
+<p class="mb-0">Your role comes from <strong>permissionLevel</strong> in your Nexus user profile (<code>nexus_users/{uid}</code> in Firestore). Country and organization access are also set there. Ask an administrator to change it.</p>',
         ],
     ],
 ];

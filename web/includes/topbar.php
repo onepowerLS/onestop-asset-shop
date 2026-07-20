@@ -95,9 +95,9 @@ if ($returnPath === '' || $returnPath[0] !== '/') {
                                 <span class="mb-0 font-small fw-bold text-gray-900">
                                     <?php 
                                     if (is_logged_in()) {
-                                        echo htmlspecialchars($_SESSION['username'] ?? 'User');
+                                        echo htmlspecialchars($_SESSION['username'] ?? am_ui('nav_guest'));
                                     } else {
-                                        echo 'Guest';
+                                        echo htmlspecialchars(am_ui('nav_guest'));
                                     }
                                     ?>
                                 </span>
@@ -108,21 +108,21 @@ if ($returnPath === '' || $returnPath[0] !== '/') {
                         <?php if (is_logged_in()): ?>
                             <a class="dropdown-item d-flex align-items-center" href="<?php echo base_url('profile.php'); ?>">
                                 <i class="fas fa-user me-2"></i>
-                                My Profile
+                                <?php echo htmlspecialchars(am_ui('nav_my_profile')); ?>
                             </a>
                             <a class="dropdown-item d-flex align-items-center" href="<?php echo base_url('settings.php'); ?>">
                                 <i class="fas fa-cog me-2"></i>
-                                Settings
+                                <?php echo htmlspecialchars(am_ui('nav_settings')); ?>
                             </a>
                             <div role="separator" class="dropdown-divider my-1"></div>
                             <a class="dropdown-item d-flex align-items-center text-danger" href="<?php echo base_url('logout.php'); ?>">
                                 <i class="fas fa-sign-out-alt me-2"></i>
-                                Logout
+                                <?php echo htmlspecialchars(am_ui('nav_logout')); ?>
                             </a>
                         <?php else: ?>
                             <a class="dropdown-item d-flex align-items-center" href="<?php echo base_url('login.php'); ?>">
                                 <i class="fas fa-sign-in-alt me-2"></i>
-                                Login
+                                <?php echo htmlspecialchars(am_ui('nav_login')); ?>
                             </a>
                         <?php endif; ?>
                     </div>

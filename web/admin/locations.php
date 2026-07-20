@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
 
 if (($_SESSION['role'] ?? '') !== 'Admin') {
@@ -12,7 +13,7 @@ if (($_SESSION['role'] ?? '') !== 'Admin') {
 $page_title = 'Locations (from PR Portal)';
 
 $locations = am_get_pr_sites();
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countries = array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 
 $countryNames = [];

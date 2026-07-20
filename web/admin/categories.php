@@ -15,103 +15,26 @@ $editId = $_GET['edit'] ?? '';
 
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 
+// R5 Retirement: PR is now the sole author of pr_master_categories.
+// AM admin can view but not create/update/delete. These operations are
+// handled by the PR system's admin UI.
+$readOnlyNotice = 'Categories are now managed by the PR System. Contact the PR admin to create, update, or delete categories.';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $catId = trim($_POST['category_doc_id'] ?? '');
-    $catCode = trim($_POST['category_code'] ?? '');
-    $catName = trim($_POST['category_name'] ?? '');
-    $itemClass = trim($_POST['item_class'] ?? '');
-    $deptScope = trim($_POST['department_scope'] ?? 'All');
-    $description = trim($_POST['description'] ?? '');
-    $usefulLife = trim($_POST['useful_life_years'] ?? '');
-    $depMethod = trim($_POST['depreciation_method'] ?? 'None');
-    $reorder = isset($_POST['reorder_enabled']) ? 1 : 0;
-
-    if ($catName === '') $errors[] = 'Category name is required.';
-    if ($catCode === '') $errors[] = 'Category code is required.';
-    if (!in_array($itemClass, ['FixedAsset', 'Material', 'Consumable', 'Inventory'])) $errors[] = 'Valid item class is required.';
-
-    if (empty($errors)) {
-        $data = [
-            'category_code' => $catCode,
-            'category_name' => $catName,
-            'item_class' => $itemClass,
-            'department_scope' => $deptScope,
-            'description' => $description,
-            'useful_life_years' => $usefulLife !== '' ? (int)$usefulLife : null,
-            'depreciation_method' => $depMethod,
-            'reorder_enabled' => $reorder,
-            'active' => 1,
-        ];
-
-        if ($action === 'update' && $catId !== '') {
-            $result = am_firestore_update_document('pr_master_categories', $catId, $data);
-        } else {
-            $result = am_firestore_create_document('pr_master_categories', $data);
-        }
-
-        if ($result['ok']) {
-            $_SESSION['flash_success'] = $action === 'update' ? 'Category updated.' : 'Category created.';
-            header('Location: ' . base_url('admin/categories.php'));
-            exit;
-        } else {
-            $errors[] = $result['error'] ?? 'Save failed.';
-        }
-    }
+    $_SESSION['flash_error'] = $readOnlyNotice;
+    header('Location: ' . base_url('admin/categories.php'));
+    exit;
 }
 
 if ($_GET['delete'] ?? '') {
-    $result = am_firestore_delete_document('pr_master_categories', $_GET['delete']);
-    $_SESSION['flash_success'] = $result['ok'] ? 'Category deleted.' : 'Delete failed.';
+    $_SESSION['flash_error'] = $readOnlyNotice;
     header('Location: ' . base_url('admin/categories.php'));
     exit;
 }
 
 // Seed additional consumable categories (idempotent — skips existing codes).
 if (($_GET['seed_consumables'] ?? '') === '1' && ($_SESSION['role'] ?? '') === 'Admin') {
-    $newCategories = [
-        ['code' => 'CON-MNT', 'name' => 'Maintenance Supplies', 'dept' => 'O&M', 'desc' => 'Lubricants, fasteners, tape, cable ties, sealant, adhesives'],
-        ['code' => 'CON-LUB', 'name' => 'Lubricants & Fluids', 'dept' => 'O&M', 'desc' => 'Engine oil, grease, hydraulic fluid, coolant, brake fluid'],
-        ['code' => 'CON-FUE', 'name' => 'Fuel', 'dept' => 'General', 'desc' => 'Petrol, diesel, gas for generators and vehicles'],
-        ['code' => 'CON-PRN', 'name' => 'Print & Stationery', 'dept' => 'General', 'desc' => 'Paper, toner, ink, pens, notebooks, printer consumables'],
-        ['code' => 'CON-ITC', 'name' => 'IT Consumables', 'dept' => 'General', 'desc' => 'Toner, ink, cables, adapters, storage media, batteries'],
-        ['code' => 'CON-MSC', 'name' => 'Miscellaneous Consumables', 'dept' => 'General', 'desc' => 'General consumables not covered by other categories'],
-        ['code' => 'CON-SAF', 'name' => 'Safety & First Aid', 'dept' => 'General', 'desc' => 'First aid kits, fire extinguisher refills, signage, spotters'],
-        ['code' => 'CON-FOD', 'name' => 'Food & Catering', 'dept' => 'General', 'desc' => 'Site rations, water, catering supplies for field work'],
-    ];
-    $existingByCode = [];
-    foreach ($categories as $cat) {
-        $code = strtoupper(trim((string)($cat['category_code'] ?? '')));
-        if ($code !== '') {
-            $existingByCode[$code] = $cat;
-        }
-    }
-    $created = 0;
-    $skipped = 0;
-    foreach ($newCategories as $new) {
-        $code = strtoupper($new['code']);
-        if (isset($existingByCode[$code])) {
-            $skipped++;
-            continue;
-        }
-        $data = [
-            'category_code' => $new['code'],
-            'category_name' => $new['name'],
-            'item_class' => 'Consumable',
-            'department_scope' => $new['dept'],
-            'description' => $new['desc'],
-            'useful_life_years' => null,
-            'depreciation_method' => 'None',
-            'reorder_enabled' => 1,
-            'active' => 1,
-            'created_at' => date('c'),
-        ];
-        $r = am_firestore_create_document('pr_master_categories', $data);
-        if ($r['ok']) {
-            $created++;
-        }
-    }
-    $_SESSION['flash_success'] = "Seeded consumable categories: {$created} created, {$skipped} already existed.";
+    $_SESSION['flash_error'] = $readOnlyNotice;
     header('Location: ' . base_url('admin/categories.php'));
     exit;
 }

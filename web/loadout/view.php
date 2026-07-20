@@ -23,7 +23,7 @@ if (!$m) {
     exit;
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 if (!am_record_in_country_scope($m, $countries)) {
     $_SESSION['flash_error'] = 'Manifest is outside your country scope.';
     header('Location: ' . base_url('loadout/index.php'));

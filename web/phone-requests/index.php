@@ -3,12 +3,13 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/it_am.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
 
 $page_title = 'Phone requests';
 
 $rows = am_firestore_get_collection(AM_PHONE_REQUESTS_COLLECTION, 2000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 
 $errors = [];
 $showForm = isset($_GET['new']);

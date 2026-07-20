@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/duplicate_assets.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/locale.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -22,10 +23,10 @@ if (!$asset) {
     exit;
 }
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 am_require_asset_visible($asset, $countries);
 
-$page_title = 'Edit: ' . ($asset['name'] ?? 'Item');
+$page_title = am_ui('view_edit') . ': ' . ($asset['name'] ?? am_ui('class_fixed_asset'));
 $errors = [];
 $warnings = [];
 
@@ -130,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'item_class' => $itemClass,
             'category_id' => trim($_POST['category_id'] ?? ''),
             'country_id' => $countryId,
+            'organization_id' => am_resolve_org_id_for_country($ccode),
             'location_id' => trim($_POST['location_id'] ?? ''),
             'serial_number' => trim($_POST['serial_number'] ?? ''),
             'manufacturer' => trim($_POST['manufacturer'] ?? ''),
@@ -237,10 +239,10 @@ $cls = (string)($vals['item_class'] ?? '');
 
 $statusOptions = ['Available', 'Allocated', 'CheckedOut', 'InProject', 'Consumed', 'Deployed', 'Missing', 'WrittenOff', 'Retired'];
 $itemClassOptions = [
-    'FixedAsset' => ['label' => 'Fixed Asset', 'icon' => 'fa-building', 'color' => 'primary'],
-    'Material' => ['label' => 'Material', 'icon' => 'fa-cubes', 'color' => 'warning'],
-    'Consumable' => ['label' => 'Consumable', 'icon' => 'fa-recycle', 'color' => 'info'],
-    'Inventory' => ['label' => 'Inventory', 'icon' => 'fa-boxes-stacked', 'color' => 'success'],
+    'FixedAsset' => ['label' => am_ui('class_fixed_asset'), 'icon' => 'fa-building', 'color' => 'primary'],
+    'Material' => ['label' => am_ui('class_material'), 'icon' => 'fa-cubes', 'color' => 'warning'],
+    'Consumable' => ['label' => am_ui('class_consumable'), 'icon' => 'fa-recycle', 'color' => 'info'],
+    'Inventory' => ['label' => am_ui('class_inventory'), 'icon' => 'fa-boxes-stacked', 'color' => 'success'],
 ];
 
 include __DIR__ . '/../includes/header.php';
@@ -251,12 +253,12 @@ include __DIR__ . '/../includes/header.php';
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>">Catalog</a></li>
+                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_catalog')); ?></a></li>
                     <li class="breadcrumb-item"><a href="<?php echo base_url('assets/view.php?id=' . urlencode($assetId)); ?>"><?php echo htmlspecialchars($asset['asset_tag'] ?? $assetId); ?></a></li>
-                    <li class="breadcrumb-item active">Edit</li>
+                    <li class="breadcrumb-item active"><?php echo htmlspecialchars(am_ui('view_edit')); ?></li>
                 </ol>
             </nav>
-            <h1 class="h2 mt-2">Edit: <?php echo htmlspecialchars($asset['name'] ?? ''); ?></h1>
+            <h1 class="h2 mt-2"><?php echo htmlspecialchars(am_ui('view_edit')); ?>: <?php echo htmlspecialchars($asset['name'] ?? ''); ?></h1>
         </div>
     </div>
 
@@ -282,28 +284,27 @@ include __DIR__ . '/../includes/header.php';
     <form method="POST" action="" id="editItemForm">
         <!-- Unique identifiers (fix false-positive duplicate groups) -->
         <div class="card border-0 shadow mb-4">
-            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Identifiers &amp; tags</h2></div>
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('form_identifiers_tags')); ?></h2></div>
             <div class="card-body">
                 <p class="small text-gray-600 mb-3">
-                    <strong>Asset tag</strong> and <strong>QR id</strong> must each be unique in the catalog (case-insensitive).
-                    If duplicate review grouped different physical items, give each item its own tag here, or use <strong>Mark as not duplicate</strong> on the review page.
+                    <?php echo am_ui('form_identifiers_notice'); ?>
                 </p>
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Document ID</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_document_id')); ?></label>
                         <input type="text" class="form-control" value="<?php echo htmlspecialchars($assetId); ?>" readonly>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Asset tag <span class="text-danger">*</span></label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_asset_tag')); ?> <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="asset_tag" required
                             value="<?php echo htmlspecialchars((string)($vals['asset_tag'] ?? '')); ?>"
                             autocomplete="off" spellcheck="false">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">QR code id</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_qr_code_id')); ?></label>
                         <input type="text" class="form-control" name="qr_code_id"
                             value="<?php echo htmlspecialchars((string)($vals['qr_code_id'] ?? '')); ?>"
-                            placeholder="Optional; must be unique if set" autocomplete="off" spellcheck="false">
+                            placeholder="<?php echo htmlspecialchars(am_ui('form_qr_placeholder')); ?>" autocomplete="off" spellcheck="false">
                     </div>
                 </div>
             </div>
@@ -311,11 +312,11 @@ include __DIR__ . '/../includes/header.php';
 
         <!-- Classification & Status -->
         <div class="card border-0 shadow mb-4">
-            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Classification & Status</h2></div>
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('form_classification_status')); ?></h2></div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-12 col-md-8">
-                        <label class="form-label">Classification</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_classification')); ?></label>
                         <div class="d-flex gap-2 flex-wrap">
                             <?php foreach ($itemClassOptions as $classKey => $cfg): ?>
                             <div>
@@ -329,7 +330,7 @@ include __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Status</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('th_status')); ?></label>
                         <select class="form-select" name="status" id="assetStatusSelect">
                             <?php foreach ($statusOptions as $s): ?>
                             <option value="<?php echo $s; ?>" <?php echo (string)($vals['status'] ?? '') === $s ? 'selected' : ''; ?>><?php echo $s; ?></option>
@@ -339,17 +340,17 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="row g-3 mt-0" id="allocatedDepartmentRow" style="display:none;">
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Allocated to department</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_allocated_dept')); ?></label>
                         <select class="form-select" name="allocated_department" id="allocatedDepartment">
                             <option value="">—</option>
                             <?php foreach (['RET', 'FAC', 'O&M', 'IT', 'General', 'Finance', 'HR', 'Procurement', 'Fleet'] as $d): ?>
                             <option value="<?php echo $d; ?>" <?php echo (string)($vals['allocated_department'] ?? '') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <div class="form-text">Shown only when Status is Allocated, CheckedOut, InProject, or Deployed.</div>
+                        <div class="form-text"><?php echo htmlspecialchars(am_ui('form_allocated_dept_hint')); ?></div>
                     </div>
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Project / concession (optional)</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_allocated_project')); ?></label>
                         <input type="text" class="form-control" name="allocated_project" id="allocatedProject"
                             value="<?php echo htmlspecialchars((string)($vals['allocated_project'] ?? '')); ?>"
                             placeholder="e.g. Sehlabathebe, Powerhouse #14, IT bench">
@@ -360,21 +361,21 @@ include __DIR__ . '/../includes/header.php';
 
         <!-- Core Details -->
         <div class="card border-0 shadow mb-4">
-            <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Item Details</h2></div>
+            <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('form_item_details')); ?></h2></div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_name')); ?> <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="name" value="<?php echo htmlspecialchars($vals['name'] ?? ''); ?>" required>
                     </div>
                     <div class="col-12 col-md-2">
-                        <label class="form-label">Legacy ID</label>
-                        <input type="text" class="form-control" name="legacy_tag" value="<?php echo htmlspecialchars($vals['legacy_tag'] ?? ''); ?>" placeholder="Old system UID">
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_legacy_id')); ?></label>
+                        <input type="text" class="form-control" name="legacy_tag" value="<?php echo htmlspecialchars($vals['legacy_tag'] ?? ''); ?>" placeholder="<?php echo htmlspecialchars(am_ui('form_legacy_placeholder')); ?>">
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Category</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_category')); ?></label>
                         <select class="form-select" name="category_id" id="categorySelect">
-                            <option value="">Select category...</option>
+                            <option value=""><?php echo htmlspecialchars(am_ui('form_select_category')); ?></option>
                             <?php foreach ($categories as $cat):
                                 $catId = (string)($cat['category_id'] ?? $cat['id'] ?? '');
                                 $catClass = (string)($cat['item_class'] ?? '');
@@ -388,9 +389,9 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Country <span class="text-danger">*</span></label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_country')); ?> <span class="text-danger">*</span></label>
                         <select class="form-select" name="country_id" required>
-                            <option value="">Select country...</option>
+                            <option value=""><?php echo htmlspecialchars(am_ui('form_select_country')); ?></option>
                             <?php foreach ($countries as $c):
                                 $cid = (string)($c['country_id'] ?? $c['id'] ?? '');
                             ?>
@@ -402,13 +403,13 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Description</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_description')); ?></label>
                         <textarea class="form-control" name="description" rows="3"><?php echo htmlspecialchars($vals['description'] ?? ''); ?></textarea>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Location</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_location')); ?></label>
                         <select class="form-select" name="location_id">
-                            <option value="">Select location...</option>
+                            <option value=""><?php echo htmlspecialchars(am_ui('form_select_location')); ?></option>
                             <?php foreach ($locations as $loc):
                                 $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
                             ?>
@@ -420,7 +421,7 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Condition</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_condition')); ?></label>
                         <select class="form-select" name="condition_status">
                             <?php foreach (['New', 'Good', 'Fair', 'Poor', 'Damaged', 'Retired'] as $cs): ?>
                             <option value="<?php echo $cs; ?>" <?php echo (string)($vals['condition_status'] ?? '') === $cs ? 'selected' : ''; ?>><?php echo $cs; ?></option>

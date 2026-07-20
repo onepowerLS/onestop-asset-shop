@@ -11,8 +11,9 @@ if (empty($_SESSION['firebase_id_token'])) {
 }
 
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
 
-$countries = am_firestore_get_collection('pr_master_countries', 100);
+$countries = am_get_countries();
 $pageTitle = 'Reports';
 include __DIR__ . '/../includes/header.php';
 include __DIR__ . '/../includes/sidebar.php';

@@ -15,7 +15,7 @@ $docId = trim($_GET['id'] ?? '');
 $isNew = ($docId === '');
 
 $manifest = null;
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 if (!$isNew) {
     $manifest = am_firestore_get_document(AM_LOADOUT_COLLECTION, $docId);
     if (!$manifest) {

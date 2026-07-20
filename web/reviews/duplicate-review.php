@@ -16,7 +16,7 @@ $page_title = 'Duplicate review';
 $message = '';
 $error = '';
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $locations = am_get_pr_sites();
 $locationById = [];
 foreach ($locations as $l) {

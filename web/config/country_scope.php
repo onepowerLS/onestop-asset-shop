@@ -5,10 +5,232 @@
  */
 require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/authz.php';
+require_once __DIR__ . '/firestore.php';
+require_once __DIR__ . '/canonical_sync.php';
+
+/**
+ * Get countries list — cache-first via am_canonical_get('countries'),
+ * with fallback to legacy pr_master_countries Firestore collection.
+ * Fallback usage is logged to PHP error_log for monitoring.
+ * After 30 days of no fallback hits, the fallback can be removed.
+ */
+function am_get_countries(int $pageSize = 500): array {
+    if (function_exists('am_canonical_get')) {
+        $cached = am_canonical_get('countries');
+        if (!empty($cached)) {
+            return $cached;
+        }
+        error_log('[am_get_countries] Fallback: am_reference_countries cache empty, reading pr_master_countries');
+    }
+    return am_firestore_get_collection('pr_master_countries', $pageSize);
+}
 
 /** @return list<string> */
 function am_org_country_codes(): array {
     return ['LSO', 'ZMB', 'BEN'];
+}
+
+/** @return array<string, string> org_id => country_code */
+function am_org_to_country_map(): array {
+    return [
+        '1pwr_lesotho' => 'LSO',
+        '1pwr_benin'   => 'BEN',
+        '1pwr_zambia'  => 'ZMB',
+    ];
+}
+
+/** @return array<string, string> country_code => org_id */
+function am_country_to_org_map(): array {
+    return array_flip(am_org_to_country_map());
+}
+
+/** Resolve org_id from country_code. Returns '' if unknown. */
+function am_resolve_org_id_for_country(string $countryCode): string {
+    $map = am_country_to_org_map();
+    $cc = strtoupper(trim($countryCode));
+    return $map[$cc] ?? '';
+}
+
+/** Resolve country_code from org_id. Returns '' if unknown. */
+function am_resolve_country_for_org_id(string $orgId): string {
+    $map = am_org_to_country_map();
+    $oid = strtolower(trim($orgId));
+    return $map[$oid] ?? '';
+}
+
+/**
+ * Extract organization IDs from Firestore users/{uid} or nexus_users/{uid} document.
+ * Checks amOrgAccess, systemAccess.am.orgAccess, and organizationId fields.
+ *
+ * @param array<string, mixed> $doc
+ * @return list<string>
+ */
+function am_extract_am_org_access(array $doc): array {
+    $valid = array_flip(array_keys(am_org_to_country_map()));
+
+    if (isset($doc['amOrgAccess']) && is_array($doc['amOrgAccess'])) {
+        $out = [];
+        foreach ($doc['amOrgAccess'] as $o) {
+            $oid = strtolower(trim((string)$o));
+            if ($oid !== '' && isset($valid[$oid])) {
+                $out[$oid] = true;
+            }
+        }
+        return array_keys($out);
+    }
+
+    $sa = $doc['systemAccess'] ?? null;
+    if (is_array($sa)) {
+        $am = $sa['am'] ?? null;
+        if (is_array($am) && isset($am['orgAccess']) && is_array($am['orgAccess'])) {
+            $out = [];
+            foreach ($am['orgAccess'] as $o) {
+                $oid = strtolower(trim((string)$o));
+                if ($oid !== '' && isset($valid[$oid])) {
+                    $out[$oid] = true;
+                }
+            }
+            return array_keys($out);
+        }
+    }
+
+    $single = strtolower(trim((string)($doc['organizationId'] ?? $doc['organization_id'] ?? '')));
+    if ($single !== '' && isset($valid[$single])) {
+        return [$single];
+    }
+
+    return [];
+}
+
+/**
+ * Default to all org IDs when none are specified.
+ * @param list<string> $orgIds
+ * @return list<string>
+ */
+function am_apply_default_org_allow_if_empty(array $orgIds): array {
+    $valid = array_flip(array_keys(am_org_to_country_map()));
+    $out = [];
+    foreach ($orgIds as $o) {
+        $oid = strtolower(trim((string)$o));
+        if ($oid !== '' && isset($valid[$oid])) {
+            $out[$oid] = true;
+        }
+    }
+    if ($out !== []) {
+        return array_keys($out);
+    }
+    return array_keys(am_org_to_country_map());
+}
+
+/** @return list<string> org IDs the current user may access */
+function am_org_allow_ids(): array {
+    $a = $_SESSION['am_org_allow'] ?? null;
+    if (!is_array($a)) {
+        $a = [];
+    }
+    return am_apply_default_org_allow_if_empty($a);
+}
+
+/**
+ * Derive org IDs from country allow codes (for backward compatibility).
+ * @param list<string> $countryCodes
+ * @return list<string>
+ */
+function am_org_ids_from_country_codes(array $countryCodes): array {
+    $countryToOrg = am_country_to_org_map();
+    $out = [];
+    foreach ($countryCodes as $cc) {
+        $u = strtoupper(trim((string)$cc));
+        if (isset($countryToOrg[$u])) {
+            $out[$countryToOrg[$u]] = true;
+        }
+    }
+    return array_keys($out);
+}
+
+/**
+ * Derive country codes from org IDs.
+ * @param list<string> $orgIds
+ * @return list<string>
+ */
+function am_country_codes_from_org_ids(array $orgIds): array {
+    $orgToCountry = am_org_to_country_map();
+    $out = [];
+    foreach ($orgIds as $oid) {
+        $o = strtolower(trim((string)$oid));
+        if (isset($orgToCountry[$o])) {
+            $out[$orgToCountry[$o]] = true;
+        }
+    }
+    return array_keys($out);
+}
+
+/**
+ * Check if an asset passes organization scope.
+ * Uses asset.organization_id, or falls back to country_code resolution.
+ *
+ * @param array<string, mixed> $asset
+ * @param array<int, array<string, mixed>> $countries
+ * @param array<string, array<string, mixed>>|null $locationsById
+ */
+function am_asset_passes_org_scope(array $asset, array $countries, ?array $locationsById = null): bool {
+    $allowOrgs = am_org_allow_ids();
+    if (empty($allowOrgs)) {
+        return false;
+    }
+
+    $orgId = strtolower(trim((string)($asset['organization_id'] ?? '')));
+    if ($orgId !== '' && in_array($orgId, $allowOrgs, true)) {
+        return true;
+    }
+
+    if ($orgId === '') {
+        $countryCode = am_asset_effective_org_country_code($asset, $countries, $locationsById);
+        if ($countryCode !== '') {
+            $resolvedOrg = am_resolve_org_id_for_country($countryCode);
+            if ($resolvedOrg !== '' && in_array($resolvedOrg, $allowOrgs, true)) {
+                return true;
+            }
+        }
+        if ($countryCode === '' && am_user_may_see_unscoped_country_assets()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Resolve organization_id for an asset from its country_id.
+ * @param array<string, mixed> $asset
+ * @param array<int, array<string, mixed>> $countries
+ */
+function am_resolve_asset_org_id(array $asset, array $countries): string {
+    $existing = strtolower(trim((string)($asset['organization_id'] ?? '')));
+    if ($existing !== '') {
+        $valid = array_flip(array_keys(am_org_to_country_map()));
+        if (isset($valid[$existing])) {
+            return $existing;
+        }
+    }
+
+    $countryId = trim((string)($asset['country_id'] ?? ''));
+    if ($countryId !== '') {
+        $code = am_country_code_for_id($countryId, $countries);
+        if ($code !== '') {
+            $orgId = am_resolve_org_id_for_country($code);
+            if ($orgId !== '') {
+                return $orgId;
+            }
+        }
+    }
+
+    $effectiveCode = am_asset_effective_org_country_code($asset, $countries);
+    if ($effectiveCode !== '') {
+        return am_resolve_org_id_for_country($effectiveCode);
+    }
+
+    return '';
 }
 
 /**
@@ -341,6 +563,11 @@ function am_ensure_country_scope_from_session(): void {
         $allow = [];
     }
     $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $orgAccess = $data['amOrgAccess'] ?? [];
+    if (!is_array($orgAccess) || empty($orgAccess)) {
+        $orgAccess = am_org_ids_from_country_codes($_SESSION['am_country_allow']);
+    }
+    $_SESSION['am_org_allow'] = am_apply_default_org_allow_if_empty($orgAccess);
     if (!isset($_SESSION['am_country_filter'])) {
         $_SESSION['am_country_filter'] = 'all';
     }

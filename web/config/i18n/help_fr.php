@@ -34,11 +34,15 @@ return [
             'icon' => 'fa-sign-in-alt',
             'title' => 'Connexion',
             'html' => '
-<p>Rendez-vous sur <strong>am.1pwrafrica.com</strong>. Saisissez votre adresse e-mail 1PWR et votre mot de passe. L’application utilise Firebase — les mêmes identifiants que pour les Achats et les Job Cards.</p>
-<p>Si vous utilisiez un <strong>nom d’utilisateur</strong> (sans e-mail), cela peut encore fonctionner grâce au mappage des comptes hérités.</p>
+<p>Rendez-vous sur <strong>am.1pwrafrica.com</strong>. Vous serez redirigé vers <strong>Nexus</strong> (<code>nexus.1pwrafrica.com</code>), le portail d’authentification unique 1PWR. Connectez-vous avec votre adresse e-mail 1PWR et votre mot de passe, et vous serez renvoyé automatiquement vers Asset Management.</p>
+<p>Nexus est la même authentification utilisée par les Achats, les Job Cards et les autres outils 1PWR : un seul compte, une seule connexion pour tout.</p>
+<div class="alert alert-info mb-2">
+    <i class="fas fa-info-circle me-1"></i>
+<strong>Connexion de secours :</strong> Si Nexus est indisponible, ajoutez <code>?fallback=1</code> à l’URL (par ex. <code>am.1pwrafrica.com/?fallback=1</code>) pour utiliser la connexion Firebase locale (e-mail/mot de passe).
+</div>
 <div class="alert alert-info mb-0">
     <i class="fas fa-info-circle me-1"></i>
-    <strong>Mot de passe oublié ?</strong> Utilisez « Mot de passe oublié ? » sur la page de connexion, ou contactez votre administrateur.
+<strong>Mot de passe oublié ?</strong> Réinitialisez-le sur le portail Nexus, ou contactez votre administrateur.
 </div>',
         ],
         [
@@ -287,7 +291,7 @@ return [
         <tr><td><strong>Auditeur</strong></td><td>Interface en lecture seule ; pas de sortie ni d’écriture (blocage UI)</td></tr>
     </tbody>
 </table>
-<p class="mb-0">Le rôle provient du <strong>permissionLevel</strong> dans le profil Firebase partagé. Pour toute modification, contactez un administrateur.</p>',
+<p class="mb-0">Le rôle provient du <strong>permissionLevel</strong> dans votre profil Nexus (<code>nexus_users/{uid}</code> dans Firestore). L’accès par pays et par organisation y est également défini. Pour toute modification, contactez un administrateur.</p>',
         ],
     ],
 ];

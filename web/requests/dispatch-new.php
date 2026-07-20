@@ -15,7 +15,7 @@ $page_title = 'Dispatch request';
 $template = am_request_workflow_template('inventory_dispatch');
 
 // ── Country resolution ───────────────────────────────────────
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countryById = [];
 foreach ($countries as $c) {
     $cid = (string)($c['country_id'] ?? $c['id'] ?? '');

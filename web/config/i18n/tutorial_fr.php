@@ -20,7 +20,7 @@ return [
             'id' => 'app-shell',
             'title' => 'Repères : menu et outils',
             'steps' => [
-                ['text' => 'Après connexion, observez le menu de gauche : Tableau de bord, Catalogue, Demandes, Stock, Sortie/retour, Manifestes, Télécom (cartes SIM, demandes téléphones, assistance IT), Rapports, Tablette, Aide, et les liens externes Achats et Job Cards.', 'href' => '', 'link_label' => ''],
+                ['text' => 'Vous vous connectez via Nexus (nexus.1pwrafrica.com), le portail d’authentification unique 1PWR. Après connexion, observez le menu de gauche : Tableau de bord, Catalogue, Demandes, Stock, Sortie/retour, Manifestes, Télécom (cartes SIM, demandes téléphones, assistance IT), Rapports, Tablette, Aide, et les liens externes Achats et Job Cards.', 'href' => '', 'link_label' => ''],
                 ['text' => 'Sur petit écran, utilisez la barre du haut pour ouvrir le menu. Votre rôle détermine les actions possibles (voir Aide → Rôles).', 'href' => '', 'link_label' => ''],
                 ['text' => 'Ouvrez le Tableau de bord pour les totaux, les cartes par classe et les transactions récentes.', 'href' => 'index.php', 'link_label' => 'Tableau de bord'],
             ],

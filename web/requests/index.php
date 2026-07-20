@@ -2,15 +2,17 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/locale.php';
 require_login();
 
-$page_title = 'Ready board requests';
+$page_title = am_ui('requests_ready_board');
 $errors = [];
 $showForm = isset($_GET['new']) || !empty($errors);
 
 $requests = am_firestore_get_collection('am_core_requests', 2000);
 $requests = array_values(array_filter($requests, fn($r) => ($r['workflow_type'] ?? '') === 'ready_board'));
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $locations = am_get_pr_sites();
 $employees = am_firestore_get_collection('pr_master_employees', 2000);
 if (empty($employees)) $employees = am_firestore_get_collection('am_core_employees', 2000);
@@ -133,7 +135,7 @@ foreach ($requests as $r) {
 }
 
 $isAdmin = ($_SESSION['role'] ?? '') === 'Admin' || ($_SESSION['role'] ?? '') === 'Manager';
-$classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+$classLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui('class_material'), 'Consumable' => am_ui('class_consumable'), 'Inventory' => am_ui('class_inventory')];
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 
 $flash = $_SESSION['flash_success'] ?? '';
@@ -145,8 +147,8 @@ include __DIR__ . '/../includes/header.php';
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center py-4" data-tutorial="tutorial-requests-header">
         <div>
-            <h1 class="h2">Ready board requests</h1>
-            <p class="mb-0"><?php echo count($filtered); ?> ready board requests</p>
+            <h1 class="h2"><?php echo htmlspecialchars(am_ui('requests_ready_board')); ?></h1>
+            <p class="mb-0"><?php echo count($filtered); ?> <?php echo htmlspecialchars(am_ui('requests_count')); ?></p>
             <p class="small text-muted mb-0 mt-1">
                 For ready boards and other AM service requests, use
                 <a href="<?php echo base_url('requests/workflow-index.php'); ?>">Service workflows</a>
@@ -155,7 +157,7 @@ include __DIR__ . '/../includes/header.php';
         </div>
         <?php if (!am_is_auditor_readonly()): ?>
         <a href="<?php echo base_url('requests/index.php?new=1'); ?>" class="btn btn-sm btn-gray-800">
-            <i class="fas fa-plus me-2"></i>New Request
+            <i class="fas fa-plus me-2"></i><?php echo htmlspecialchars(am_ui('requests_new')); ?>
         </a>
         <?php endif; ?>
     </div>
@@ -196,22 +198,22 @@ include __DIR__ . '/../includes/header.php';
     <?php if ($showForm): ?>
     <!-- New Request Form -->
     <div class="card border-0 shadow mb-4">
-        <div class="card-header"><h2 class="fs-5 fw-bold mb-0">New Request</h2></div>
+        <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('requests_new_request')); ?></h2></div>
         <div class="card-body">
             <form method="POST" action="">
                 <input type="hidden" name="action" value="create">
                 <div class="row g-3">
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_quantity')); ?> <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" name="quantity" min="1" value="<?php echo htmlspecialchars($_POST['quantity'] ?? '1'); ?>" required>
-                        <div class="form-text">Number of ready boards needed.</div>
+                        <div class="form-text"><?php echo htmlspecialchars(am_ui('requests_quantity_hint')); ?></div>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Concession / site</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_concession_site')); ?></label>
                         <input type="text" class="form-control" name="site_code" value="<?php echo htmlspecialchars($_POST['site_code'] ?? ''); ?>" placeholder="e.g. SEH, MAT, HQ">
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Department</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_department')); ?></label>
                         <select class="form-select" name="department_scope">
                             <?php foreach (['General', 'RET', 'FAC', 'O&M', 'IT'] as $d): ?>
                             <option value="<?php echo $d; ?>" <?php echo ($_POST['department_scope'] ?? 'General') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
@@ -219,9 +221,9 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Country <span class="text-danger">*</span></label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('form_country')); ?> <span class="text-danger">*</span></label>
                         <select class="form-select" name="country_id" required>
-                            <option value="">Select...</option>
+                            <option value=""><?php echo htmlspecialchars(am_ui('form_select')); ?></option>
                             <?php foreach ($countries as $c):
                                 $cid = (string)($c['country_id'] ?? $c['id'] ?? '');
                             ?>
@@ -232,7 +234,7 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label">Priority</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_priority')); ?></label>
                         <select class="form-select" name="priority">
                             <?php foreach (['Low', 'Normal', 'High', 'Urgent'] as $p): ?>
                             <option value="<?php echo $p; ?>" <?php echo ($_POST['priority'] ?? 'Normal') === $p ? 'selected' : ''; ?>><?php echo $p; ?></option>
@@ -240,29 +242,29 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-9">
-                        <label class="form-label">Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" name="description" rows="2" required placeholder="Describe what you need..."><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_description')); ?> <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="description" rows="2" required placeholder="<?php echo htmlspecialchars(am_ui('requests_description_placeholder')); ?>"><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Required By</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_required_by')); ?></label>
                         <input type="date" class="form-control" name="required_date" value="<?php echo htmlspecialchars($_POST['required_date'] ?? ''); ?>">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Receiver name</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_receiver_name')); ?></label>
                         <input type="text" class="form-control" name="receiver_name" value="<?php echo htmlspecialchars($_POST['receiver_name'] ?? ''); ?>">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Receiver email</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_receiver_email')); ?></label>
                         <input type="text" class="form-control" name="receiver_email" value="<?php echo htmlspecialchars($_POST['receiver_email'] ?? ''); ?>">
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Additional Notes</label>
+                        <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_additional_notes')); ?></label>
                         <input type="text" class="form-control" name="notes" value="<?php echo htmlspecialchars($_POST['notes'] ?? ''); ?>">
                     </div>
                 </div>
                 <div class="mt-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-2"></i>Submit Request</button>
-                    <a href="<?php echo base_url('requests/index.php'); ?>" class="btn btn-gray-200">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-2"></i><?php echo htmlspecialchars(am_ui('requests_submit')); ?></button>
+                    <a href="<?php echo base_url('requests/index.php'); ?>" class="btn btn-gray-200"><?php echo htmlspecialchars(am_ui('form_cancel')); ?></a>
                 </div>
             </form>
         </div>
@@ -275,11 +277,11 @@ include __DIR__ . '/../includes/header.php';
             <div class="table-responsive">
                 <table class="table table-hover" id="requestsTable">
                     <thead>
-                        <tr><th>Request #</th><th>Qty</th><th>Site</th><th>Country</th><th>Priority</th><th>Status</th><th>Date</th><?php if ($isAdmin): ?><th>Actions</th><?php endif; ?></tr>
+                        <tr><th><?php echo htmlspecialchars(am_ui('requests_request_num')); ?></th><th><?php echo htmlspecialchars(am_ui('th_qty')); ?></th><th><?php echo htmlspecialchars(am_ui('requests_site')); ?></th><th><?php echo htmlspecialchars(am_ui('th_country')); ?></th><th><?php echo htmlspecialchars(am_ui('requests_priority')); ?></th><th><?php echo htmlspecialchars(am_ui('th_status')); ?></th><th><?php echo htmlspecialchars(am_ui('th_date')); ?></th><?php if ($isAdmin): ?><th><?php echo htmlspecialchars(am_ui('th_actions')); ?></th><?php endif; ?></tr>
                     </thead>
                     <tbody>
                         <?php if (empty($filtered)): ?>
-                        <tr><td colspan="<?php echo $isAdmin ? 9 : 8; ?>" class="text-center text-gray-500 py-4">No requests found.</td></tr>
+                        <tr><td colspan="<?php echo $isAdmin ? 9 : 8; ?>" class="text-center text-gray-500 py-4"><?php echo htmlspecialchars(am_ui('requests_no_requests')); ?></td></tr>
                         <?php else: ?>
                         <?php foreach ($filtered as $req):
                             $docId = (string)($req['id'] ?? '');

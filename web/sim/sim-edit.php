@@ -75,7 +75,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-3 border-bottom">
     <h1 class="h2 mb-0"><?php echo htmlspecialchars($page_title); ?></h1>
-    <a class="btn btn-sm btn-outline-secondary" href="<?php echo base_url('sim/index.php'); ?>">Back to list</a>
+    <a class="btn btn-sm btn-outline-secondary" href="<?php echo base_url('sim/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sim_back_to_list')); ?></a>
 </div>
 
 <?php if ($flash !== ''): ?><div class="alert alert-success"><?php echo htmlspecialchars($flash); ?></div><?php endif; ?>
@@ -89,12 +89,12 @@ include __DIR__ . '/../includes/header.php';
     <div class="card-body">
         <form method="post" class="row g-3">
             <div class="col-md-6">
-                <label class="form-label">MSISDN / number</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_msisdn_label')); ?></label>
                 <input type="text" name="msisdn" class="form-control" required
                     value="<?php echo htmlspecialchars((string)($row['msisdn_display'] ?? $row['msisdn_normalized'] ?? '')); ?>">
             </div>
             <div class="col-md-6">
-                <label class="form-label">Status</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_status')); ?></label>
                 <select name="status" class="form-select">
                     <?php foreach (am_sim_statuses() as $st): ?>
                         <option value="<?php echo htmlspecialchars($st); ?>" <?php echo (($row['status'] ?? 'Active') === $st) ? 'selected' : ''; ?>><?php echo htmlspecialchars($st); ?></option>
@@ -102,36 +102,36 @@ include __DIR__ . '/../includes/header.php';
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Pool / workbook tab</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_pool_label')); ?></label>
                 <input type="text" name="pool" class="form-control" placeholder="e.g. Reticulation, HQ"
                     value="<?php echo htmlspecialchars((string)($row['pool'] ?? '')); ?>">
             </div>
             <div class="col-md-6">
-                <label class="form-label">Contact value (plan / top-up notes)</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_contact_value')); ?></label>
                 <input type="text" name="contact_value" class="form-control"
                     value="<?php echo htmlspecialchars((string)($row['contact_value'] ?? '')); ?>">
             </div>
             <div class="col-12">
-                <label class="form-label">SIM location / site label</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_sim_location')); ?></label>
                 <input type="text" name="sim_location" class="form-control"
                     value="<?php echo htmlspecialchars((string)($row['sim_location'] ?? '')); ?>">
             </div>
             <div class="col-12">
-                <label class="form-label">Person / team / assignment</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_person_assigned')); ?></label>
                 <input type="text" name="person_assigned" class="form-control"
                     value="<?php echo htmlspecialchars((string)($row['person_assigned'] ?? '')); ?>">
             </div>
             <div class="col-md-6">
-                <label class="form-label">Locate status</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_locate_status')); ?></label>
                 <input type="text" name="locate_status" class="form-control"
                     value="<?php echo htmlspecialchars((string)($row['locate_status'] ?? '')); ?>">
             </div>
             <div class="col-12">
-                <label class="form-label">Notes</label>
+                <label class="form-label"><?php echo htmlspecialchars(am_ui('sim_notes')); ?></label>
                 <textarea name="notes" class="form-control" rows="3"><?php echo htmlspecialchars((string)($row['notes'] ?? '')); ?></textarea>
             </div>
             <div class="col-12">
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(am_ui('sim_save')); ?></button>
             </div>
         </form>
     </div>

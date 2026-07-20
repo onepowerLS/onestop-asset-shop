@@ -15,7 +15,7 @@ $statusFilter = trim($_GET['status'] ?? '');
 $tripFilter = trim($_GET['trip'] ?? '');
 
 $manifests = am_firestore_get_collection(AM_LOADOUT_COLLECTION, 2000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $manifests = array_values(array_filter($manifests, fn($m) => am_record_in_country_scope($m, $countries)));
 
 if ($statusFilter !== '') {

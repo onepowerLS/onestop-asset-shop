@@ -11,11 +11,30 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 require_once $root . '/web/config/app.php';
 require_once $root . '/web/config/firestore.php';
+require_once $root . '/web/config/firebase_admin_token.php';
 require_once $root . '/web/config/whats_new.php';
 
 $dryRun = in_array('--dry-run', $argv, true);
 
+$adminToken = am_firestore_admin_access_token();
+if ($adminToken === '') {
+    $adminToken = am_firebase_admin_token();
+}
+if ($adminToken === '') {
+    fwrite(STDERR, "No admin token available. Check firebase-service-account.json or FIREBASE_ADMIN_BEARER_TOKEN in .env\n");
+    exit(1);
+}
+
 $entries = [
+    [
+        'title' => 'Nexus single sign-on is now live',
+        'summary' => 'Sign in through nexus.1pwrafrica.com — one login for Asset Management, Procurement, Job Cards, and all 1PWR tools. The old email/password form is available as a fallback via ?fallback=1.',
+        'details' => "<p>AM now uses <strong>Nexus</strong> (<code>nexus.1pwrafrica.com</code>) as its single sign-on portal.</p><ul><li>When you visit <code>am.1pwrafrica.com</code>, you are redirected to Nexus to sign in.</li><li>After successful login, you are sent back to AM automatically.</li><li>The same Nexus account works across all 1PWR tools — no separate passwords.</li><li><strong>Fallback:</strong> If Nexus is down, add <code>?fallback=1</code> to the URL to use the local Firebase login.</li></ul>",
+        'category' => 'feature',
+        'icon' => 'fa-key',
+        'released_at' => '2026-07-14T14:00:00Z',
+        'deep_link' => '/help.php',
+    ],
     [
         'title' => 'Search catalog before adding an item',
         'summary' => 'Add Item now opens with a live catalog search panel so you can avoid creating duplicates, with a yellow "similar item already in catalog" warning on the Name field.',
@@ -72,7 +91,7 @@ $entries = [
     ],
 ];
 
-$existing = am_firestore_get_collection(AM_WHATS_NEW_COLLECTION, 500);
+$existing = am_firestore_get_collection(AM_WHATS_NEW_COLLECTION, 500, $adminToken);
 $existingTitles = [];
 foreach ($existing as $e) {
     $t = strtolower(trim((string)($e['title'] ?? '')));
@@ -102,7 +121,7 @@ foreach ($entries as $entry) {
         echo "DRY   " . substr($entry['title'], 0, 60) . PHP_EOL;
         continue;
     }
-    $r = am_firestore_create_document(AM_WHATS_NEW_COLLECTION, $data);
+    $r = am_firestore_create_document(AM_WHATS_NEW_COLLECTION, $data, null, $adminToken);
     if ($r['ok']) {
         echo "OK    " . substr($entry['title'], 0, 60) . PHP_EOL;
         $created++;
