@@ -215,7 +215,7 @@ include __DIR__ . '/../includes/header.php';
                     <div class="col-12 col-md-3">
                         <label class="form-label"><?php echo htmlspecialchars(am_ui('requests_department')); ?></label>
                         <select class="form-select" name="department_scope">
-                            <?php foreach (['General', 'RET', 'FAC', 'O&M', 'IT'] as $d): ?>
+                            <?php foreach (['General', 'RET', 'FAC', 'O&M', 'IS&T'] as $d): ?>
                             <option value="<?php echo $d; ?>" <?php echo ($_POST['department_scope'] ?? 'General') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
                             <?php endforeach; ?>
                         </select>
