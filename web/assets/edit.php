@@ -32,6 +32,7 @@ $warnings = [];
 
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
+$locByAnyKey = am_build_location_index($locations);
 $countries = array_values(array_filter($countries, fn($c) => (int)($c['active'] ?? 1) === 1));
 $countries = am_countries_for_user_select($countries);
 $categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
@@ -132,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'category_id' => trim($_POST['category_id'] ?? ''),
             'country_id' => $countryId,
             'organization_id' => am_resolve_org_id_for_country($ccode),
-            'location_id' => trim($_POST['location_id'] ?? ''),
+            'location_id' => trim($_POST['location_id'] ?? (string)($asset['location_id'] ?? '')),
             'serial_number' => trim($_POST['serial_number'] ?? ''),
             'manufacturer' => trim($_POST['manufacturer'] ?? ''),
             'model' => trim($_POST['model'] ?? ''),
@@ -168,11 +169,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // For stockable classes, keep the primary inventory row aligned with edited quantity.
                 if (
                     in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) &&
-                    $countryId !== '' &&
-                    trim((string)($data['location_id'] ?? '')) !== ''
+                    $countryId !== ''
                 ) {
                     $targetLocRaw = trim((string)$data['location_id']);
-                    $locByAnyKey = am_build_location_index($locations);
+                    if ($targetLocRaw === '') {
+                        $targetLocRaw = (string)($asset['location_id'] ?? '');
+                    }
                     $targetLocCanonical = am_canonical_location_code($targetLocRaw, $locByAnyKey);
 
                     $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
@@ -197,6 +199,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     foreach ($targetRows as $row) {
                         $allocTotal += (int)($row['quantity_allocated'] ?? 0);
                     }
+                    // The asset quantity is the source of truth for on-hand stock. If an allocation
+                    // currently exceeds it (a transient bad state), clamp on-hand to at least that
+                    // allocation so available stays non-negative.
                     $qohTarget = max((int)$data['quantity'], $allocTotal);
 
                     if ($targetInv) {
@@ -410,11 +415,21 @@ include __DIR__ . '/../includes/header.php';
                         <label class="form-label"><?php echo htmlspecialchars(am_ui('form_location')); ?></label>
                         <select class="form-select" name="location_id">
                             <option value=""><?php echo htmlspecialchars(am_ui('form_select_location')); ?></option>
-                            <?php foreach ($locations as $loc):
+                            <?php
+                            $assetLocRaw = (string)($vals['location_id'] ?? '');
+                            $assetLocCanon = am_canonical_location_code($assetLocRaw, $locByAnyKey);
+                            foreach ($locations as $loc):
                                 $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
+                                $lcode = (string)($loc['location_code'] ?? '');
+                                $optionCanon = am_canonical_location_code($lid, $locByAnyKey);
+                                $selected =
+                                    $assetLocRaw === $lid ||
+                                    $assetLocRaw === $lcode ||
+                                    $assetLocCanon === $optionCanon ||
+                                    ($assetLocCanon !== '' && $assetLocCanon === $lcode);
                             ?>
                             <option value="<?php echo htmlspecialchars($lid); ?>"
-                                    <?php echo (string)($vals['location_id'] ?? '') === $lid ? 'selected' : ''; ?>>
+                                    <?php echo $selected ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($loc['location_name'] ?? ''); ?>
                             </option>
                             <?php endforeach; ?>
