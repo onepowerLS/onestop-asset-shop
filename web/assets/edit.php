@@ -86,15 +86,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $storedClass = (string)($asset['item_class'] ?? '');
         $classChanged = ($itemClass !== '' && $itemClass !== $storedClass);
 
+        // Resolve country code once for tag generation and organization mapping
+        $ccode = 'UNK';
+        foreach ($countries as $c) {
+            if ((string)($c['country_id'] ?? $c['id'] ?? '') === $countryId) {
+                $ccode = (string)($c['country_code'] ?? 'UNK');
+                break;
+            }
+        }
+
         if ($classChanged) {
             // Regenerate tag since the class prefix changes
-            $ccode = '';
-            foreach ($countries as $c) {
-                if ((string)($c['country_id'] ?? $c['id'] ?? '') === $countryId) {
-                    $ccode = (string)($c['country_code'] ?? 'UNK');
-                    break;
-                }
-            }
             $peerAssets = am_firestore_get_collection('am_core_assets', 8000);
             $assetTag = am_generate_asset_tag($itemClass, $ccode, $peerAssets);
             $warnings[] = 'Class changed from ' . $storedClass . ' to ' . $itemClass
