@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/employee_directory.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -22,10 +23,7 @@ foreach ($locations as $l) {
 }
 $assets = am_firestore_get_collection('am_core_assets', 2000);
 $assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
-$employees = am_firestore_get_collection('pr_master_employees', 2000);
-if (empty($employees)) {
-    $employees = am_firestore_get_collection('am_core_employees', 2000);
-}
+$employees = am_employee_directory_load();
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 
 $assetById = [];
