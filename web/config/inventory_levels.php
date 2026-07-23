@@ -22,12 +22,56 @@ function am_build_location_index(array $locations): array {
     return $locByAnyKey;
 }
 
-function am_canonical_location_code(string $rawId, array $locByAnyKey): string {
+function am_canonical_location_code(string $rawId, array $locByAnyKey, string $countryCode = ''): string {
     if ($rawId === '') {
         return '';
     }
-    $resolved = $locByAnyKey[$rawId] ?? [];
-    return (string)($resolved['location_code'] ?? $rawId);
+    if ($locByAnyKey === []) {
+        return $rawId;
+    }
+
+    $candidates = [$rawId];
+    $countryCode = strtoupper(trim($countryCode));
+    if ($countryCode !== '') {
+        $candidates[] = $countryCode . '-' . $rawId;
+        $candidates[] = $countryCode . '-' . strtoupper($rawId);
+    }
+
+    foreach ($candidates as $cand) {
+        if (isset($locByAnyKey[$cand])) {
+            $resolved = $locByAnyKey[$cand];
+            return (string)($resolved['location_code'] ?? $cand);
+        }
+    }
+
+    // Case-insensitive fallback
+    foreach ($candidates as $cand) {
+        $candLower = strtolower($cand);
+        foreach ($locByAnyKey as $key => $loc) {
+            if (strtolower($key) === $candLower) {
+                return (string)($loc['location_code'] ?? $key);
+            }
+        }
+    }
+
+    // If the raw code has no dash and no country was supplied, try active country prefixes.
+    if ($countryCode === '' && !str_contains($rawId, '-') && strlen($rawId) <= 4) {
+        $active = function_exists('am_org_country_codes') ? am_org_country_codes() : ['LSO', 'ZMB', 'BEN'];
+        foreach ($active as $cc) {
+            $cand = strtoupper($cc) . '-' . strtoupper($rawId);
+            if (isset($locByAnyKey[$cand])) {
+                return (string)($locByAnyKey[$cand]['location_code'] ?? $cand);
+            }
+            $candLower = strtolower($cand);
+            foreach ($locByAnyKey as $key => $loc) {
+                if (strtolower($key) === $candLower) {
+                    return (string)($loc['location_code'] ?? $key);
+                }
+            }
+        }
+    }
+
+    return $rawId;
 }
 
 /**

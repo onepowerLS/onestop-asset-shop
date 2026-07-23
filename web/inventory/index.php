@@ -62,17 +62,20 @@ if (!empty($inventoryLevels)) {
             $hasInvByAsset[$aid] = true;
         }
 
-        // Normalize inventory location_id so stock rows are grouped/displayed consistently.
-        $rawLocId = (string)($inv['location_id'] ?? '');
-        $locResolved = $locationById[$rawLocId] ?? [];
-        $canonLocId = (string)($locResolved['location_code'] ?? $rawLocId);
-        $invNorm = $inv;
-        $invNorm['location_id'] = $canonLocId;
-
         $cls = (string)($asset['item_class'] ?? '');
-        $cid = (string)($invNorm['country_id'] ?? '');
+        $cid = (string)($inv['country_id'] ?? '');
         if ($cid === '' && $asset) {
             $cid = am_resolve_asset_country_id($asset, $countries);
+        }
+        $ccode = (string)($countryById[$cid]['country_code'] ?? '');
+
+        // Normalize inventory location_id so stock rows are grouped/displayed consistently.
+        $rawLocId = (string)($inv['location_id'] ?? '');
+        $canonLocId = am_canonical_location_code($rawLocId, $locationById, $ccode);
+        $invNorm = $inv;
+        $invNorm['location_id'] = $canonLocId;
+        if ($canonLocId !== $rawLocId && ($invNorm['country_id'] ?? '') === '') {
+            $invNorm['country_id'] = $cid;
         }
 
         if ($classFilter && $cls !== $classFilter) {

@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($targetLocRaw === '') {
                         $targetLocRaw = (string)($asset['location_id'] ?? '');
                     }
-                    $targetLocCanonical = am_canonical_location_code($targetLocRaw, $locByAnyKey);
+                    $targetLocCanonical = am_canonical_location_code($targetLocRaw, $locByAnyKey, $ccode);
 
                     $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
                     $targetRows = am_inventory_matching_location_rows(
