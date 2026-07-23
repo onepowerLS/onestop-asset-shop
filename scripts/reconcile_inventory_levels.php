@@ -103,13 +103,15 @@ foreach ($assets as $asset) {
     }
 
     $assetTag = (string)($asset['asset_tag'] ?? $id);
+    $assetLocChanged = ($locRaw !== $locCanon);
     if ($targetInv) {
         $oldQoh = (int)($targetInv['quantity_on_hand'] ?? 0);
         $oldAlloc = (int)($targetInv['quantity_allocated'] ?? 0);
-        if ($oldQoh === $qohTarget && $oldAlloc === $allocTotal) {
-            echo "OK    $assetTag (qoh=$oldQoh alloc=$oldAlloc)\n";
+        $oldLoc = (string)($targetInv['location_id'] ?? '');
+        if ($oldQoh === $qohTarget && $oldAlloc === $allocTotal && $oldLoc === $locCanon) {
+            echo "OK    $assetTag (qoh=$oldQoh alloc=$oldAlloc at $locCanon)\n";
         } else {
-            echo "UPDATE $assetTag qoh $oldQoh -> $qohTarget, alloc $oldAlloc -> $allocTotal\n";
+            echo "UPDATE $assetTag qoh $oldQoh -> $qohTarget, alloc $oldAlloc -> $allocTotal, loc $oldLoc -> $locCanon\n";
             if (!$dryRun) {
                 am_firestore_update_document('am_core_inventory_levels', (string)$targetInv['id'], [
                     'location_id' => $locCanon,
@@ -135,6 +137,13 @@ foreach ($assets as $asset) {
             ], null, $adminToken);
         }
         $created++;
+    }
+
+    if ($assetLocChanged && !$dryRun) {
+        am_firestore_update_document('am_core_assets', $id, [
+            'location_id' => $locCanon,
+            'updated_at' => date('c'),
+        ], $adminToken);
     }
     $processed++;
 }
