@@ -38,6 +38,19 @@ $countries = am_countries_for_user_select($countries);
 $categories = array_values(array_filter($categories, fn($c) => (int)($c['active'] ?? 1) === 1));
 
 $vals = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $asset;
+$departmentCountryCode = '';
+$departmentCountryId = (string)($vals['country_id'] ?? '');
+foreach ($countries as $country) {
+    $countryId = (string)($country['country_id'] ?? $country['id'] ?? '');
+    if ($countryId === $departmentCountryId) {
+        $departmentCountryCode = (string)($country['country_code'] ?? $country['code'] ?? '');
+        break;
+    }
+}
+$departmentOptions = am_get_allocation_departments(
+    $departmentCountryCode,
+    (string)($vals['allocated_department'] ?? '')
+);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $itemClass = trim($_POST['item_class'] ?? '');
@@ -350,8 +363,8 @@ include __DIR__ . '/../includes/header.php';
                         <label class="form-label"><?php echo htmlspecialchars(am_ui('form_allocated_dept')); ?></label>
                         <select class="form-select" name="allocated_department" id="allocatedDepartment">
                             <option value="">—</option>
-                            <?php foreach (['RET', 'FAC', 'O&M', 'IS&T', 'General', 'Finance', 'HR', 'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E'] as $d): ?>
-                            <option value="<?php echo $d; ?>" <?php echo (string)($vals['allocated_department'] ?? '') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
+                            <?php foreach ($departmentOptions as $d): ?>
+                            <option value="<?php echo htmlspecialchars($d); ?>" <?php echo (string)($vals['allocated_department'] ?? '') === $d ? 'selected' : ''; ?>><?php echo htmlspecialchars($d); ?></option>
                             <?php endforeach; ?>
                         </select>
                         <div class="form-text"><?php echo htmlspecialchars(am_ui('form_allocated_dept_hint')); ?></div>

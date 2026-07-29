@@ -268,3 +268,17 @@ Manage the category hierarchy. Categories are grouped by item class. Each catego
 ### Employees
 
 View and search the employee directory. Employee records come from the shared master data and are used for item allocation and check-out.
+
+### Department choices on allocations
+
+The **Allocated to department** list on item edits and ready-board fulfillment
+comes from HR's authoritative department catalog through AM's synchronized
+reference-data cache. AM removes duplicate organization copies and uses the
+familiar compact labels in existing asset reports (for example, `A.M`, `P.M`,
+`Prod`, `M.E`, `E.E`, and `IS&T`).
+
+Create, rename, activate, or deactivate a department in the HR Portal. Do not
+edit AM's synchronized copy. After an authorized HR change, refresh the AM
+canonical-data cache and verify the allocation dropdown. If the cache is
+temporarily unavailable, AM serves the established fallback choices and
+preserves any department value already stored on the asset.

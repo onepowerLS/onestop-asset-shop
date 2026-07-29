@@ -59,6 +59,106 @@ function am_resolve_country_for_org_id(string $orgId): string {
 }
 
 /**
+ * Translate HR's canonical department names to the compact labels already used
+ * on AM allocation records and reports. Unknown departments retain their HR name.
+ */
+function am_allocation_department_label(string $canonicalName): string {
+    $name = trim($canonicalName);
+    $labels = [
+        'asset management' => 'A.M',
+        'project management' => 'P.M',
+        'production' => 'Prod',
+        'mechanical engineering' => 'M.E',
+        'electrical & software engineering' => 'E.E',
+        'electrical engineering' => 'E.E',
+        'reticulation' => 'RET',
+        'facilities' => 'FAC',
+        'it' => 'IS&T',
+        'information technology' => 'IS&T',
+        'information systems and technology' => 'IS&T',
+        'information systems & technology' => 'IS&T',
+    ];
+    return $labels[strtolower($name)] ?? $name;
+}
+
+/** Normalize AM/HR country codes to the ISO-2 values stored in the HR cache. */
+function am_department_country_code(string $countryCode): string {
+    $code = strtoupper(trim($countryCode));
+    return [
+        'LSO' => 'LS',
+        'ZMB' => 'ZM',
+        'BEN' => 'BJ',
+    ][$code] ?? $code;
+}
+
+/**
+ * Active department choices for asset allocation.
+ *
+ * HR is authoritative. AM reads its synchronized `am_reference_departments`
+ * cache, filters by country, deduplicates organization copies, and translates
+ * established AM abbreviations. Existing historical values remain selectable.
+ *
+ * @return list<string>
+ */
+function am_get_allocation_departments(string $countryCode = '', string $selected = ''): array {
+    $fallback = [
+        'RET', 'FAC', 'O&M', 'IS&T', 'General', 'Finance', 'HR',
+        'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E',
+    ];
+    $targetCountry = am_department_country_code($countryCode);
+    $rows = function_exists('am_canonical_get')
+        ? am_canonical_get('departments', ['force_refresh' => false])
+        : [];
+
+    $byKey = [];
+    foreach ($rows as $row) {
+        if (!is_array($row) || !($row['active'] ?? true)) {
+            continue;
+        }
+        $rowCountry = am_department_country_code((string)($row['country'] ?? ''));
+        if ($rowCountry === '') {
+            $rowCountry = am_department_country_code(
+                am_resolve_country_for_org_id((string)($row['organization_id'] ?? ''))
+            );
+        }
+        if ($targetCountry !== '' && $rowCountry !== '' && $rowCountry !== $targetCountry) {
+            continue;
+        }
+        $label = am_allocation_department_label((string)($row['name'] ?? ''));
+        if ($label !== '') {
+            $byKey[strtolower($label)] = $label;
+        }
+    }
+
+    if ($byKey === []) {
+        foreach ($fallback as $label) {
+            $byKey[strtolower($label)] = $label;
+        }
+    } else {
+        // General is an AM allocation scope rather than an HR department.
+        $byKey['general'] = 'General';
+    }
+
+    $selected = trim($selected);
+    if ($selected !== '') {
+        $byKey[strtolower($selected)] = $selected;
+    }
+
+    $ordered = [];
+    foreach ($fallback as $label) {
+        $key = strtolower($label);
+        if (isset($byKey[$key])) {
+            $ordered[] = $byKey[$key];
+            unset($byKey[$key]);
+        }
+    }
+    $additional = array_values($byKey);
+    usort($additional, static fn(string $a, string $b): int => strcasecmp($a, $b));
+
+    return array_merge($ordered, $additional);
+}
+
+/**
  * Extract organization IDs from Firestore users/{uid} or nexus_users/{uid} document.
  * Checks amOrgAccess, systemAccess.am.orgAccess, and organizationId fields.
  *

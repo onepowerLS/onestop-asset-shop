@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/request_workflows.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/country_scope.php';
 require_login();
 
 $docId = trim($_GET['id'] ?? '');
@@ -120,10 +121,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 $countries = am_get_countries();
 $cid = (string)($req['requested_for_country'] ?? '');
 $countryLabel = '—';
+$departmentCountryCode = '';
 foreach ($countries as $c) {
     $id = (string)($c['country_id'] ?? $c['id'] ?? '');
     if ($id === $cid) {
         $countryLabel = (string)($c['country_name'] ?? '') . ' (' . (string)($c['country_code'] ?? '') . ')';
+        $departmentCountryCode = (string)($c['country_code'] ?? $c['code'] ?? '');
         break;
     }
 }
@@ -141,6 +144,7 @@ $reqQty = (int)($req['quantity'] ?? 0);
 $reqCountryId = (string)($req['requested_for_country'] ?? '');
 $reqSiteCode = (string)($req['site_code'] ?? '');
 $reqDepartment = (string)($req['department_scope'] ?? '');
+$departmentOptions = am_get_allocation_departments($departmentCountryCode, $reqDepartment);
 $fulfilledIds = $req['fulfilled_asset_ids'] ?? [];
 if (is_array($fulfilledIds)) {
     foreach ($fulfilledIds as $fid) {
@@ -351,8 +355,8 @@ include __DIR__ . '/../includes/header.php';
                             <div class="col-md-3">
                                 <label class="form-label">Department</label>
                                 <select class="form-select" name="new_department" id="bulkNewDept">
-                                    <?php foreach (['RET', 'FAC', 'O&M', 'IS&T', 'General', 'Finance', 'HR', 'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E'] as $d): ?>
-                                    <option value="<?php echo $d; ?>" <?php echo $reqDepartment === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
+                                    <?php foreach ($departmentOptions as $d): ?>
+                                    <option value="<?php echo htmlspecialchars($d); ?>" <?php echo $reqDepartment === $d ? 'selected' : ''; ?>><?php echo htmlspecialchars($d); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
