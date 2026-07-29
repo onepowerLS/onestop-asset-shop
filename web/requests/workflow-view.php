@@ -351,7 +351,7 @@ include __DIR__ . '/../includes/header.php';
                             <div class="col-md-3">
                                 <label class="form-label">Department</label>
                                 <select class="form-select" name="new_department" id="bulkNewDept">
-                                    <?php foreach (['RET', 'FAC', 'O&M', 'IT', 'General', 'Finance', 'HR', 'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E'] as $d): ?>
+                                    <?php foreach (['RET', 'FAC', 'O&M', 'IS&T', 'General', 'Finance', 'HR', 'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E'] as $d): ?>
                                     <option value="<?php echo $d; ?>" <?php echo $reqDepartment === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
                                     <?php endforeach; ?>
                                 </select>

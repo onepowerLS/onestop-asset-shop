@@ -54,7 +54,7 @@ if (($_GET['seed'] ?? '') === '1') {
         [
             'title' => 'Department + Project shown when an item is Allocated',
             'summary' => 'When Status is Allocated, CheckedOut, InProject, or Deployed, you can now record the department and the project/concession on the item.',
-            'details' => "<p>On <strong>Catalog → Edit item</strong>, two new fields appear when Status is one of Allocated, CheckedOut, InProject, or Deployed:</p><ul><li><strong>Allocated to department</strong> — RET / FAC / O&amp;M / IT / General / Finance / HR / Procurement / Fleet.</li><li><strong>Project / concession</strong> — free text.</li></ul>",
+            'details' => "<p>On <strong>Catalog → Edit item</strong>, two new fields appear when Status is one of Allocated, CheckedOut, InProject, or Deployed:</p><ul><li><strong>Allocated to department</strong> — RET / FAC / O&amp;M / IS&amp;T / General / Finance / HR / Procurement / Fleet / A.M / P.M / EHS / Prod / M.E / E.E.</li><li><strong>Project / concession</strong> — free text.</li></ul>",
             'category' => 'feature',
             'icon' => 'fa-users',
             'released_at' => '2026-07-01T15:15:00Z',

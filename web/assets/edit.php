@@ -350,7 +350,7 @@ include __DIR__ . '/../includes/header.php';
                         <label class="form-label"><?php echo htmlspecialchars(am_ui('form_allocated_dept')); ?></label>
                         <select class="form-select" name="allocated_department" id="allocatedDepartment">
                             <option value="">—</option>
-                            <?php foreach (['RET', 'FAC', 'O&M', 'IT', 'General', 'Finance', 'HR', 'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E'] as $d): ?>
+                            <?php foreach (['RET', 'FAC', 'O&M', 'IS&T', 'General', 'Finance', 'HR', 'Procurement', 'Fleet', 'A.M', 'P.M', 'EHS', 'Prod', 'M.E', 'E.E'] as $d): ?>
                             <option value="<?php echo $d; ?>" <?php echo (string)($vals['allocated_department'] ?? '') === $d ? 'selected' : ''; ?>><?php echo $d; ?></option>
                             <?php endforeach; ?>
                         </select>
