@@ -75,6 +75,10 @@ Immutable audit trail for every action taken on an item.
 | `device_type` | string | `Desktop`, `Tablet`, `Mobile` |
 | `notes` | string | Free-text |
 | `transaction_date` | string | ISO timestamp |
+| `source_workflow` | string | Originating workflow, e.g. `inventory_dispatch` (optional) |
+| `source_request_id` | string | Originating request document ID (optional) |
+| `source_request_number` | string | Human-readable originating request number (optional) |
+| `source_phase` | string | Workflow phase that produced the event (optional) |
 
 **Transaction types:** `CheckOut`, `CheckIn`, `StockIngestion`, `StockTake`, `Transfer`, `Allocation`, `Return`, `WriteOff`, `QRScan`, `Consume`, `Deploy`
 
@@ -113,6 +117,8 @@ Stock tracking per item per location. Used for reorder alerts.
 | `reorder_level` | integer | Alert threshold (optional) |
 | `last_counted_at` | string | ISO timestamp |
 | `last_counted_by` | string | Firebase UID |
+
+`quantity_allocated` is a stored current-state projection, not transaction history. For inventory dispatch, only an **Approved** request contributes to it. Approval, fulfillment, and cancellation update this projection in the same atomic Firestore commit that creates an immutable `am_core_transactions` event. A **Fulfilled** request must therefore have released its reservation. Do not reconstruct the audit trail from this balance field.
 
 **Rollup in the UI (no schema change):** Stock Levels (**Rollup**) and the asset registry (**Catalog → Grouped**) merge *display* lines for **Material / Consumable / Inventory** when multiple `am_core_assets` rows share the same **`ugp_part_id`** at the same **location + country**, or the same **category + normalized name + location + country + class** when `ugp_part_id` is empty. **Fixed assets** always show one row per record. This does not delete or merge documents in Firestore; cleaning duplicate documents is a separate data task.
 

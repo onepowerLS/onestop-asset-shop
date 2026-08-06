@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/request_workflows.php';
+require_once __DIR__ . '/../config/inventory_dispatch.php';
 require_login();
 
 $docId = trim($_GET['id'] ?? '');
@@ -28,6 +29,9 @@ if ($wfType !== 'inventory_dispatch') {
     header('Location: ' . base_url('requests/workflow-view.php?id=' . urlencode($docId)));
     exit;
 }
+
+$currentStatus = (string)($req['status'] ?? '');
+$operationErrors = [];
 
 // ── Status update (POST) ────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -118,117 +122,256 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $srcAlloc = $srcInv ? (int)($srcInv['quantity_allocated'] ?? 0) : 0;
                     $available = max(0, $srcQoh - $srcAlloc);
 
-                    // Approved: reserve available quantity.
+                    // Approved: reserve available quantity and write the immutable
+                    // allocation event in the same Firestore commit.
                     if ($newStatus === 'Approved' || $alsoApprove) {
-                        $allocQty = min($reqQty, $available);
+                        $allocationEventId = am_dispatch_event_id($docId, (int)$idx, 'allocation');
+                        $existingAllocationEvent = am_firestore_get_document('am_core_transactions', $allocationEventId);
+                        $allocQty = $existingAllocationEvent
+                            ? (int)($existingAllocationEvent['quantity'] ?? 0)
+                            : min($reqQty, $available);
                         $shortQty = max(0, $reqQty - $allocQty);
                         $items[$idx]['allocated_quantity'] = $allocQty;
                         $items[$idx]['short_quantity'] = $shortQty;
                         $items[$idx]['allocation_updated_at'] = date('c');
 
-                        if ($allocQty > 0) {
+                        if ($allocQty > 0 && !$existingAllocationEvent) {
+                            $inventoryOps = [];
+                            $newAlloc = $srcAlloc + $allocQty;
                             if ($srcInv) {
-                                $newAlloc = $srcAlloc + $allocQty;
-                                am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
-                                    'quantity_allocated' => $newAlloc,
-                                    'updated_at' => date('c'),
-                                ]);
-                                $srcInv['quantity_allocated'] = $newAlloc;
-                                $invByKey[$srcKey] = $srcInv;
+                                $inventoryOps[] = [
+                                    'mode' => 'update',
+                                    'collection' => 'am_core_inventory_levels',
+                                    'id' => (string)$srcInv['id'],
+                                    'data' => [
+                                        'quantity_allocated' => $newAlloc,
+                                        'updated_at' => date('c'),
+                                    ],
+                                ];
                             } else {
-                                $cr = am_firestore_create_document('am_core_inventory_levels', [
-                                    'asset_id' => $liAssetId,
-                                    'location_id' => $srcLocationCode,
-                                    'country_id' => $reqCountryId,
-                                    'quantity_on_hand' => $srcQoh,
-                                    'quantity_allocated' => $allocQty,
-                                    'created_at' => date('c'),
-                                    'updated_at' => date('c'),
-                                ]);
-                                if (!empty($cr['ok']) && !empty($cr['id'])) {
-                                    $invByKey[$srcKey] = [
-                                        'id' => (string)$cr['id'],
+                                $inventoryId = am_firestore_random_document_id();
+                                $inventoryOps[] = [
+                                    'mode' => 'create',
+                                    'collection' => 'am_core_inventory_levels',
+                                    'id' => $inventoryId,
+                                    'data' => [
                                         'asset_id' => $liAssetId,
                                         'location_id' => $srcLocationCode,
                                         'country_id' => $reqCountryId,
                                         'quantity_on_hand' => $srcQoh,
                                         'quantity_allocated' => $allocQty,
-                                    ];
-                                }
+                                        'created_at' => date('c'),
+                                        'updated_at' => date('c'),
+                                    ],
+                                ];
+                                $srcInv = [
+                                    'id' => $inventoryId,
+                                    'asset_id' => $liAssetId,
+                                    'location_id' => $srcLocationCode,
+                                    'country_id' => $reqCountryId,
+                                    'quantity_on_hand' => $srcQoh,
+                                    'quantity_allocated' => 0,
+                                ];
                             }
+
+                            $allocationTxn = am_dispatch_transaction_data(
+                                'Allocation',
+                                $liAssetId,
+                                $allocQty,
+                                $srcLocationCode,
+                                $destLocationCode,
+                                array_merge($req, ['id' => $docId]),
+                                $workPayload,
+                                'reserved'
+                            );
+                            $commit = am_dispatch_commit_event($inventoryOps, $allocationEventId, $allocationTxn);
+                            if (!$commit['ok']) {
+                                $operationErrors[] = 'Could not reserve ' . (string)($li['name'] ?? $liAssetId)
+                                    . ': ' . (string)($commit['error'] ?? 'unknown Firestore error');
+                                break;
+                            }
+                            $srcInv['quantity_allocated'] = $newAlloc;
+                            $invByKey[$srcKey] = $srcInv;
                         }
                         if ($shortQty > 0) {
                             $shortNotes[] = (string)($li['name'] ?? ('Item #' . ($idx + 1))) . ': short by ' . $shortQty;
                         }
                     }
 
-                    // Fulfilled: move allocated qty when present, else best-effort available qty.
+                    // Fulfilled: issue stock to the receiver at the same site, or
+                    // transfer it to a different site. Source balance changes and
+                    // the immutable fulfillment event are one atomic commit.
                     if ($newStatus === 'Fulfilled') {
                         $allocQty = $alsoApprove ? (int)($items[$idx]['allocated_quantity'] ?? 0) : (int)($li['allocated_quantity'] ?? 0);
-                        $moveQty = $allocQty > 0 ? $allocQty : min($reqQty, $available);
+                        $fulfillmentEventId = am_dispatch_event_id($docId, (int)$idx, 'fulfillment');
+                        $existingFulfillmentEvent = am_firestore_get_document('am_core_transactions', $fulfillmentEventId);
+                        $moveQty = $existingFulfillmentEvent
+                            ? (int)($existingFulfillmentEvent['quantity'] ?? 0)
+                            : ($allocQty > 0 ? $allocQty : min($reqQty, $available));
                         $unfulfilled = max(0, $reqQty - $moveQty);
                         $items[$idx]['fulfilled_quantity'] = $moveQty;
                         $items[$idx]['unfulfilled_quantity'] = $unfulfilled;
                         $items[$idx]['fulfilled_updated_at'] = date('c');
-                        if ($moveQty <= 0 || $srcLocationCode === $destLocationCode) {
+                        if ($moveQty <= 0 || $existingFulfillmentEvent) {
                             continue;
                         }
 
+                        $sameLocation = $srcLocationCode === $destLocationCode;
+                        $inventoryOps = [];
+
                         // Source: deduct on-hand and release allocation.
                         if ($srcInv) {
-                            $newQoh = max(0, (int)($srcInv['quantity_on_hand'] ?? 0) - $moveQty);
-                            $newAlloc = max(0, (int)($srcInv['quantity_allocated'] ?? 0) - $allocQty);
-                            am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
-                                'quantity_on_hand' => $newQoh,
-                                'quantity_allocated' => $newAlloc,
-                                'updated_at' => date('c'),
-                            ]);
-                            $srcInv['quantity_on_hand'] = $newQoh;
-                            $srcInv['quantity_allocated'] = $newAlloc;
-                            $invByKey[$srcKey] = $srcInv;
+                            $balances = am_dispatch_fulfillment_balances(
+                                (int)($srcInv['quantity_on_hand'] ?? 0),
+                                (int)($srcInv['quantity_allocated'] ?? 0),
+                                $allocQty,
+                                $moveQty,
+                                $sameLocation
+                            );
+                            $newQoh = $balances['source_on_hand'];
+                            $newAlloc = $balances['source_allocated'];
+                            $inventoryOps[] = [
+                                'mode' => 'update',
+                                'collection' => 'am_core_inventory_levels',
+                                'id' => (string)$srcInv['id'],
+                                'data' => [
+                                    'quantity_on_hand' => $newQoh,
+                                    'quantity_allocated' => $newAlloc,
+                                    'updated_at' => date('c'),
+                                ],
+                            ];
                         } else {
-                            am_firestore_create_document('am_core_inventory_levels', [
+                            $sourceInventoryId = am_firestore_random_document_id();
+                            $newQoh = max(0, (int)($asset['quantity'] ?? 0) - $moveQty);
+                            $newAlloc = 0;
+                            $inventoryOps[] = [
+                                'mode' => 'create',
+                                'collection' => 'am_core_inventory_levels',
+                                'id' => $sourceInventoryId,
+                                'data' => [
+                                    'asset_id' => $liAssetId,
+                                    'location_id' => $srcLocationCode,
+                                    'country_id' => $reqCountryId,
+                                    'quantity_on_hand' => $newQoh,
+                                    'quantity_allocated' => 0,
+                                    'created_at' => date('c'),
+                                    'updated_at' => date('c'),
+                                ],
+                            ];
+                            $srcInv = [
+                                'id' => $sourceInventoryId,
                                 'asset_id' => $liAssetId,
                                 'location_id' => $srcLocationCode,
                                 'country_id' => $reqCountryId,
-                                'quantity_on_hand' => max(0, (int)($asset['quantity'] ?? 0) - $moveQty),
-                                'quantity_allocated' => 0,
-                                'created_at' => date('c'),
-                                'updated_at' => date('c'),
-                            ]);
+                            ];
                         }
 
-                        // Destination: add on-hand.
-                        $destKey = $liAssetId . '|' . $destLocationCode . '|' . $reqCountryId;
-                        $destInv = $invByKey[$destKey] ?? null;
-                        if ($destInv) {
-                            $destQoh = (int)($destInv['quantity_on_hand'] ?? 0) + $moveQty;
-                            am_firestore_update_document('am_core_inventory_levels', (string)$destInv['id'], [
-                                'quantity_on_hand' => $destQoh,
-                                'updated_at' => date('c'),
-                            ]);
-                            $destInv['quantity_on_hand'] = $destQoh;
-                            $invByKey[$destKey] = $destInv;
-                        } else {
-                            $cr = am_firestore_create_document('am_core_inventory_levels', [
-                                'asset_id' => $liAssetId,
-                                'location_id' => $destLocationCode,
-                                'country_id' => $reqCountryId,
-                                'quantity_on_hand' => $moveQty,
-                                'quantity_allocated' => 0,
-                                'created_at' => date('c'),
-                                'updated_at' => date('c'),
-                            ]);
-                            if (!empty($cr['ok']) && !empty($cr['id'])) {
-                                $invByKey[$destKey] = [
-                                    'id' => (string)$cr['id'],
+                        if ($sameLocation && in_array((string)($asset['item_class'] ?? ''), ['Consumable', 'Material', 'Inventory'], true)) {
+                            $newAssetQuantity = max(0, (int)($asset['quantity'] ?? $srcQoh) - $moveQty);
+                            $inventoryOps[] = [
+                                'mode' => 'update',
+                                'collection' => 'am_core_assets',
+                                'id' => $liAssetId,
+                                'data' => [
+                                    'quantity' => $newAssetQuantity,
+                                    'updated_at' => date('c'),
+                                ],
+                            ];
+                        }
+
+                        // A same-site dispatch is an issue/consumption, not a
+                        // transfer back into the same stock row.
+                        $destKey = '';
+                        $destInv = null;
+                        if (!$sameLocation) {
+                            $destKey = $liAssetId . '|' . $destLocationCode . '|' . $reqCountryId;
+                            $destInv = $invByKey[$destKey] ?? null;
+                            if ($destInv) {
+                                $destBalances = am_dispatch_fulfillment_balances(
+                                    (int)($srcInv['quantity_on_hand'] ?? 0),
+                                    (int)($srcInv['quantity_allocated'] ?? 0),
+                                    $allocQty,
+                                    $moveQty,
+                                    false,
+                                    (int)($destInv['quantity_on_hand'] ?? 0)
+                                );
+                                $destQoh = (int)$destBalances['destination_on_hand'];
+                                $inventoryOps[] = [
+                                    'mode' => 'update',
+                                    'collection' => 'am_core_inventory_levels',
+                                    'id' => (string)$destInv['id'],
+                                    'data' => [
+                                        'quantity_on_hand' => $destQoh,
+                                        'updated_at' => date('c'),
+                                    ],
+                                ];
+                            } else {
+                                $destinationInventoryId = am_firestore_random_document_id();
+                                $destQoh = $moveQty;
+                                $inventoryOps[] = [
+                                    'mode' => 'create',
+                                    'collection' => 'am_core_inventory_levels',
+                                    'id' => $destinationInventoryId,
+                                    'data' => [
+                                        'asset_id' => $liAssetId,
+                                        'location_id' => $destLocationCode,
+                                        'country_id' => $reqCountryId,
+                                        'quantity_on_hand' => $moveQty,
+                                        'quantity_allocated' => 0,
+                                        'created_at' => date('c'),
+                                        'updated_at' => date('c'),
+                                    ],
+                                ];
+                                $destInv = [
+                                    'id' => $destinationInventoryId,
                                     'asset_id' => $liAssetId,
                                     'location_id' => $destLocationCode,
                                     'country_id' => $reqCountryId,
-                                    'quantity_on_hand' => $moveQty,
                                     'quantity_allocated' => 0,
                                 ];
                             }
+
+                            $destinationName = (string)($destLoc['location_name'] ?? $destSiteCode);
+                            if ((string)($asset['location_id'] ?? '') !== $destLocationCode) {
+                                $inventoryOps[] = [
+                                    'mode' => 'update',
+                                    'collection' => 'am_core_assets',
+                                    'id' => $liAssetId,
+                                    'data' => [
+                                        'location_id' => $destLocationCode,
+                                        'location_name' => $destinationName,
+                                        'updated_at' => date('c'),
+                                    ],
+                                ];
+                            }
+                        }
+
+                        $fulfillmentTxn = am_dispatch_transaction_data(
+                            am_dispatch_fulfillment_transaction_type($asset, $sameLocation),
+                            $liAssetId,
+                            $moveQty,
+                            $srcLocationCode,
+                            $sameLocation ? '' : $destLocationCode,
+                            array_merge($req, ['id' => $docId]),
+                            $workPayload,
+                            $sameLocation ? 'issued' : 'transferred'
+                        );
+                        $commit = am_dispatch_commit_event($inventoryOps, $fulfillmentEventId, $fulfillmentTxn);
+                        if (!$commit['ok']) {
+                            $operationErrors[] = 'Could not fulfill ' . (string)($li['name'] ?? $liAssetId)
+                                . ': ' . (string)($commit['error'] ?? 'unknown Firestore error');
+                            break;
+                        }
+                        $srcInv['quantity_on_hand'] = $newQoh;
+                        $srcInv['quantity_allocated'] = $newAlloc;
+                        $invByKey[$srcKey] = $srcInv;
+                        if (isset($newAssetQuantity)) {
+                            $assetById[$liAssetId]['quantity'] = $newAssetQuantity;
+                            unset($newAssetQuantity);
+                        }
+                        if (!$sameLocation && $destInv && $destKey !== '') {
+                            $destInv['quantity_on_hand'] = $destQoh;
+                            $invByKey[$destKey] = $destInv;
                         }
                     }
                 }
@@ -248,34 +391,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update['payload'] = $workPayload;
 
                 if ($newStatus === 'Fulfilled') {
-                    // Update asset location for fulfilled line items.
-                    $destLocName = (string)($destLoc['location_name'] ?? $destSiteCode);
-                    foreach ($items as $li) {
-                        $liAssetId = (string)($li['asset_id'] ?? '');
-                        $moved = (int)($li['fulfilled_quantity'] ?? 0);
-                        if ($liAssetId === '' || $moved <= 0) {
-                            continue;
-                        }
-                        $la = $assetById[$liAssetId] ?? [];
-                        if (!$la) {
-                            continue;
-                        }
-                        $currentLocId = (string)($la['location_id'] ?? '');
-                        if ($currentLocId === $destLocationCode) {
-                            continue;
-                        }
-                        am_firestore_update_document('am_core_assets', $liAssetId, [
-                            'location_id' => $destLocationCode,
-                            'location_name' => $destLocName,
-                            'updated_at' => date('c'),
-                        ]);
-                    }
                     $update['fulfilled_date'] = date('c');
                 }
             }
 
             // Cancelled: release allocated stock back to inventory.
-            if ($newStatus === 'Cancelled' && $status === 'Approved') {
+            if ($newStatus === 'Cancelled' && $currentStatus === 'Approved') {
                 $items = $workPayload['line_items'] ?? [];
                 if (!is_array($items)) {
                     $items = [];
@@ -328,10 +449,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $srcInv = $invByKey[$srcKey] ?? null;
                     if ($srcInv) {
                         $newAlloc = max(0, (int)($srcInv['quantity_allocated'] ?? 0) - $allocQty);
-                        am_firestore_update_document('am_core_inventory_levels', (string)$srcInv['id'], [
-                            'quantity_allocated' => $newAlloc,
-                            'updated_at' => date('c'),
-                        ]);
+                        $releaseEventId = am_dispatch_event_id($docId, (int)$idx, 'release');
+                        $releaseTxn = am_dispatch_transaction_data(
+                            'Return',
+                            $liAssetId,
+                            $allocQty,
+                            $srcLocationCode,
+                            '',
+                            array_merge($req, ['id' => $docId]),
+                            $workPayload,
+                            'reservation released'
+                        );
+                        $commit = am_dispatch_commit_event([[
+                            'mode' => 'update',
+                            'collection' => 'am_core_inventory_levels',
+                            'id' => (string)$srcInv['id'],
+                            'data' => [
+                                'quantity_allocated' => $newAlloc,
+                                'updated_at' => date('c'),
+                            ],
+                        ]], $releaseEventId, $releaseTxn);
+                        if (!$commit['ok']) {
+                            $operationErrors[] = 'Could not release ' . (string)($li['name'] ?? $liAssetId)
+                                . ': ' . (string)($commit['error'] ?? 'unknown Firestore error');
+                            break;
+                        }
                     }
                     $items[$idx]['allocated_quantity'] = 0;
                     $items[$idx]['short_quantity'] = 0;
@@ -342,7 +484,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unset($workPayload['allocation_note']);
                 $update['payload'] = $workPayload;
             }
-            am_firestore_update_document('am_core_requests', $docId, $update);
+            if ($operationErrors !== []) {
+                $_SESSION['flash_error'] = implode(' ', $operationErrors);
+                header('Location: ' . base_url('requests/dispatch-view.php?id=' . urlencode($docId)));
+                exit;
+            }
+            $requestUpdate = am_firestore_update_document('am_core_requests', $docId, $update);
+            if (!$requestUpdate['ok']) {
+                $_SESSION['flash_error'] = 'Inventory was safely recorded, but the request status could not be saved. Retry this action; inventory events are idempotent. '
+                    . (string)($requestUpdate['error'] ?? '');
+                header('Location: ' . base_url('requests/dispatch-view.php?id=' . urlencode($docId)));
+                exit;
+            }
             $_SESSION['flash_success'] = $alsoApprove ? 'Request approved and fulfilled.' : ('Status updated to ' . $newStatus . '.');
             header('Location: ' . base_url('requests/dispatch-view.php?id=' . urlencode($docId)));
             exit;
@@ -390,6 +543,12 @@ include __DIR__ . '/../includes/header.php';
     unset($_SESSION['flash_success']);
     if ($flash): ?>
     <div class="alert alert-success alert-dismissible fade show"><?php echo htmlspecialchars($flash); ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    <?php endif; ?>
+    <?php
+    $flashError = $_SESSION['flash_error'] ?? '';
+    unset($_SESSION['flash_error']);
+    if ($flashError): ?>
+    <div class="alert alert-danger alert-dismissible fade show"><?php echo htmlspecialchars($flashError); ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">

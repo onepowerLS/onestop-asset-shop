@@ -193,7 +193,12 @@ return [
     <li>Select the <strong>receiver</strong> from the employee directory — name and email auto-fill</li>
     <li><strong>Submit</strong> — the request number follows the <code>AMW-YYYY-NNNNN</code> format</li>
 </ol>
-<p>Managers can <strong>Approve</strong>, <strong>Reject</strong>, or <strong>Mark fulfilled</strong> from the detail view. Each request shows a line-item table with links back to the catalog items.</p>
+<p>Managers can <strong>Approve</strong>, <strong>Reject</strong>, or <strong>Mark fulfilled</strong> from the detail view. Approval reserves available stock. Fulfillment releases that reservation and records the movement in the item&rsquo;s Transaction History.</p>
+<ul>
+    <li>If source and destination differ, fulfillment transfers stock to the destination.</li>
+    <li>If source and destination are the same, stockable items are issued to the named receiver: on-hand decreases and is not added back to the same row.</li>
+</ul>
+<p>Inventory balances and their transaction events save together. If a network interruption occurs, retrying the action will not apply the movement twice.</p>
 <div class="alert alert-light mb-0">
     <i class="fas fa-lightbulb me-1 text-warning"></i>
     <strong>Within-country only:</strong> dispatch requests are for warehouse/HQ → site within one country. Cross-country transfers are a separate process.

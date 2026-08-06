@@ -247,6 +247,93 @@ function am_firestore_create_document(string $collection, array $data, ?string $
     return ['ok' => true, 'error' => null, 'id' => $createdId, 'data' => am_firestore_document_to_array($result['json'])];
 }
 
+/**
+ * Commit several Firestore creates/updates atomically.
+ *
+ * Each operation is:
+ *   ['mode' => 'create'|'update', 'collection' => '...', 'id' => '...', 'data' => [...]]
+ *
+ * A create fails when the document already exists.  Dispatch workflows use that
+ * property with deterministic transaction ids so a retried request cannot apply
+ * the same inventory movement twice.
+ *
+ * @param list<array{mode:string, collection:string, id:string, data:array<string,mixed>}> $operations
+ * @return array{ok:bool, error:?string, status?:int}
+ */
+function am_firestore_commit_operations(array $operations, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
+    if ($token === '') {
+        return ['ok' => false, 'error' => 'Not authenticated'];
+    }
+    if ($operations === []) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $writes = [];
+    foreach ($operations as $operation) {
+        $mode = (string)($operation['mode'] ?? '');
+        $collection = trim((string)($operation['collection'] ?? ''));
+        $documentId = trim((string)($operation['id'] ?? ''));
+        $data = $operation['data'] ?? null;
+        if (!in_array($mode, ['create', 'update'], true)
+            || $collection === ''
+            || $documentId === ''
+            || !is_array($data)
+            || $data === []) {
+            return ['ok' => false, 'error' => 'Invalid Firestore commit operation'];
+        }
+
+        $name = 'projects/' . am_firestore_project_id()
+            . '/databases/(default)/documents/' . $collection . '/' . $documentId;
+        $write = [
+            'update' => [
+                'name' => $name,
+                'fields' => am_php_to_firestore_fields($data),
+            ],
+            'currentDocument' => $mode === 'create' ? ['exists' => false] : ['exists' => true],
+        ];
+        if ($mode === 'update') {
+            $write['updateMask'] = ['fieldPaths' => array_values(array_map('strval', array_keys($data)))];
+        }
+        $writes[] = $write;
+    }
+
+    $project = rawurlencode(am_firestore_project_id());
+    $url = 'https://firestore.googleapis.com/v1/projects/' . $project
+        . '/databases/(default)/documents:commit';
+    $result = am_http_request_json(
+        'POST',
+        $url,
+        ['writes' => $writes],
+        ['Authorization: Bearer ' . $token]
+    );
+    if (!$result['ok']) {
+        $message = $result['json']['error']['message'] ?? ($result['error'] ?? 'Atomic commit failed');
+        return ['ok' => false, 'error' => (string)$message, 'status' => (int)($result['status'] ?? 0)];
+    }
+
+    // The canonical transaction document committed alongside these writes is
+    // the audit record. Mutation-log fan-out remains best-effort and is not
+    // allowed to weaken the atomic inventory/event invariant.
+    if (function_exists('am_mutation_log_record')) {
+        foreach ($operations as $operation) {
+            am_mutation_log_record(
+                (string)$operation['mode'],
+                (string)$operation['collection'],
+                (string)$operation['id'],
+                (array)$operation['data'],
+                $idTokenOverride,
+                array_keys((array)$operation['data'])
+            );
+        }
+    }
+    return ['ok' => true, 'error' => null, 'status' => (int)($result['status'] ?? 200)];
+}
+
+function am_firestore_random_document_id(): string {
+    return bin2hex(random_bytes(10));
+}
+
 // ── Update document ─────────────────────────────────────────────────
 
 function am_firestore_update_document(string $collection, string $documentId, array $data, ?string $idTokenOverride = null): array {

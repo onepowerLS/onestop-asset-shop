@@ -126,6 +126,12 @@ Tests run automatically on push to `develop` or `main`:
 - [ ] Search returns items that match main catalog country rules (including assets where country is inferred from location when `country_id` is empty)
 - [ ] Search finds items by manufacturer, model, notes, category name, location name/code (not only name/tag/description)
 - [ ] Known LSO (or other) warehouse item appears when Request country matches that country
+- [ ] Approving reserves available stock and atomically creates one `Allocation` transaction
+- [ ] Fulfilling to another site releases the reservation, moves stock, and creates one `Transfer` transaction
+- [ ] Fulfilling at the source site releases the reservation, reduces stockable on-hand/asset quantity, and creates one `Consume` transaction
+- [ ] Cancelling an Approved request releases the reservation and creates one `Return` transaction
+- [ ] Retrying any status action does not duplicate the balance change or transaction (deterministic event IDs)
+- [ ] A failed inventory/event commit leaves the request status unchanged and shows an actionable error
 
 #### QR Labels (web/admin/qr-labels.php)
 - [ ] Coverage stats (assigned, pending, percentage)

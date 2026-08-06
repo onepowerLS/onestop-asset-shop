@@ -179,9 +179,26 @@ Open a request from the Service workflows list to see:
 ### Managing Dispatch Requests (Admin/Manager)
 
 Managers and Admins can update the status:
-- **Approve** — confirms the dispatch is authorized
+- **Approve** — confirms the dispatch is authorized and reserves the available quantity
 - **Reject** — declines the request
-- **Mark fulfilled** — records that items have been dispatched
+- **Mark fulfilled** — records that items have been dispatched and releases the reservation
+
+On fulfillment, AM handles the destination in one of two ways:
+
+- **Different destination site:** stock is transferred from the source inventory row to the destination row.
+- **Same destination as the source:** stock has been issued to the named receiver. For Materials, Consumables, and Inventory, on-hand stock is reduced and is not added back to the same location.
+
+Every reservation, fulfillment, or cancellation produces an entry in the item’s **Transaction History**. The inventory balance and its transaction are saved together, so retrying after a browser or network interruption will not apply the movement twice.
+
+### IS&T transaction-history check
+
+When an item shows an allocated balance but no transaction history:
+
+1. Identify the item’s Firestore document ID from `am_core_assets` (the visible asset tag is not necessarily the document ID).
+2. Query `am_core_transactions.asset_id`, `am_core_allocations.asset_id`, and `am_core_inventory_levels.asset_id` using that document ID.
+3. Treat `am_core_inventory_levels.quantity_allocated` as current state only. It is not proof that an `am_core_allocations` row exists.
+4. Check Approved inventory-dispatch requests for an active reservation. Fulfilled or Cancelled requests must not leave an allocated balance.
+5. Escalate a mismatch to an AM Manager/system maintainer; do not edit Firestore balances directly.
 
 > **Note:** Dispatch requests are within-country only (warehouse/HQ → site). Cross-country transfers between Lesotho, Zambia, and Benin are a separate process.
 

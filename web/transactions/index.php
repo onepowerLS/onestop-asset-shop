@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
 require_login();
 
 $page_title = 'Transaction History';
@@ -14,11 +15,7 @@ foreach ($assets as $a) {
     $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
     if ($aid !== '') $assetById[$aid] = $a;
 }
-$locationById = [];
-foreach ($locations as $l) {
-    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
-    if ($lid !== '') $locationById[$lid] = $l;
-}
+$locationById = am_build_location_index($locations);
 
 $typeFilter = $_GET['type'] ?? '';
 $searchTerm = strtolower(trim($_GET['search'] ?? ''));
