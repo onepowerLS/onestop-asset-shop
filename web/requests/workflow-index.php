@@ -39,8 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newStatus === 'Fulfilled') {
                 $update['fulfilled_date'] = date('c');
             }
-            am_firestore_update_document('am_core_requests', $docId, $update);
-            $_SESSION['flash_success'] = 'Updated to ' . $newStatus . '.';
+            $updateResult = am_firestore_update_document('am_core_requests', $docId, $update);
+            if ($updateResult['ok']) {
+                $_SESSION['flash_success'] = 'Updated to ' . $newStatus . '.';
+            } else {
+                $_SESSION['flash_error'] = 'Status update failed: ' . ($updateResult['error'] ?? 'unknown error');
+            }
         }
         header('Location: ' . base_url('requests/workflow-index.php'));
         exit;

@@ -37,8 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newStatus === 'Fulfilled') {
                 $update['fulfilled_date'] = date('c');
             }
-            am_firestore_update_document('am_core_requests', $docId, $update);
-            $_SESSION['flash_success'] = 'Status updated to ' . $newStatus . '.';
+            $updateResult = am_firestore_update_document('am_core_requests', $docId, $update);
+            if ($updateResult['ok']) {
+                $_SESSION['flash_success'] = 'Status updated to ' . $newStatus . '.';
+            } else {
+                $_SESSION['flash_error'] = 'Status update failed: ' . ($updateResult['error'] ?? 'unknown error');
+            }
         }
         header('Location: ' . base_url('requests/equipment-view.php?id=' . urlencode($docId)));
         exit;
@@ -49,6 +53,7 @@ $payload = $req['payload'] ?? [];
 if (!is_array($payload)) {
     $payload = [];
 }
+$lastNotification = is_array($req['last_notification'] ?? null) ? $req['last_notification'] : [];
 
 $countries = am_get_countries();
 $cid = (string)($req['requested_for_country'] ?? '');
@@ -89,6 +94,18 @@ include __DIR__ . '/../includes/header.php';
                 <strong><?php echo htmlspecialchars((string)($req['request_number'] ?? '')); ?></strong>
                 · <span class="badge bg-secondary"><?php echo htmlspecialchars($status); ?></span>
             </p>
+            <?php if (!empty($lastNotification)): ?>
+            <p class="small mb-0 mt-2 text-gray-600"><i class="fas fa-envelope me-1"></i>
+                <?php echo htmlspecialchars(match ((string)($lastNotification['delivery_status'] ?? '')) {
+                    'sent' => 'Email sent',
+                    'failed_retrying' => 'Email delayed — retrying',
+                    'skipped_missing_recipient' => 'Email not sent — requester email missing',
+                    default => 'Email status pending',
+                }); ?>
+                <?php if (!empty($lastNotification['recipient'])): ?> to <?php echo htmlspecialchars((string)$lastNotification['recipient']); ?><?php endif; ?>
+                · <?php echo htmlspecialchars((string)($lastNotification['status'] ?? '')); ?>
+            </p>
+            <?php endif; ?>
         </div>
         <a href="<?php echo base_url('requests/workflow-index.php'); ?>" class="btn btn-outline-secondary btn-sm">Back to list</a>
     </div>

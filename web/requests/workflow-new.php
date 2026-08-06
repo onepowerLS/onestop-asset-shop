@@ -82,6 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'workflow_label'     => $template['label'],
             'status'             => 'Submitted',
             'requested_by'       => (string)($_SESSION['user_id'] ?? ''),
+            'requester_email'    => (string)($_SESSION['email'] ?? ''),
+            'requester_name'     => (string)($_SESSION['username'] ?? ''),
             'requested_for_country'=> $countryId,
             'summary'              => $summary,
             'requested_date'       => date('c'),

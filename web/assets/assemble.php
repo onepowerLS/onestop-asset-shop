@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -196,13 +197,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sinv = $invByKey[$skey] ?? null;
             if ($sinv) {
                 $newQoh = max(0, (int)($sinv['quantity_on_hand'] ?? 0) - $src['quantity']);
-                am_firestore_update_document('am_core_inventory_levels', (string)$sinv['id'], [
+                $consumeResult = am_firestore_update_document('am_core_inventory_levels', (string)$sinv['id'], [
                     'quantity_on_hand' => $newQoh,
                     'updated_at' => date('c'),
                 ]);
-                $invByKey[$skey]['quantity_on_hand'] = $newQoh;
+                if ($consumeResult['ok']) {
+                    $invByKey[$skey]['quantity_on_hand'] = $newQoh;
+                    am_log_asset_transaction($src['asset_id'], 'Consume', (int)$src['quantity'], [
+                        'asset_name' => (string)$src['name'],
+                        'asset_tag' => (string)$src['asset_tag'],
+                        'from_location_id' => $assemblyLocationCode,
+                        'site_code' => $assemblyLocationCode,
+                        'notes' => 'Consumed during production of ' . $resultQty . ' × ' . $resultName . '.',
+                    ]);
+                } else {
+                    $errors[] = 'Could not consume ' . $src['name'] . ': ' . ($consumeResult['error'] ?? 'unknown error');
+                }
             }
         }
+
+        // Do not create output records when any source deduction failed.
+        if (empty($errors)) {
 
         $lineage = [
             'built_from' => $validSources,
@@ -256,6 +271,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'created_at' => date('c'),
                         'updated_at' => date('c'),
                     ]);
+                    am_log_asset_transaction($targetAssetId, 'Production', $resultQty, [
+                        'asset_name' => $resultName,
+                        'asset_tag' => $assetTag,
+                        'to_location_id' => $assemblyLocationCode,
+                        'site_code' => $assemblyLocationCode,
+                        'notes' => 'Produced from ' . count($validSources) . ' material type(s).',
+                    ]);
                     $_SESSION['flash_success'] = 'Produced ' . $resultQty . ' × ' . $resultName
                         . ' (' . $assetTag . ') from ' . count($validSources) . ' material type(s).';
                     header('Location: ' . base_url('assets/view.php?id=' . urlencode($targetAssetId)));
@@ -290,6 +312,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'updated_at' => date('c'),
                     ]);
                 }
+
+                am_log_asset_transaction($targetAssetId, 'Production', $resultQty, [
+                    'asset_name' => $resultName,
+                    'asset_tag' => (string)($targetAsset['asset_tag'] ?? ''),
+                    'to_location_id' => $assemblyLocationCode,
+                    'site_code' => $assemblyLocationCode,
+                    'quantity_before' => $prevQty,
+                    'quantity_after' => $newQty,
+                    'notes' => 'Produced and added to existing catalog stock from ' . count($validSources) . ' material type(s).',
+                ]);
 
                 $_SESSION['flash_success'] = 'Produced ' . $resultQty . ' × ' . $resultName
                     . ' (added to ' . (string)($targetAsset['asset_tag'] ?? $targetAssetId) . ') from '
@@ -337,6 +369,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Failed to create asset #' . ($i + 1) . ': ' . ($result['error'] ?? 'Unknown');
                 break;
             }
+            am_log_asset_transaction((string)($result['id'] ?? ''), 'Production', 1, [
+                'asset_name' => $resultName,
+                'asset_tag' => $assetTag,
+                'to_location_id' => $assemblyLocationCode,
+                'site_code' => $assemblyLocationCode,
+                'notes' => 'Assembled from ' . count($validSources) . ' material type(s).',
+            ]);
             // Add newly created asset to lookup so next tag auto-increments
             $existingAssets[] = $data;
         }
@@ -347,6 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . ' (' . $tagList . ') from ' . count($validSources) . ' material type(s).';
             header('Location: ' . base_url('assets/index.php?item_class=FixedAsset'));
             exit;
+        }
         }
         }
     }

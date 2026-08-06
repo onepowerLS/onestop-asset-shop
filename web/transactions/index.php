@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
 
 $page_title = 'Transaction History';
@@ -32,6 +33,8 @@ foreach ($transactions as $txn) {
             $asset['name'] ?? '',
             $asset['asset_tag'] ?? '',
             $txn['notes'] ?? '',
+            am_transaction_site_id($txn),
+            $txn['site_name'] ?? '',
             $txn['qr_code_scanned'] ?? '',
         ]));
         if (!str_contains($blob, $searchTerm)) continue;
@@ -46,7 +49,7 @@ usort($filtered, function ($a, $b) {
     return $bd <=> $ad;
 });
 
-$txnTypes = ['CheckOut', 'CheckIn', 'StockIngestion', 'StockTake', 'Transfer', 'Allocation', 'Return', 'WriteOff', 'QRScan', 'Consume', 'Deploy'];
+$txnTypes = ['OpeningBalance', 'CheckOut', 'CheckIn', 'StockIngestion', 'StockAdjustment', 'StockTake', 'Production', 'Transfer', 'Allocation', 'Fulfillment', 'Return', 'WriteOff', 'StatusChange', 'QRScan', 'Consume', 'Deploy'];
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -91,16 +94,15 @@ include __DIR__ . '/../includes/header.php';
                             <th>Date</th>
                             <th>Type</th>
                             <th>Item</th>
-                            <th>Qty</th>
-                            <th>From</th>
-                            <th>To</th>
-                            <th>Device</th>
+                            <th>Quantity</th>
+                            <th>Site</th>
+                            <th>Performed by</th>
                             <th>Notes</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($filtered)): ?>
-                        <tr><td colspan="8" class="text-center text-gray-500 py-4">No transactions found.</td></tr>
+                        <tr><td colspan="7" class="text-center text-gray-500 py-4">No transactions found.</td></tr>
                         <?php else: ?>
                         <?php foreach ($filtered as $txn):
                             $aid = (string)($txn['asset_id'] ?? '');
@@ -120,10 +122,14 @@ include __DIR__ . '/../includes/header.php';
                                     <?php echo htmlspecialchars($asset['name'] ?? $txn['asset_name'] ?? 'Unknown'); ?>
                                 </a>
                             </td>
-                            <td><?php echo (int)($txn['quantity'] ?? 1); ?></td>
-                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['from_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
-                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['to_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
-                            <td><span class="badge bg-gray-200 text-gray-800"><?php echo htmlspecialchars($txn['device_type'] ?? 'Desktop'); ?></span></td>
+                            <td><?php echo (int)($txn['quantity'] ?? 1); ?> <?php echo htmlspecialchars((string)($asset['unit_of_measure'] ?? 'EA')); ?></td>
+                            <?php
+                            $txnSiteId = am_transaction_site_id($txn);
+                            $txnSite = $locationById[$txnSiteId] ?? [];
+                            $txnSiteLabel = trim((string)($txnSite['location_name'] ?? $txn['site_name'] ?? $txnSiteId));
+                            ?>
+                            <td><?php echo htmlspecialchars($txnSiteLabel !== '' ? $txnSiteLabel : '—'); ?></td>
+                            <td><?php echo htmlspecialchars((string)($txn['performed_by_name'] ?? $txn['employee_name'] ?? $txn['performed_by'] ?? 'System')); ?></td>
                             <td><?php echo htmlspecialchars(substr((string)($txn['notes'] ?? ''), 0, 80)); ?></td>
                         </tr>
                         <?php endforeach; ?>

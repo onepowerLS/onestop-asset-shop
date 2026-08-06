@@ -156,6 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'workflow_label'        => 'Dispatch request',
             'status'                => 'Submitted',
             'requested_by'          => (string)($_SESSION['user_id'] ?? ''),
+            'requester_email'       => (string)($_SESSION['email'] ?? $submitterEmail),
+            'requester_name'        => (string)($_SESSION['username'] ?? $submitterName),
             'requested_for_country' => $selectedCountryId,
             'summary'               => $summary,
             'requested_date'        => date('c'),

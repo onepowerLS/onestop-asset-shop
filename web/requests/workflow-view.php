@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/request_workflows.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_login();
 
@@ -28,6 +29,7 @@ $payload = $req['payload'] ?? [];
 if (!is_array($payload)) {
     $payload = [];
 }
+$lastNotification = is_array($req['last_notification'] ?? null) ? $req['last_notification'] : [];
 
 $wfType = (string)($req['workflow_type'] ?? '');
 if ($wfType === 'it_equipment_request') {
@@ -78,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
             }
         }
         $updatedCount = 0;
+        $fulfilledAssetIds = [];
         foreach ($selectedAssetIds as $aid) {
             $asset = $assetById[$aid] ?? null;
             if (!$asset) {
@@ -97,7 +100,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
             $r = am_firestore_update_document('am_core_assets', $aid, $patch);
             if ($r['ok']) {
                 $updatedCount++;
+                $fulfilledAssetIds[] = $aid;
                 $bulkSuccess[] = (string)($asset['asset_tag'] ?? $aid);
+                $txnType = match ($newStatus) {
+                    'Deployed' => 'Deploy',
+                    'CheckedOut', 'InProject', 'Allocated' => 'Allocation',
+                    default => 'Fulfillment',
+                };
+                $txnResult = am_log_asset_transaction($aid, $txnType, 1, [
+                    'asset_name' => (string)($asset['name'] ?? ''),
+                    'asset_tag' => (string)($asset['asset_tag'] ?? ''),
+                    'from_location_id' => (string)($asset['location_id'] ?? ''),
+                    'to_location_id' => $newLocation !== '' ? $newLocation : (string)($asset['location_id'] ?? ''),
+                    'site_code' => $newLocation !== '' ? $newLocation : (string)($req['site_code'] ?? ''),
+                    'status_before' => (string)($asset['status'] ?? ''),
+                    'status_after' => $newStatus,
+                    'request_id' => $docId,
+                    'request_number' => (string)($req['request_number'] ?? ''),
+                    'notes' => 'Fulfilled against request ' . (string)($req['request_number'] ?? $docId) . '.',
+                ]);
+                if (!$txnResult['ok']) {
+                    error_log('[AM transaction] Ready-board fulfillment ledger write failed for ' . $aid . ': ' . ($txnResult['error'] ?? 'unknown'));
+                }
             } else {
                 $bulkErrors[] = 'Failed to update ' . ($asset['asset_tag'] ?? $aid) . ': ' . ($r['error'] ?? 'Unknown');
             }
@@ -107,11 +131,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
             $updateData = [
                 'status' => 'Fulfilled',
                 'fulfilled_date' => date('c'),
-                'fulfilled_asset_ids' => $selectedAssetIds,
+                'fulfilled_asset_ids' => $fulfilledAssetIds,
                 'fulfilled_count' => $updatedCount,
             ];
-            am_firestore_update_document('am_core_requests', $docId, $updateData);
-            $_SESSION['flash_success'] = 'Allocated ' . $updatedCount . ' ready board(s) and marked request fulfilled.';
+            $requestResult = am_firestore_update_document('am_core_requests', $docId, $updateData);
+            if ($requestResult['ok']) {
+                $_SESSION['flash_success'] = 'Allocated ' . $updatedCount . ' ready board(s) and marked request fulfilled.';
+            } else {
+                $_SESSION['flash_warning'] = 'The boards were allocated, but the request status could not be marked fulfilled: ' . ($requestResult['error'] ?? 'unknown error');
+            }
             header('Location: ' . base_url('requests/workflow-view.php?id=' . urlencode($docId)));
             exit;
         }
@@ -248,6 +276,18 @@ include __DIR__ . '/../includes/header.php';
             <h1 class="h2"><?php echo htmlspecialchars($req['workflow_label'] ?? 'Workflow'); ?></h1>
             <p class="mb-0 text-gray-600"><strong><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></strong>
                 · <span class="badge bg-secondary"><?php echo htmlspecialchars((string)($req['status'] ?? '')); ?></span></p>
+            <?php if (!empty($lastNotification)): ?>
+            <p class="small mb-0 mt-2 text-gray-600"><i class="fas fa-envelope me-1"></i>
+                <?php echo htmlspecialchars(match ((string)($lastNotification['delivery_status'] ?? '')) {
+                    'sent' => 'Email sent',
+                    'failed_retrying' => 'Email delayed — retrying',
+                    'skipped_missing_recipient' => 'Email not sent — requester email missing',
+                    default => 'Email status pending',
+                }); ?>
+                <?php if (!empty($lastNotification['recipient'])): ?> to <?php echo htmlspecialchars((string)$lastNotification['recipient']); ?><?php endif; ?>
+                · <?php echo htmlspecialchars((string)($lastNotification['status'] ?? '')); ?>
+            </p>
+            <?php endif; ?>
         </div>
         <a href="<?php echo base_url('requests/workflow-index.php'); ?>" class="btn btn-outline-secondary btn-sm">Back to list</a>
     </div>

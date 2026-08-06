@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
 require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
 am_ensure_country_scope_from_session();
 
@@ -57,15 +58,15 @@ am_require_asset_visible($asset, $countries);
 $page_title = (string)($asset['name'] ?? 'Item Detail');
 
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
-$transactions = am_firestore_get_collection('am_core_transactions', 2000);
 $inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 5000);
 
 $itemAllocations = array_filter($allocations, fn($a) => (string)($a['asset_id'] ?? '') === $assetId);
-$itemTransactions = array_filter($transactions, fn($t) => (string)($t['asset_id'] ?? '') === $assetId);
-usort($itemTransactions, function ($a, $b) {
-    return strtotime((string)($b['transaction_date'] ?? $b['created_at'] ?? '1970-01-01'))
-        <=> strtotime((string)($a['transaction_date'] ?? $a['created_at'] ?? '1970-01-01'));
-});
+$transactionQuerySucceeded = false;
+$itemTransactions = am_get_asset_transactions([
+    $assetId,
+    (string)($asset['asset_id'] ?? ''),
+    (string)($asset['id'] ?? ''),
+], 500, $transactionQuerySucceeded);
 
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 $classLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui('class_material'), 'Consumable' => am_ui('class_consumable'), 'Inventory' => am_ui('class_inventory')];
@@ -106,6 +107,37 @@ $effectiveAlloc = $isStockable
     ? ($useCurrentLocationRows ? $stockAllocHere : $stockAllocAll)
     : 0;
 $effectiveAvail = max(0, $effectiveQoh - $effectiveAlloc);
+
+// Imported/legacy items pre-date the transaction ledger. Show a clearly
+// labelled opening snapshot so users can still see date, quantity and site;
+// future mutations append immutable ledger rows through transactions.php.
+if ($transactionQuerySucceeded && empty($itemTransactions)) {
+    $openingRows = $itemInventoryRows;
+    if (empty($openingRows)) {
+        $openingRows = [[
+            'location_id' => (string)($asset['location_id'] ?? ''),
+            'quantity_on_hand' => $effectiveQoh,
+            'quantity_allocated' => $effectiveAlloc,
+        ]];
+    }
+    foreach ($openingRows as $openingRow) {
+        $openingQoh = (int)($openingRow['quantity_on_hand'] ?? 0);
+        $openingAlloc = (int)($openingRow['quantity_allocated'] ?? 0);
+        $openingSite = (string)($openingRow['location_id'] ?? $asset['location_id'] ?? '');
+        $itemTransactions[] = [
+            'transaction_type' => 'OpeningBalance',
+            'transaction_date' => (string)($asset['created_at'] ?? $asset['updated_at'] ?? date('c')),
+            'asset_id' => $assetId,
+            'quantity' => $openingQoh,
+            'site_code' => $openingSite,
+            'to_location_id' => $openingSite,
+            'performed_by_name' => 'Legacy import',
+            'notes' => 'Opening snapshot; detailed transaction tracking was not available when this item was imported.'
+                . ($openingAlloc > 0 ? ' Allocated: ' . $openingAlloc . ' ' . (string)($asset['unit_of_measure'] ?? 'EA') . '.' : ''),
+            'is_opening_snapshot' => true,
+        ];
+    }
+}
 
 $resolvedCountryId = am_resolve_asset_country_id($asset, $countries);
 $country = $countryById[$resolvedCountryId] ?? [];
@@ -473,28 +505,31 @@ include __DIR__ . '/../includes/header.php';
     <div class="card border-0 shadow">
         <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('view_transactions')); ?></h2></div>
         <div class="card-body">
-            <?php if (empty($itemTransactions)): ?>
-            <p class="text-gray-500 text-center py-3 mb-0"><?php echo htmlspecialchars(am_ui('view_no_transactions')); ?></p>
-            <?php else: ?>
+            <?php if (!$transactionQuerySucceeded): ?>
+            <div class="alert alert-warning mb-3">Transaction history could not be loaded. Refresh the page or sign in again; no opening balance has been inferred.</div>
+            <?php endif; ?>
             <div class="table-responsive">
                 <table class="table table-hover">
-                    <thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>From</th><th>To</th><th>Device</th><th>Notes</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Activity</th><th>Quantity</th><th>Site</th><th>Performed by</th><th>Notes</th></tr></thead>
                     <tbody>
                         <?php foreach (array_slice($itemTransactions, 0, 50) as $txn): ?>
                         <tr>
                             <td><?php echo date('M d, Y H:i', strtotime((string)($txn['transaction_date'] ?? $txn['created_at'] ?? ''))); ?></td>
-                            <td><span class="badge bg-primary"><?php echo htmlspecialchars($txn['transaction_type'] ?? ''); ?></span></td>
-                            <td><?php echo (int)($txn['quantity'] ?? 1); ?></td>
-                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['from_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
-                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['to_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
-                            <td><span class="badge bg-gray-200 text-gray-800"><?php echo htmlspecialchars($txn['device_type'] ?? 'Desktop'); ?></span></td>
+                            <td><span class="badge bg-<?php echo !empty($txn['is_opening_snapshot']) ? 'secondary' : 'primary'; ?>"><?php echo htmlspecialchars($txn['transaction_type'] ?? ''); ?></span></td>
+                            <td><?php echo (int)($txn['quantity'] ?? 1); ?> <?php echo htmlspecialchars((string)($asset['unit_of_measure'] ?? 'EA')); ?></td>
+                            <?php
+                            $txnSiteId = am_transaction_site_id($txn);
+                            $txnSite = $locationById[$txnSiteId] ?? [];
+                            $txnSiteLabel = trim((string)($txnSite['location_name'] ?? $txn['site_name'] ?? $txnSiteId));
+                            ?>
+                            <td><?php echo htmlspecialchars($txnSiteLabel !== '' ? $txnSiteLabel : '—'); ?></td>
+                            <td><?php echo htmlspecialchars((string)($txn['performed_by_name'] ?? $txn['employee_name'] ?? $txn['performed_by'] ?? 'System')); ?></td>
                             <td><?php echo htmlspecialchars(substr((string)($txn['notes'] ?? ''), 0, 60)); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>

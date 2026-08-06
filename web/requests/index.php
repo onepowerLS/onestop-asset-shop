@@ -47,6 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reqNum = 'REQ-' . date('Y') . '-' . str_pad((string)(count($requests) + 1), 4, '0', STR_PAD_LEFT);
 
             $payload = [
+                'submitter_name' => (string)($_SESSION['username'] ?? ''),
+                'submitter_email' => (string)($_SESSION['email'] ?? ''),
                 'item_class' => $itemClass,
                 'department_scope' => $deptScope,
                 'description' => $description,
@@ -69,6 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'item_class' => $itemClass,
                 'department_scope' => $deptScope,
                 'requested_by' => $_SESSION['user_id'] ?? '',
+                'requester_email' => (string)($_SESSION['email'] ?? ''),
+                'requester_name' => (string)($_SESSION['username'] ?? ''),
                 'requested_for_country' => $countryId,
                 'requested_for_location' => trim($_POST['location_id'] ?? ''),
                 'priority' => $priority,
@@ -104,8 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newStatus === 'Fulfilled') {
                 $updateData['fulfilled_date'] = date('c');
             }
-            am_firestore_update_document('am_core_requests', $docId, $updateData);
-            $_SESSION['flash_success'] = 'Request status updated to ' . $newStatus . '.';
+            $updateResult = am_firestore_update_document('am_core_requests', $docId, $updateData);
+            if ($updateResult['ok']) {
+                $_SESSION['flash_success'] = 'Request status updated to ' . $newStatus . '.';
+            } else {
+                $_SESSION['flash_error'] = 'Request status update failed: ' . ($updateResult['error'] ?? 'unknown error');
+            }
         }
         header('Location: ' . base_url('requests/index.php'));
         exit;

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/duplicate_assets.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -162,6 +163,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'created_at' => date('c'),
                     'updated_at' => date('c'),
                 ]);
+            }
+            if ($newAssetId !== '') {
+                $txnResult = am_log_asset_transaction($newAssetId, 'StockIngestion', max(1, $quantity), [
+                    'asset_name' => $name,
+                    'asset_tag' => $assetTag,
+                    'to_location_id' => $locationId,
+                    'site_code' => $locationId,
+                    'status_after' => 'Available',
+                    'notes' => 'Opening stock recorded when the catalog item was created.',
+                ]);
+                if (!$txnResult['ok']) {
+                    error_log('[AM transaction] Could not record opening stock for ' . $newAssetId . ': ' . ($txnResult['error'] ?? 'unknown'));
+                }
             }
             $_SESSION['flash_success'] = 'Item "' . htmlspecialchars($name) . '" created with tag ' . $assetTag;
             header('Location: ' . base_url('assets/view.php?id=' . urlencode($result['id'])));

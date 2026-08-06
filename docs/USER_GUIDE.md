@@ -107,12 +107,16 @@ The **Active Allocations** table at the bottom shows all currently checked-out i
 
 Navigate to **Transactions** in the sidebar to see the full audit trail. Every action that modifies an item's state is logged:
 
+Each row shows the date/time, affected quantity, site, person who performed the action, and notes. Item detail pages show only that item's ledger. Imported items with no historical ledger show a labelled opening snapshot; this is a starting balance, not reconstructed history.
+
 | Type | Meaning |
 |---|---|
 | CheckOut | Item issued to an employee |
 | CheckIn | Item returned |
 | StockIngestion | New stock received |
+| StockAdjustment | On-hand quantity changed |
 | StockTake | Physical count recorded |
+| Production | Item produced or assembled |
 | Transfer | Item moved between locations |
 | Allocation | Item reserved for a project |
 | Return | Item returned from project allocation |
@@ -122,6 +126,8 @@ Navigate to **Transactions** in the sidebar to see the full audit trail. Every a
 | Deploy | Item permanently installed |
 
 Filter by transaction type or search by item name.
+
+Requesters receive an itemized email when an AM request is submitted, approved, fulfilled, rejected, or cancelled. The request screen shows the latest delivery status; email delivery never rolls back a successfully saved request.
 
 ---
 

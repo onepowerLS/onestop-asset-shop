@@ -507,6 +507,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page_title = (string)($req['request_number'] ?? 'Dispatch request');
 $payload = $req['payload'] ?? [];
 if (!is_array($payload)) $payload = [];
+$lastNotification = is_array($req['last_notification'] ?? null) ? $req['last_notification'] : [];
 
 $lineItems = $payload['line_items'] ?? [];
 if (!is_array($lineItems)) $lineItems = [];
@@ -558,6 +559,18 @@ include __DIR__ . '/../includes/header.php';
                 <strong><?php echo htmlspecialchars($req['request_number'] ?? ''); ?></strong>
                 · <span class="badge bg-<?php echo match($status) { 'Submitted' => 'primary', 'Approved' => 'success', 'Rejected' => 'danger', 'Fulfilled' => 'info', 'Cancelled' => 'secondary', default => 'secondary' }; ?>"><?php echo htmlspecialchars($status); ?></span>
             </p>
+            <?php if (!empty($lastNotification)): ?>
+            <p class="small mb-0 mt-2 text-gray-600"><i class="fas fa-envelope me-1"></i>
+                <?php echo htmlspecialchars(match ((string)($lastNotification['delivery_status'] ?? '')) {
+                    'sent' => 'Email sent',
+                    'failed_retrying' => 'Email delayed — retrying',
+                    'skipped_missing_recipient' => 'Email not sent — requester email missing',
+                    default => 'Email status pending',
+                }); ?>
+                <?php if (!empty($lastNotification['recipient'])): ?> to <?php echo htmlspecialchars((string)$lastNotification['recipient']); ?><?php endif; ?>
+                · <?php echo htmlspecialchars((string)($lastNotification['status'] ?? '')); ?>
+            </p>
+            <?php endif; ?>
         </div>
         <div class="d-flex gap-2">
             <?php if ($canProcess && $status === 'Submitted'): ?>

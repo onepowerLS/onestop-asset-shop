@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/employee_directory.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -67,17 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $allocResult = am_firestore_create_document('am_core_allocations', $allocData);
 
             $txnData = [
-                'transaction_type' => 'CheckOut',
-                'asset_id' => $assetDocId,
-                'quantity' => 1,
                 'to_location_id' => $locationId,
+                'site_code' => $locationId,
                 'employee_id' => $employeeId,
-                'performed_by' => $_SESSION['user_id'] ?? '',
-                'device_type' => 'Desktop',
                 'notes' => $notes,
-                'transaction_date' => date('c'),
+                'asset_name' => (string)($postedAsset['name'] ?? ''),
+                'asset_tag' => (string)($postedAsset['asset_tag'] ?? ''),
             ];
-            am_firestore_create_document('am_core_transactions', $txnData);
+            am_log_asset_transaction($assetDocId, 'CheckOut', 1, $txnData);
 
             am_firestore_update_document('am_core_assets', $assetDocId, [
                 'status' => 'CheckedOut',
@@ -102,16 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $txnData = [
-                'transaction_type' => 'CheckIn',
-                'asset_id' => $assetDocId,
-                'quantity' => 1,
                 'to_location_id' => $locationId,
-                'performed_by' => $_SESSION['user_id'] ?? '',
-                'device_type' => 'Desktop',
+                'site_code' => $locationId,
                 'notes' => $notes,
-                'transaction_date' => date('c'),
+                'asset_name' => (string)($postedAsset['name'] ?? ''),
+                'asset_tag' => (string)($postedAsset['asset_tag'] ?? ''),
             ];
-            am_firestore_create_document('am_core_transactions', $txnData);
+            am_log_asset_transaction($assetDocId, 'CheckIn', 1, $txnData);
 
             $hasOtherActive = false;
             foreach ($allocations as $alloc) {

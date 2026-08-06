@@ -137,14 +137,16 @@ return [
             'icon' => 'fa-exchange-alt',
             'title' => 'Transactions',
             'html' => '
-<p>Chaque changement d’état est journalisé. Ouvrez <strong>Transactions</strong> pour la piste d’audit.</p>
+<p>Chaque changement de stock, d’état et de site est journalisé. Ouvrez <strong>Transactions</strong> pour voir la date, la quantité, le site, l’opérateur et les notes. Les articles importés sans historique affichent un solde d’ouverture clairement identifié.</p>
 <table class="table table-sm">
     <thead><tr><th>Type</th><th>Signification</th></tr></thead>
     <tbody>
         <tr><td><code>CheckOut</code></td><td>Sortie vers une personne</td></tr>
         <tr><td><code>CheckIn</code></td><td>Retour</td></tr>
         <tr><td><code>StockIngestion</code></td><td>Réception de stock</td></tr>
+        <tr><td><code>StockAdjustment</code></td><td>Modification de la quantité en stock</td></tr>
         <tr><td><code>StockTake</code></td><td>Inventaire physique saisi</td></tr>
+        <tr><td><code>Production</code></td><td>Production ou assemblage</td></tr>
         <tr><td><code>Transfer</code></td><td>Transfert entre lieux</td></tr>
         <tr><td><code>Allocation</code></td><td>Réservé pour un projet</td></tr>
         <tr><td><code>Return</code></td><td>Retour depuis une allocation projet</td></tr>
@@ -194,6 +196,7 @@ return [
     <li><strong>Envoyez</strong> — le numéro de demande suit le format <code>AMW-YYYY-NNNNN</code></li>
 </ol>
 <p>Les managers peuvent <strong>Approuver</strong>, <strong>Rejeter</strong> ou <strong>Marquer comme honoré</strong> depuis la vue détaillée. Chaque demande affiche un tableau des lignes avec des liens vers les articles du catalogue.</p>
+<p>Le demandeur reçoit un email détaillé lors de l’envoi, de l’approbation, de l’exécution, du rejet ou de l’annulation. Un avertissement d’email n’annule jamais une demande correctement enregistrée.</p>
 <div class="alert alert-light mb-0">
     <i class="fas fa-lightbulb me-1 text-warning"></i>
     <strong>Intra-pays uniquement :</strong> les demandes d\'expédition concernent le trajet siège/entrepôt → site dans un seul pays. Les transferts transfrontaliers suivent un processus distinct.

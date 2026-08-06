@@ -137,14 +137,16 @@ return [
             'icon' => 'fa-exchange-alt',
             'title' => 'Transactions',
             'html' => '
-<p>Every state change is logged. Open <strong>Transactions</strong> for the audit trail.</p>
+<p>Every stock, status and site change is logged. Open <strong>Transactions</strong> for the audit trail. Each row shows date/time, affected quantity, site, operator and notes. Imported items without older ledger records show a labelled opening snapshot.</p>
 <table class="table table-sm">
     <thead><tr><th>Type</th><th>Meaning</th></tr></thead>
     <tbody>
         <tr><td><code>CheckOut</code></td><td>Issued to a person</td></tr>
         <tr><td><code>CheckIn</code></td><td>Returned</td></tr>
         <tr><td><code>StockIngestion</code></td><td>New stock received</td></tr>
+        <tr><td><code>StockAdjustment</code></td><td>On-hand quantity changed</td></tr>
         <tr><td><code>StockTake</code></td><td>Physical count recorded</td></tr>
+        <tr><td><code>Production</code></td><td>Produced or assembled</td></tr>
         <tr><td><code>Transfer</code></td><td>Moved between locations</td></tr>
         <tr><td><code>Allocation</code></td><td>Reserved for a project</td></tr>
         <tr><td><code>Return</code></td><td>Returned from project allocation</td></tr>
@@ -199,6 +201,7 @@ return [
     <li>If source and destination are the same, stockable items are issued to the named receiver: on-hand decreases and is not added back to the same row.</li>
 </ul>
 <p>Inventory balances and their transaction events save together. If a network interruption occurs, retrying the action will not apply the movement twice.</p>
+<p>Requesters receive an itemized email when the request is submitted, approved, fulfilled, rejected, or cancelled. An email warning never rolls back a successfully saved request.</p>
 <div class="alert alert-light mb-0">
     <i class="fas fa-lightbulb me-1 text-warning"></i>
     <strong>Within-country only:</strong> dispatch requests are for warehouse/HQ → site within one country. Cross-country transfers are a separate process.

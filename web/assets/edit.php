@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/inventory_levels.php';
 require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -245,6 +246,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'updated_at' => date('c'),
                         ]);
                     }
+                }
+                $txnResult = am_log_asset_change($assetId, $asset, array_merge($asset, $data));
+                if (!$txnResult['ok']) {
+                    error_log('[AM transaction] Could not record item edit for ' . $assetId . ': ' . ($txnResult['error'] ?? 'unknown'));
+                    $_SESSION['flash_warning'] = 'The item was saved, but its transaction history entry could not be recorded.';
                 }
                 $_SESSION['flash_success'] = 'Item updated successfully.';
                 header('Location: ' . base_url('assets/view.php?id=' . urlencode($assetId)));

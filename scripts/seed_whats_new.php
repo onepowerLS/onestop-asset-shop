@@ -27,6 +27,15 @@ if ($adminToken === '') {
 
 $entries = [
     [
+        'title' => 'Item transaction history and request emails',
+        'summary' => 'Item pages now show date, quantity, site, activity and operator; requesters receive itemized emails as requests move through submission, approval and fulfillment.',
+        'details' => '<p><strong>Transactions now tell the full story.</strong></p><ul><li>Item detail shows transaction date, quantity, site, activity, operator and notes.</li><li>Older imported items show a clearly labelled opening snapshot instead of an empty section.</li><li>Catalog creation/edits, checkout/check-in, production, allocation and dispatch write linked ledger entries.</li><li>Requesters receive an itemized email at submission, approval and fulfillment (also rejection or cancellation).</li></ul>',
+        'category' => 'feature',
+        'icon' => 'fa-clock-rotate-left',
+        'released_at' => '2026-08-05T14:00:00Z',
+        'deep_link' => '/transactions/index.php',
+    ],
+    [
         'title' => 'Nexus single sign-on is now live',
         'summary' => 'Sign in through nexus.1pwrafrica.com — one login for Asset Management, Procurement, Job Cards, and all 1PWR tools. The old email/password form is available as a fallback via ?fallback=1.',
         'details' => "<p>AM now uses <strong>Nexus</strong> (<code>nexus.1pwrafrica.com</code>) as its single sign-on portal.</p><ul><li>When you visit <code>am.1pwrafrica.com</code>, you are redirected to Nexus to sign in.</li><li>After successful login, you are sent back to AM automatically.</li><li>The same Nexus account works across all 1PWR tools — no separate passwords.</li><li><strong>Fallback:</strong> If Nexus is down, add <code>?fallback=1</code> to the URL to use the local Firebase login.</li></ul>",

@@ -25,6 +25,15 @@ if (($_GET['seed'] ?? '') === '1') {
     // Run the in-process seed (same data as scripts/seed_whats_new.php).
     $seedEntries = [
         [
+            'title' => 'Item transaction history and request emails',
+            'summary' => 'Item pages now show date, quantity, site, activity and operator; requesters receive itemized emails as requests move through submission, approval and fulfillment.',
+            'details' => '<p><strong>Transactions now tell the full story.</strong></p><ul><li>Item detail shows transaction date, quantity, site, activity, operator and notes.</li><li>Older imported items show a clearly labelled opening snapshot instead of an empty section.</li><li>Catalog creation/edits, checkout/check-in, production, allocation and dispatch write linked ledger entries.</li><li>Requesters receive an itemized email at submission, approval and fulfillment (also rejection or cancellation).</li></ul>',
+            'category' => 'feature',
+            'icon' => 'fa-clock-rotate-left',
+            'released_at' => '2026-08-05T14:00:00Z',
+            'deep_link' => '/transactions/index.php',
+        ],
+        [
             'title' => 'Search catalog before adding an item',
             'summary' => 'Add Item now opens with a live catalog search panel so you can avoid creating duplicates, with a yellow "similar item already in catalog" warning on the Name field.',
             'details' => "<p>The Add Item form now starts with a <strong>Search catalog first</strong> panel.</p><ul><li>Type 2+ characters to search name, tag, manufacturer, model, notes, category, and location.</li><li>Each match has View and Edit buttons so you can open the existing record instead of creating a duplicate.</li><li>Filter results by class — the filter auto-syncs with the classification you pick below.</li></ul>",

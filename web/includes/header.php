@@ -151,3 +151,23 @@ if (function_exists('is_logged_in') && is_logged_in() && !empty($_SESSION['am_fi
 
     <main class="content" data-tutorial="main-content">
         <?php include __DIR__ . '/topbar.php'; ?>
+        <?php
+        $amGlobalError = (string)($_SESSION['flash_error'] ?? '');
+        unset($_SESSION['flash_error']);
+        if ($amGlobalError !== ''):
+        ?>
+        <div class="alert alert-danger alert-dismissible fade show mt-3 mb-0" role="alert">
+            <i class="fas fa-circle-exclamation me-2"></i><?php echo htmlspecialchars($amGlobalError); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
+        <?php
+        $amGlobalWarning = (string)($_SESSION['flash_warning'] ?? '');
+        unset($_SESSION['flash_warning']);
+        if ($amGlobalWarning !== ''):
+        ?>
+        <div class="alert alert-warning alert-dismissible fade show mt-3 mb-0" role="alert">
+            <i class="fas fa-triangle-exclamation me-2"></i><?php echo htmlspecialchars($amGlobalWarning); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
