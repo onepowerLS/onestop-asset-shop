@@ -763,21 +763,25 @@ function am_fetch_pr_user_profile(string $idToken, string $uid): array {
         '/databases/(default)/documents/';
 
     // Canonical identity is nexus_users (managed in Nexus). Read it first and
-    // map systemAccess.pr -> role/permissionLevel; fall back to the legacy
+    // map systemAccess.am -> role/permissionLevel. PR is only a transition
+    // fallback for profiles that do not yet have an AM-specific entry; then
+    // fall back to the legacy
     // `users` doc during transition. Both are the user's own doc, so the
     // Firestore rules allow the read (isOwnDocument).
     $data = null;
     $nx = am_http_get_json($base . 'nexus_users/' . rawurlencode($uid), ['Authorization: Bearer ' . $idToken]);
     if ($nx['ok']) {
         $nxData = am_firestore_document_to_array($nx['json']);
+        $data = $nxData;
         $sa = $nxData['systemAccess'] ?? null;
-        if (is_array($sa) && isset($sa['pr'])) {
-            $pr = is_array($sa['pr']) ? $sa['pr'] : [];
-            $data = $nxData;
-            $data['role'] = (string)($pr['role'] ?? '');
-            $data['permissionLevel'] = $pr['permissionLevel'] ?? null;
-            if (!isset($data['capabilities']) && isset($pr['capabilities'])) {
-                $data['capabilities'] = $pr['capabilities'];
+        if (is_array($sa) && (isset($sa['am']) || isset($sa['pr']))) {
+            $am = isset($sa['am']) && is_array($sa['am'])
+                ? $sa['am']
+                : (is_array($sa['pr'] ?? null) ? $sa['pr'] : []);
+            $data['role'] = (string)($am['role'] ?? '');
+            $data['permissionLevel'] = $am['permissionLevel'] ?? null;
+            if (!isset($data['capabilities']) && isset($am['capabilities'])) {
+                $data['capabilities'] = $am['capabilities'];
             }
         }
     }

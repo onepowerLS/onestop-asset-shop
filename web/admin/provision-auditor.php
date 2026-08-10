@@ -6,13 +6,9 @@
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/firebase.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
-
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    $_SESSION['flash_error'] = 'Admin access required.';
-    header('Location: ' . base_url('index.php'));
-    exit;
-}
+am_require_admin();
 
 $page_title = 'Provision auditor account';
 /** Default shared test/auditor login email (override in the form if needed). */

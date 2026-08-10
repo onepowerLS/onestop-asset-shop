@@ -598,10 +598,62 @@ function am_map_pr_role_to_am(string $prRole = '', mixed $permissionLevel = null
 
     if (
         ($perm !== null && $perm >= 2 && $perm <= 4) ||
-        in_array($normalizedRole, ['APPROVER', 'PROC', 'FIN_AD', 'FIN_APPROVER'], true)
+        in_array($normalizedRole, ['APPROVER', 'PROC', 'FIN_AD', 'FIN_APPROVER', 'MANAGER', 'LEAD', 'SUPERVISOR'], true)
     ) {
         return 'Manager';
     }
 
+    if (in_array($normalizedRole, ['OPERATOR', 'EDITOR', 'STAFF', 'TEAM'], true)) {
+        return 'Operator';
+    }
+
     return 'Viewer';
+}
+
+/** Map the canonical cumulative Nexus AM level to the legacy display role. */
+function am_map_nexus_privilege_level_to_role(string $level): string {
+    return match (strtoupper(trim($level))) {
+        'A' => 'Admin',
+        'B' => 'Manager',
+        'C' => 'Operator',
+        default => 'Viewer',
+    };
+}
+
+/**
+ * Extract the target-app grant from a Firebase ID token minted through Nexus.
+ * The caller must validate the token first (firebase-login does so by reading
+ * the user's Firestore profile with this same Bearer token).
+ *
+ * @return array<string, mixed>|null
+ */
+function am_nexus_privilege_from_verified_id_token(string $idToken): ?array {
+    $payload = am_firebase_decode_id_token_payload($idToken);
+    if (!is_array($payload)) {
+        return null;
+    }
+    $claims = isset($payload['claims']) && is_array($payload['claims'])
+        ? array_merge($payload, $payload['claims'])
+        : $payload;
+    if (($claims['nexus_sso'] ?? false) !== true || strtolower((string)($claims['targetSystem'] ?? '')) !== 'am') {
+        return null;
+    }
+    $effective = $claims['effectivePrivilege'] ?? null;
+    $version = trim((string)($claims['privilegeVersion'] ?? ''));
+    if (!is_array($effective) || $version === '') {
+        return null;
+    }
+    $actions = $effective['actions'] ?? [];
+    $countries = $effective['scopeCountries'] ?? [];
+    $organizations = $effective['scopeOrganizations'] ?? [];
+    $owners = $effective['roleCrudOwners'] ?? [];
+    return [
+        'system' => 'am',
+        'level' => strtoupper((string)($effective['level'] ?? 'NONE')),
+        'actions' => is_array($actions) ? array_values(array_map('strval', $actions)) : [],
+        'version' => $version,
+        'scope_countries' => is_array($countries) ? array_values(array_map('strval', $countries)) : [],
+        'scope_organizations' => is_array($organizations) ? array_values(array_map('strval', $organizations)) : [],
+        'role_crud_owners' => is_array($owners) ? array_values(array_map('strval', $owners)) : [],
+    ];
 }

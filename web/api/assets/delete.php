@@ -5,10 +5,11 @@
  * DELETE /api/assets/delete.php?id=X - Delete an asset
  */
 
+require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../config/authz.php';
 require_once __DIR__ . '/../../config/database.php';
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
@@ -22,6 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
     echo json_encode(['error' => 'Method not allowed']);
     exit;
 }
+
+// This legacy MySQL endpoint is destructive. It is intentionally same-origin
+// and requires a signed Nexus Level A AM session (or emergency local Admin).
+am_require_admin_json();
 
 if (!isset($_GET['id'])) {
     http_response_code(400);

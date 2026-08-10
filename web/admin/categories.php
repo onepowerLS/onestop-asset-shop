@@ -1,13 +1,9 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
-
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    $_SESSION['flash_error'] = 'Admin access required.';
-    header('Location: ' . base_url('index.php'));
-    exit;
-}
+am_require_admin();
 
 $page_title = 'Manage Categories';
 $errors = [];
@@ -33,7 +29,7 @@ if ($_GET['delete'] ?? '') {
 }
 
 // Seed additional consumable categories (idempotent — skips existing codes).
-if (($_GET['seed_consumables'] ?? '') === '1' && ($_SESSION['role'] ?? '') === 'Admin') {
+if (($_GET['seed_consumables'] ?? '') === '1' && am_is_admin_role()) {
     $_SESSION['flash_error'] = $readOnlyNotice;
     header('Location: ' . base_url('admin/categories.php'));
     exit;

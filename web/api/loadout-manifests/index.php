@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 function am_loadout_api_expected_key(): string {
-    return (string)(getenv('LOADOUT_MANIFEST_API_KEY') ?: 'am-loadout-manifest-dev-2026');
+    return trim((string)(getenv('LOADOUT_MANIFEST_API_KEY') ?: ''));
 }
 
 /**
@@ -62,7 +62,8 @@ function am_loadout_api_resolve_token(?string $rawPostBody): string {
             $apiKey = trim((string)($input['api_key'] ?? ''));
         }
     }
-    if ($apiKey !== '' && hash_equals(am_loadout_api_expected_key(), $apiKey)) {
+    $expectedApiKey = am_loadout_api_expected_key();
+    if ($apiKey !== '' && $expectedApiKey !== '' && hash_equals($expectedApiKey, $apiKey)) {
         $admin = trim((string)am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
         if ($admin !== '') {
             return $admin;

@@ -6,16 +6,10 @@
  * to the corresponding Firestore collections in batches.
  */
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/authz.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-if (empty($_SESSION['firebase_id_token'])) {
-    header('Location: /login.php'); exit;
-}
-// Same key as firebase-login.php / other admin pages (not am_role — that is never set).
-$amRole = $_SESSION['role'] ?? $_SESSION['am_role'] ?? 'Viewer';
-if ($amRole !== 'Admin') {
-    echo 'Admin access required.'; exit;
-}
+require_login();
+am_require_admin();
 
 require_once __DIR__ . '/../config/firestore.php';
 

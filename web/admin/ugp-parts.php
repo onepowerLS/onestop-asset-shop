@@ -8,12 +8,7 @@ require_once __DIR__ . '/../config/ugp_parts.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_login();
-
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    $_SESSION['flash_error'] = 'Admin access required.';
-    header('Location: ' . base_url('index.php'));
-    exit;
-}
+am_require_admin();
 
 $page_title = 'UGP ↔ Inventory alignment';
 $errors = [];

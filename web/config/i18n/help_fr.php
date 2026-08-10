@@ -286,15 +286,15 @@ return [
             'title' => 'Rôles et droits',
             'html' => '
 <table class="table table-sm">
-    <thead><tr><th>Rôle</th><th>Accès</th></tr></thead>
+    <thead><tr><th>Niveau Nexus</th><th>Rôle affiché AM</th><th>Accès</th></tr></thead>
     <tbody>
-        <tr><td><strong>Admin</strong></td><td>Accès complet, y compris admin et migration</td></tr>
-        <tr><td><strong>Manager</strong></td><td>Opérations, sorties/retours, articles, demandes — pas les réglages admin</td></tr>
-        <tr><td><strong>Lecteur (Viewer)</strong></td><td>Lecture catalogue, stock, transactions ; peut créer des demandes</td></tr>
-        <tr><td><strong>Auditeur</strong></td><td>Interface en lecture seule ; pas de sortie ni d’écriture (blocage UI)</td></tr>
+        <tr><td><strong>A</strong></td><td>Admin</td><td>Accès complet, y compris la configuration AM et l’administration protégée</td></tr>
+        <tr><td><strong>B</strong></td><td>Manager</td><td>Opérations et approbation des transferts ou mises au rebut dans le périmètre attribué</td></tr>
+        <tr><td><strong>C</strong></td><td>Opérateur</td><td>Créer et modifier actifs, stock, affectations, sorties/retours et demandes</td></tr>
+        <tr><td><strong>D</strong></td><td>Lecteur</td><td>Consulter catalogue, stock, affectations et transactions ; aucune modification</td></tr>
     </tbody>
 </table>
-<p class="mb-0">Le rôle provient du <strong>permissionLevel</strong> dans votre profil Nexus (<code>nexus_users/{uid}</code> dans Firestore). L’accès par pays et par organisation y est également défini. Pour toute modification, contactez un administrateur.</p>',
+<p class="mb-0">Au lancement, Nexus signe votre niveau AM effectif, les actions autorisées et vos périmètres pays/organisation. Les affectations RH principales et secondaires sont toutes prises en compte. En cas de refus, AM affiche votre niveau, l’autorité requise et le responsable RH/IS&amp;T/AM pouvant corriger l’accès. Déconnectez-vous puis relancez AM depuis Nexus après toute modification.</p>',
         ],
     ],
 ];

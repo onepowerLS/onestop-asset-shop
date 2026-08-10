@@ -25,6 +25,13 @@ jobs:
         run: |
           echo "Running PHP syntax checks..."
           find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \;
+
+      - name: Run authorization and regression tests
+        run: |
+          php tests/authz_privilege_test.php
+          php tests/security_regression_test.php
+          php tests/transactions_test.php
+          php tests/inventory_dispatch_test.php
       
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.0
@@ -58,4 +65,7 @@ jobs:
       - name: Health check
         run: |
           sleep 10
-          curl -f https://am.1pwrafrica.com/health.php || exit 1
+          HEALTH_JSON="$(curl -fsS https://am.1pwrafrica.com/health.php)"
+          echo "$HEALTH_JSON"
+          DEPLOYED_COMMIT="$(jq -r '.build.commit // empty' <<<"$HEALTH_JSON")"
+          test "$DEPLOYED_COMMIT" = "$GITHUB_SHA"

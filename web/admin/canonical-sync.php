@@ -12,12 +12,7 @@ require_once __DIR__ . '/../config/firestore.php';
 require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/canonical_sync.php';
 require_login();
-
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    $_SESSION['flash_error'] = 'Admin access required.';
-    header('Location: ' . base_url('index.php'));
-    exit;
-}
+am_require_admin();
 
 $page_title = 'Canonical data sync';
 $flash = '';

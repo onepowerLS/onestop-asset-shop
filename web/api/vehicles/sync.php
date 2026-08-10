@@ -37,8 +37,8 @@ if (!$input || !isset($input['vehicles'])) {
 }
 
 // Simple API key check (should be enhanced for production)
-$expectedKey = getenv('VEHICLE_SYNC_API_KEY') ?: 'onestop-vehicle-sync-2026';
-if (!isset($input['api_key']) || $input['api_key'] !== $expectedKey) {
+$expectedKey = trim((string)(getenv('VEHICLE_SYNC_API_KEY') ?: ''));
+if ($expectedKey === '' || !isset($input['api_key']) || !hash_equals($expectedKey, (string)$input['api_key'])) {
     http_response_code(401);
     echo json_encode(['error' => 'Invalid API key']);
     exit;

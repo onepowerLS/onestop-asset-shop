@@ -4,6 +4,11 @@
  * Run from command line: php create-local-user.php
  * Use the SAME username and password you use on am.1pwrafrica.com
  */
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit('Not found');
+}
+
 $baseDir = dirname(__DIR__, 2);
 $envFile = $baseDir . '/.env';
 

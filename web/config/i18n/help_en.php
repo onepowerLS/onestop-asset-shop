@@ -291,15 +291,15 @@ return [
             'title' => 'Roles &amp; Permissions',
             'html' => '
 <table class="table table-sm">
-    <thead><tr><th>Role</th><th>Access</th></tr></thead>
+    <thead><tr><th>Nexus level</th><th>AM display role</th><th>Access</th></tr></thead>
     <tbody>
-        <tr><td><strong>Admin</strong></td><td>Full access including admin pages and migration</td></tr>
-        <tr><td><strong>Manager</strong></td><td>Operational pages; check-out/in; items; requests — no admin settings</td></tr>
-        <tr><td><strong>Viewer</strong></td><td>Read catalog, stock, transactions; can submit requests</td></tr>
-        <tr><td><strong>Auditor</strong></td><td>Read-only UI; cannot check out or mutate data (writes blocked in UI)</td></tr>
+        <tr><td><strong>A</strong></td><td>Admin</td><td>Full access, including AM configuration and protected administration</td></tr>
+        <tr><td><strong>B</strong></td><td>Manager</td><td>Operate assets and approve transfers or disposals in assigned scope</td></tr>
+        <tr><td><strong>C</strong></td><td>Operator</td><td>Create and update assets, stock, allocations, check-out/in, and requests</td></tr>
+        <tr><td><strong>D</strong></td><td>Viewer</td><td>Read catalog, stock, allocations, and transactions; no data changes</td></tr>
     </tbody>
 </table>
-<p class="mb-0">Your role comes from <strong>permissionLevel</strong> in your Nexus user profile (<code>nexus_users/{uid}</code> in Firestore). Country and organization access are also set there. Ask an administrator to change it.</p>',
+<p class="mb-0">Nexus signs your effective AM level, allowed actions, country scope, and organization scope at launch. Primary and secondary HR department assignments both contribute. If an action is denied, AM shows your assigned level, the needed authority, and the HR/IS&amp;T/AM owner who can correct it. Sign out and relaunch AM from Nexus after a role change.</p>',
         ],
     ],
 ];

@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 function am_ugp_expected_api_key(): string {
-    return (string)(getenv('UGP_PARTS_SYNC_API_KEY') ?: 'ugp-parts-sync-dev-2026');
+    return trim((string)(getenv('UGP_PARTS_SYNC_API_KEY') ?: ''));
 }
 
 function am_ugp_resolve_sync_token(): string {
@@ -47,7 +47,8 @@ function am_ugp_resolve_sync_token(): string {
         return trim($m[1]);
     }
     $key = trim((string)($_SERVER['HTTP_X_API_KEY'] ?? ''));
-    if ($key !== '' && hash_equals(am_ugp_expected_api_key(), $key)) {
+    $expectedKey = am_ugp_expected_api_key();
+    if ($key !== '' && $expectedKey !== '' && hash_equals($expectedKey, $key)) {
         $admin = trim((string)am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
         if ($admin !== '') {
             return $admin;
