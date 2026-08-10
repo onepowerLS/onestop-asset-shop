@@ -27,6 +27,15 @@ if ($adminToken === '') {
 
 $entries = [
     [
+        'title' => 'Clear access-denial explanations',
+        'summary' => 'Blocked actions now show your effective assignment, the role or capability required, and the correct access owner to contact.',
+        'details' => '<p>Asset Management now explains privilege denials instead of showing a generic read-only or forbidden message.</p><ul><li>See the role, permission level, and department currently applied.</li><li>See the role or capability required for the attempted action.</li><li>Contact the correct owner: country HR for department assignments, Nexus/IS&amp;T for explicit tool access, or an AM Superadmin for protected local roles.</li><li>Sign out and back in after an access correction to refresh signed privileges.</li></ul>',
+        'category' => 'improvement',
+        'icon' => 'fa-user-shield',
+        'released_at' => '2026-08-10T13:15:00Z',
+        'deep_link' => '/help.php',
+    ],
+    [
         'title' => 'Item transaction history and request emails',
         'summary' => 'Item pages now show date, quantity, site, activity and operator; requesters receive itemized emails as requests move through submission, approval and fulfillment.',
         'details' => '<p><strong>Transactions now tell the full story.</strong></p><ul><li>Item detail shows transaction date, quantity, site, activity, operator and notes.</li><li>Older imported items show a clearly labelled opening snapshot instead of an empty section.</li><li>Catalog creation/edits, checkout/check-in, production, allocation and dispatch write linked ledger entries.</li><li>Requesters receive an itemized email at submission, approval and fulfillment (also rejection or cancellation).</li></ul>',
