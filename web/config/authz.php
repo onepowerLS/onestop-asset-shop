@@ -60,6 +60,44 @@ function am_is_auditor_readonly(): bool {
     return (($_SESSION['role'] ?? '') === 'Auditor');
 }
 
+/** @return array<string, mixed> */
+function am_privilege_denial_detail(array $requiredRoles, string $action): array {
+    $assigned = array_values(array_filter([
+        (string)($_SESSION['role'] ?? ''),
+        isset($_SESSION['permission_level']) ? 'permissionLevel ' . (string)$_SESSION['permission_level'] : '',
+        (string)($_SESSION['department'] ?? ''),
+    ]));
+    $country = (string)($_SESSION['country'] ?? $_SESSION['country_code'] ?? 'your country');
+    return [
+        'code' => 'privilege_denied',
+        'system' => 'am',
+        'action' => $action,
+        'assigned_roles' => $assigned ?: ['Viewer'],
+        'required_roles' => array_values($requiredRoles),
+        'message' => sprintf(
+            'Your assigned AM access is %s. To %s, you need one of: %s.',
+            implode(', ', $assigned ?: ['Viewer']),
+            $action,
+            implode(', ', $requiredRoles)
+        ),
+        'role_crud_owners' => [
+            ['owner' => $country . ' HR team', 'manages' => 'Primary/secondary department assignments, Lead status, and scope.'],
+            ['owner' => 'Nexus/IS&T User Administrator', 'manages' => 'Explicit Asset Management access or denial in Nexus.'],
+            ['owner' => 'Asset Management Superadmin', 'manages' => 'Protected local AM roles and administrator actions.'],
+        ],
+        'resolution' => 'Ask the appropriate owner to correct the assignment, then sign out and back in to refresh your signed privileges.',
+    ];
+}
+
+function am_privilege_denial_text(array $requiredRoles, string $action): string {
+    $detail = am_privilege_denial_detail($requiredRoles, $action);
+    $owners = array_map(
+        fn($owner) => ($owner['owner'] ?? 'Access owner') . ': ' . ($owner['manages'] ?? ''),
+        $detail['role_crud_owners']
+    );
+    return implode(' ', [$detail['message'], implode(' ', $owners), $detail['resolution']]);
+}
+
 /**
  * Data quality: review suspected duplicate assets (dismiss, request merge, edit links).
  * Managers/Admins always; others need capability duplicate_review or am_ops_queue_manage.
@@ -84,7 +122,7 @@ function am_can_duplicate_merge_execute(): bool {
 
 function am_require_duplicate_review_access(): void {
     if (!am_can_duplicate_review()) {
-        $_SESSION['flash_error'] = 'You do not have access to duplicate review.';
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Manager', 'Admin', 'duplicate_review capability'], 'review suspected duplicate assets');
         header('Location: ' . base_url('index.php'));
         exit;
     }
@@ -92,7 +130,7 @@ function am_require_duplicate_review_access(): void {
 
 function am_require_duplicate_merge_execute(): void {
     if (!am_can_duplicate_merge_execute()) {
-        $_SESSION['flash_error'] = 'Only Managers can merge or delete duplicate records.';
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Manager', 'Admin'], 'merge or delete duplicate asset records');
         header('Location: ' . base_url('reviews/duplicate-review.php'));
         exit;
     }
@@ -100,7 +138,7 @@ function am_require_duplicate_merge_execute(): void {
 
 function am_require_can_mutate(): void {
     if (am_is_auditor_readonly()) {
-        $_SESSION['flash_error'] = 'Your account has read-only access.';
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Operator', 'Manager', 'Admin'], 'create or change Asset Management records');
         header('Location: ' . base_url('index.php'));
         exit;
     }
@@ -110,7 +148,8 @@ function am_require_can_mutate_json(): void {
     if (am_is_auditor_readonly()) {
         http_response_code(403);
         header('Content-Type: application/json');
-        echo json_encode(['ok' => false, 'success' => false, 'error' => 'Read-only access.']);
+        $detail = am_privilege_denial_detail(['Operator', 'Manager', 'Admin'], 'create or change Asset Management records');
+        echo json_encode(['ok' => false, 'success' => false, 'error' => $detail['message'], 'detail' => $detail]);
         exit;
     }
 }
