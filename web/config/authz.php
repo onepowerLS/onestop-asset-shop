@@ -4,17 +4,6 @@
  */
 require_once __DIR__ . '/app.php';
 
-/** @return array<string, mixed> */
-function am_session_capabilities(): array {
-    $c = $_SESSION['capabilities'] ?? [];
-    return is_array($c) ? $c : [];
-}
-
-function am_capability_bool(string $key): bool {
-    $v = am_session_capabilities()[$key] ?? false;
-    return $v === true || $v === 1 || $v === '1';
-}
-
 function am_has_signed_nexus_privilege(): bool {
     return (($_SESSION['privilege_system'] ?? '') === 'am')
         && trim((string)($_SESSION['privilege_version'] ?? '')) !== '';
@@ -28,65 +17,52 @@ function am_has_privilege_action(string $action): bool {
     return is_array($actions) && in_array($action, $actions, true);
 }
 
+/**
+ * Authorization is claim-only. The signed Nexus effectivePrivilege claim
+ * (actions ladder view_assets < operate_assets < approve_assets <
+ * administer_assets) is the sole authority. Sessions without a signed claim
+ * (the ?fallback=1 emergency login) are read-only: every privileged check
+ * below returns false for them.
+ *
+ * The retired fallbacks — $_SESSION['role'] ('Admin'/'Manager'/'Operator')
+ * and the Firestore-profile capability flags (sim_team_assign,
+ * sim_phone_link, it_queue_manage, am_ops_queue_manage, duplicate_review) —
+ * are no longer consulted: Nexus grants the corresponding level instead.
+ */
 function am_is_admin_role(): bool {
-    if (am_has_signed_nexus_privilege()) {
-        return am_has_privilege_action('administer_assets');
-    }
-    return (($_SESSION['role'] ?? '') === 'Admin');
+    return am_has_privilege_action('administer_assets');
 }
 
 function am_is_manager_role(): bool {
-    if (am_has_signed_nexus_privilege()) {
-        return am_has_privilege_action('approve_assets') || am_has_privilege_action('administer_assets');
-    }
-    $r = $_SESSION['role'] ?? '';
-    return $r === 'Admin' || $r === 'Manager';
+    return am_has_privilege_action('approve_assets') || am_has_privilege_action('administer_assets');
 }
 
 function am_can_operate_assets(): bool {
-    if (am_has_signed_nexus_privilege()) {
-        return am_has_privilege_action('operate_assets');
-    }
-    return in_array((string)($_SESSION['role'] ?? ''), ['Operator', 'Manager', 'Admin'], true);
+    return am_has_privilege_action('operate_assets');
 }
 
-/** SIM: assign to team / cost pool — Finance workflow; Admin always. */
+/** SIM: assign to team / cost pool — delegated operator task (Level C+). */
 function am_can_sim_team_assign(): bool {
-    if (am_is_auditor_readonly()) {
-        return false;
-    }
-    return am_is_admin_role() || am_capability_bool('sim_team_assign');
+    return am_can_operate_assets();
 }
 
-/** SIM: link to phone handset asset — IT workflow; Admin always. */
+/** SIM: link to phone handset asset — delegated operator task (Level C+). */
 function am_can_sim_phone_link(): bool {
-    if (am_is_auditor_readonly()) {
-        return false;
-    }
-    return am_is_admin_role() || am_capability_bool('sim_phone_link');
+    return am_can_operate_assets();
 }
 
-/** IT support queue (hardware/software). Managers + Admin + capability. */
+/** IT support queue (hardware/software) — supervisory (Level B+). */
 function am_can_it_queue_manage(): bool {
-    if (am_is_auditor_readonly()) {
-        return false;
-    }
-    return am_is_manager_role() || am_capability_bool('it_queue_manage');
+    return am_is_manager_role();
 }
 
-/** AM operations queue (non-IT, non-vehicle). */
+/** AM operations queue (non-IT, non-vehicle) — supervisory (Level B+). */
 function am_can_am_ops_queue_manage(): bool {
-    if (am_is_auditor_readonly()) {
-        return false;
-    }
-    return am_is_manager_role() || am_capability_bool('am_ops_queue_manage');
+    return am_is_manager_role();
 }
 
 function am_is_auditor_readonly(): bool {
-    if (am_has_signed_nexus_privilege()) {
-        return !am_has_privilege_action('operate_assets');
-    }
-    return in_array((string)($_SESSION['role'] ?? ''), ['Auditor', 'Viewer', ''], true);
+    return !am_has_privilege_action('operate_assets');
 }
 
 /** @return array<string, mixed> */
@@ -148,16 +124,10 @@ function am_privilege_denial_text(array $requiredRoles, string $action): string 
 
 /**
  * Data quality: review suspected duplicate assets (dismiss, request merge, edit links).
- * Managers/Admins always; others need capability duplicate_review or am_ops_queue_manage.
+ * Supervisory action — Level B (approve_assets) or higher.
  */
 function am_can_duplicate_review(): bool {
-    if (am_is_auditor_readonly()) {
-        return false;
-    }
-    if (am_is_manager_role()) {
-        return true;
-    }
-    return am_capability_bool('duplicate_review') || am_can_am_ops_queue_manage();
+    return am_is_manager_role();
 }
 
 /** Execute merge (delete loser, repoint stock) — Managers and Admins only. */
@@ -170,7 +140,7 @@ function am_can_duplicate_merge_execute(): bool {
 
 function am_require_duplicate_review_access(): void {
     if (!am_can_duplicate_review()) {
-        $_SESSION['flash_error'] = am_privilege_denial_text(['Manager', 'Admin', 'duplicate_review capability'], 'review suspected duplicate assets');
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Level B (approve assets) or higher'], 'review suspected duplicate assets');
         header('Location: ' . base_url('index.php'));
         exit;
     }
@@ -178,7 +148,7 @@ function am_require_duplicate_review_access(): void {
 
 function am_require_duplicate_merge_execute(): void {
     if (!am_can_duplicate_merge_execute()) {
-        $_SESSION['flash_error'] = am_privilege_denial_text(['Manager', 'Admin'], 'merge or delete duplicate asset records');
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Level B (approve assets) or higher'], 'merge or delete duplicate asset records');
         header('Location: ' . base_url('reviews/duplicate-review.php'));
         exit;
     }
@@ -186,7 +156,7 @@ function am_require_duplicate_merge_execute(): void {
 
 function am_require_can_mutate(): void {
     if (!am_can_operate_assets()) {
-        $_SESSION['flash_error'] = am_privilege_denial_text(['Operator', 'Manager', 'Admin'], 'create or change Asset Management records');
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Level C (operate assets) or higher'], 'create or change Asset Management records');
         header('Location: ' . base_url('index.php'));
         exit;
     }
@@ -196,7 +166,7 @@ function am_require_can_mutate_json(): void {
     if (!am_can_operate_assets()) {
         http_response_code(403);
         header('Content-Type: application/json');
-        $detail = am_privilege_denial_detail(['Operator', 'Manager', 'Admin'], 'create or change Asset Management records');
+        $detail = am_privilege_denial_detail(['Level C (operate assets) or higher'], 'create or change Asset Management records');
         echo json_encode(['ok' => false, 'success' => false, 'error' => $detail['message'], 'detail' => $detail]);
         exit;
     }

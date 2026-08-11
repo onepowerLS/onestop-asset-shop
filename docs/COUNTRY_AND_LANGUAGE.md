@@ -2,12 +2,13 @@
 
 ## Country access (`amCountryAccess`)
 
-Asset Management enforces **which countries a user may manage** using Firestore field **`amCountryAccess`** on `users/{uid}` (array of `LSO`, `ZMB`, `BEN`), or Nexus layout **`systemAccess.am.countryAccess`**.
+Asset Management enforces **which countries a user may manage** using the signed Nexus privilege claim's **`scopeCountries`** (ISO-2 codes: `LS`, `ZM`, `BJ`; `BN` is accepted as a Benin alias). ISO-3 codes (`LSO`, `ZMB`, `BEN`) are accepted and normalized to AM's internal ISO-3 form.
 
-- **Managers / Viewers / Auditors:** must have at least one code or they see no assets and cannot mutate data.
-- **Admins (AM role mapped from PR):** if `amCountryAccess` is empty, AM treats them as allowed for **all** org countries (`LSO`, `ZMB`, `BEN`) for backwards compatibility. Prefer setting explicit codes for clarity.
+- **Empty scope list = GLOBAL grant.** An unscoped assignment (or protected superadmin) signs an empty `scopeCountries`, which AM resolves to all org countries (`LSO`, `ZMB`, `BEN`).
+- **Scoped assignments** restrict viewing and mutation to the listed countries.
+- Sessions predating the claim (emergency `?fallback=1` login) fall back to the legacy Firestore profile field **`amCountryAccess`** on `users/{uid}` for viewing; such sessions are read-only regardless of scope.
 
-Operations staff in Lesotho should have e.g. `["LSO"]` only; Zambia `["ZMB"]`; Benin `["BEN"]`. Regional leads may have multiple entries.
+Operations staff in Lesotho carry e.g. `["LS"]`; Zambia `["ZM"]`; Benin `["BJ"]`. Regional leads may have multiple entries.
 
 ## Session filter (UI)
 

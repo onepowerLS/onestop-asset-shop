@@ -95,11 +95,18 @@ function am_mutation_api_country_scope(string $token, bool $adminBearer): array 
         return ['active' => [], 'may_unscoped' => false, 'error' => 'Invalid token'];
     }
 
-    $prof = am_fetch_pr_user_profile($token, $uid);
-    if (empty($prof['ok'])) {
-        return ['active' => [], 'may_unscoped' => false, 'error' => 'Could not load user profile for country scope'];
+    // Prefer the signed Nexus claim scope (empty scope = global grant);
+    // fall back to the legacy profile country field for non-SSO tokens.
+    $privilege = am_nexus_privilege_from_verified_id_token($token);
+    if ($privilege !== null) {
+        $allow = am_apply_default_country_allow_if_empty((array)($privilege['scope_countries'] ?? []));
+    } else {
+        $prof = am_fetch_pr_user_profile($token, $uid);
+        if (empty($prof['ok'])) {
+            return ['active' => [], 'may_unscoped' => false, 'error' => 'Could not load user profile for country scope'];
+        }
+        $allow = am_apply_default_country_allow_if_empty($prof['data']['amCountryAccess'] ?? []);
     }
-    $allow = am_apply_default_country_allow_if_empty($prof['data']['amCountryAccess'] ?? []);
     $allow = am_normalize_country_codes($allow);
 
     $param = strtoupper(trim((string)($_GET['country'] ?? 'all')));

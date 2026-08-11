@@ -67,7 +67,7 @@ foreach ($countries as $c) {
 }
 
 $status = (string)($req['status'] ?? '');
-$canProcess = in_array($_SESSION['role'] ?? '', ['Admin', 'Manager'], true);
+$canProcess = am_is_manager_role();
 
 $flash = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_success']);

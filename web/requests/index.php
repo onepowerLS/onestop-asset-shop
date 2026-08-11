@@ -142,7 +142,7 @@ foreach ($requests as $r) {
     $statusCounts[$s] = ($statusCounts[$s] ?? 0) + 1;
 }
 
-$isAdmin = ($_SESSION['role'] ?? '') === 'Admin' || ($_SESSION['role'] ?? '') === 'Manager';
+$isAdmin = am_is_manager_role();
 $classLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui('class_material'), 'Consumable' => am_ui('class_consumable'), 'Inventory' => am_ui('class_inventory')];
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 

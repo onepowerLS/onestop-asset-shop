@@ -149,6 +149,11 @@ $firebaseConfigured = !empty($firebaseCfg['api_key']) && !empty($firebaseCfg['pr
             <span id="errorText"><?php echo htmlspecialchars($error); ?></span>
         </div>
 
+        <div class="alert alert-warning" style="font-size:13px;">
+            Emergency access when Nexus is unavailable: this sign-in is <strong>read-only</strong>.
+            To create, edit, approve, or administer, sign in through the Nexus portal.
+        </div>
+
         <form id="loginForm" onsubmit="return handleLogin(event)">
             <div class="field">
                 <label for="identifier">Email</label>

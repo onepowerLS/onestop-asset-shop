@@ -306,7 +306,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 </a>
             </li>
 
-            <?php if (is_logged_in() && ($_SESSION['role'] ?? '') === 'Admin'): ?>
+            <?php if (is_logged_in() && am_is_admin_role()): ?>
             <li class="nav-item">
                 <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#submenu-admin">
                     <span>

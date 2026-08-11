@@ -524,7 +524,7 @@ foreach ($countries as $c) {
 }
 
 $status = (string)($req['status'] ?? '');
-$canProcess = in_array($_SESSION['role'] ?? '', ['Admin', 'Manager'], true);
+$canProcess = am_is_manager_role();
 
 $classBadges = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
 

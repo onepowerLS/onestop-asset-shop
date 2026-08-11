@@ -339,9 +339,16 @@ function am_resolve_asset_org_id(array $asset, array $countries): string {
  */
 function am_normalize_country_codes(array $codes): array {
     $valid = array_flip(am_org_country_codes());
+    // Nexus signs scopeCountries as ISO-2 (LS/ZM/BJ, with BN accepted upstream
+    // for Benin). AM's internal codes are ISO-3. Map aliases to the internal
+    // form BEFORE validating — previously an ISO-2 scope entry was silently
+    // dropped, the empty list then defaulted to ALL org countries, and a
+    // single-country grant was silently widened to global.
+    $aliases = ['LS' => 'LSO', 'ZM' => 'ZMB', 'BJ' => 'BEN', 'BN' => 'BEN'];
     $out = [];
     foreach ($codes as $c) {
         $u = strtoupper(trim((string)$c));
+        $u = $aliases[$u] ?? $u;
         if ($u !== '' && isset($valid[$u])) {
             $out[$u] = true;
         }

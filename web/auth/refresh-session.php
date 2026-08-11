@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firebase.php';
+require_once __DIR__ . '/../config/country_scope.php';
 
 header('Content-Type: application/json');
 
@@ -26,9 +27,64 @@ if (!is_logged_in() || empty($_SESSION['user_id'])) {
 $expectedUid = (string)$_SESSION['user_id'];
 
 /**
+ * Re-parse the signed Nexus privilege from a freshly validated ID token and
+ * reconcile the session authorization snapshot with it. Previously the claim
+ * was parsed only at login, so role changes in Nexus required a full
+ * re-login; Firestore reads/writes already use the fresh token, so the UI
+ * must follow the same claim or it would drift from what Firestore allows.
+ *
+ * A token carrying no AM claim (or one whose claim lost view_assets) means
+ * the privilege was revoked or the session is a non-SSO fallback: downgrade
+ * to read-only rather than keep serving stale grants.
+ */
+$apply_privilege_from_token = static function (string $idToken): void {
+    $privilege = am_nexus_privilege_from_verified_id_token($idToken);
+    if ($privilege === null) {
+        if (($_SESSION['auth_source'] ?? '') === 'nexus_sso') {
+            // SSO session whose refreshed token lost the claim: fail closed.
+            $_SESSION['privilege_system'] = '';
+            $_SESSION['privilege_level'] = '';
+            $_SESSION['privilege_actions'] = [];
+            $_SESSION['privilege_version'] = '';
+            $_SESSION['privilege_scope_countries'] = [];
+            $_SESSION['privilege_scope_organizations'] = [];
+            $_SESSION['privilege_role_crud_owners'] = [];
+            $_SESSION['role'] = 'Viewer';
+        }
+        return;
+    }
+    if (!in_array('view_assets', (array)($privilege['actions'] ?? []), true)) {
+        // AM access explicitly removed; drop the signed grant entirely.
+        $_SESSION['privilege_system'] = '';
+        $_SESSION['privilege_level'] = '';
+        $_SESSION['privilege_actions'] = [];
+        $_SESSION['privilege_version'] = '';
+        $_SESSION['role'] = 'Viewer';
+        return;
+    }
+    $_SESSION['privilege_system'] = $privilege['system'] ?? '';
+    $_SESSION['privilege_level'] = $privilege['level'] ?? '';
+    $_SESSION['privilege_actions'] = $privilege['actions'] ?? [];
+    $_SESSION['privilege_version'] = $privilege['version'] ?? '';
+    $_SESSION['privilege_scope_countries'] = $privilege['scope_countries'] ?? [];
+    $_SESSION['privilege_scope_organizations'] = $privilege['scope_organizations'] ?? [];
+    $_SESSION['privilege_role_crud_owners'] = $privilege['role_crud_owners'] ?? [];
+    $_SESSION['role'] = am_map_nexus_privilege_level_to_role((string)($privilege['level'] ?? ''));
+    $_SESSION['auth_source'] = 'nexus_sso';
+
+    $allow = (array)($privilege['scope_countries'] ?? []);
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $orgAccess = (array)($privilege['scope_organizations'] ?? []);
+    if ($orgAccess === []) {
+        $orgAccess = am_org_ids_from_country_codes($_SESSION['am_country_allow']);
+    }
+    $_SESSION['am_org_allow'] = am_apply_default_org_allow_if_empty($orgAccess);
+};
+
+/**
  * Mint ID token from session refresh token and validate claims match this user.
  */
-$try_apply_session_from_exchange = static function () use ($expectedUid): bool {
+$try_apply_session_from_exchange = static function () use ($expectedUid, $apply_privilege_from_token): bool {
     $rt = trim((string)($_SESSION['firebase_refresh_token'] ?? ''));
     if ($rt === '') {
         return false;
@@ -46,6 +102,7 @@ $try_apply_session_from_exchange = static function () use ($expectedUid): bool {
     if (!empty($res['refresh_token'])) {
         $_SESSION['firebase_refresh_token'] = (string)$res['refresh_token'];
     }
+    $apply_privilege_from_token($newToken);
     return true;
 };
 
@@ -65,6 +122,7 @@ if ($idToken !== '') {
             exit;
         }
         $_SESSION['firebase_id_token'] = $idToken;
+        $apply_privilege_from_token($idToken);
         echo json_encode(['ok' => true]);
         exit;
     }
@@ -72,6 +130,7 @@ if ($idToken !== '') {
     // Refresh-token exchange is often unavailable because the web SDK does not expose refreshToken to JS.
     if (am_accept_firebase_id_token_for_php_session($idToken, $expectedUid)) {
         $_SESSION['firebase_id_token'] = $idToken;
+        $apply_privilege_from_token($idToken);
         echo json_encode(['ok' => true]);
         exit;
     }

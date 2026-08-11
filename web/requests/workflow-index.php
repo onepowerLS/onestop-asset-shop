@@ -75,7 +75,7 @@ foreach ($requests as $r) {
     $statusCounts[$s] = ($statusCounts[$s] ?? 0) + 1;
 }
 
-$canProcess = in_array($_SESSION['role'] ?? '', ['Admin', 'Manager'], true);
+$canProcess = am_is_manager_role();
 
 $flash = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_success']);
