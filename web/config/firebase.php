@@ -635,10 +635,21 @@ function am_nexus_privilege_from_verified_id_token(string $idToken): ?array {
     $claims = isset($payload['claims']) && is_array($payload['claims'])
         ? array_merge($payload, $payload['claims'])
         : $payload;
-    if (($claims['nexus_sso'] ?? false) !== true || strtolower((string)($claims['targetSystem'] ?? '')) !== 'am') {
+    if (($claims['nexus_sso'] ?? false) !== true) {
         return null;
     }
-    $effective = $claims['effectivePrivilege'] ?? null;
+    // Fresh SSO tokens carry the AM grant at top level (targetSystem 'am').
+    // Refreshed tokens are rebuilt from the Auth user record and may target
+    // another portal launched later; the AM grant then lives in the
+    // per-system map (systems.am) persisted at mint time.
+    if (strtolower((string)($claims['targetSystem'] ?? '')) === 'am') {
+        $effective = $claims['effectivePrivilege'] ?? null;
+    } else {
+        $systems = $claims['systems'] ?? null;
+        $effective = (is_array($systems) && isset($systems['am']) && is_array($systems['am']))
+            ? $systems['am']
+            : null;
+    }
     $version = trim((string)($claims['privilegeVersion'] ?? ''));
     if (!is_array($effective) || $version === '') {
         return null;
