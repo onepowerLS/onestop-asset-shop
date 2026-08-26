@@ -97,7 +97,7 @@ include __DIR__ . '/../includes/header.php';
             <h1 class="h2"><?php echo htmlspecialchars($page_title); ?></h1>
             <p class="mb-0 text-gray-600">Replaces ad-hoc Google Forms with tracked requests in Asset Management.</p>
         </div>
-        <?php if (!am_is_auditor_readonly()): ?>
+        <?php if (am_can_request_assets()): ?>
         <div class="dropdown">
             <button class="btn btn-sm btn-gray-800 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fas fa-plus me-1"></i> New workflow

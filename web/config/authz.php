@@ -41,6 +41,14 @@ function am_can_operate_assets(): bool {
     return am_has_privilege_action('operate_assets');
 }
 
+/** Personal dispatch / phone / workflow requests (Level D+). */
+function am_can_request_assets(): bool {
+    return am_has_privilege_action('request_assets')
+        || am_can_operate_assets()
+        || am_is_manager_role()
+        || am_is_admin_role();
+}
+
 /** SIM: assign to team / cost pool — delegated operator task (Level C+). */
 function am_can_sim_team_assign(): bool {
     return am_can_operate_assets();
@@ -150,6 +158,14 @@ function am_require_duplicate_merge_execute(): void {
     if (!am_can_duplicate_merge_execute()) {
         $_SESSION['flash_error'] = am_privilege_denial_text(['Level B (approve assets) or higher'], 'merge or delete duplicate asset records');
         header('Location: ' . base_url('reviews/duplicate-review.php'));
+        exit;
+    }
+}
+
+function am_require_can_request(): void {
+    if (!am_can_request_assets()) {
+        $_SESSION['flash_error'] = am_privilege_denial_text(['Level D (request assets) or higher'], 'submit a personal Asset Management request');
+        header('Location: ' . base_url('index.php'));
         exit;
     }
 }

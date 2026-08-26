@@ -24,8 +24,12 @@ foreach ($countries as $c) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    am_require_can_mutate();
     $action = $_POST['action'] ?? '';
+    if ($action === 'create') {
+        am_require_can_request();
+    } else {
+        am_require_can_mutate();
+    }
 
     if ($action === 'create') {
         // Ready boards are always Inventory class — requesters no longer pick the class.
@@ -120,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (am_is_auditor_readonly()) {
+if (!am_can_request_assets()) {
     $showForm = false;
 }
 
@@ -163,7 +167,7 @@ include __DIR__ . '/../includes/header.php';
                 (replaces the <a href="https://docs.google.com/forms/d/1F-Hfa_HdRidRd3BOPEiG-6f4Zha-AWdTdGFG8-6iTUI/viewform" target="_blank" rel="noopener">legacy Google Form</a>).
             </p>
         </div>
-        <?php if (!am_is_auditor_readonly()): ?>
+        <?php if (am_can_request_assets()): ?>
         <a href="<?php echo base_url('requests/index.php?new=1'); ?>" class="btn btn-sm btn-gray-800">
             <i class="fas fa-plus me-2"></i><?php echo htmlspecialchars(am_ui('requests_new')); ?>
         </a>

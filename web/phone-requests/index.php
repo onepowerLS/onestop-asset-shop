@@ -15,8 +15,12 @@ $errors = [];
 $showForm = isset($_GET['new']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    am_require_can_mutate();
     $action = (string)($_POST['action'] ?? '');
+    if ($action === 'create') {
+        am_require_can_request();
+    } else {
+        am_require_can_mutate();
+    }
 
     if ($action === 'create') {
         $justification = trim((string)($_POST['justification'] ?? ''));
@@ -77,14 +81,14 @@ include __DIR__ . '/../includes/header.php';
 ?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-3 border-bottom">
     <h1 class="h2 mb-0">Phone requests</h1>
-    <?php if (!am_is_auditor_readonly()): ?>
+    <?php if (am_can_request_assets()): ?>
         <a class="btn btn-sm btn-primary" href="<?php echo base_url('phone-requests/index.php?new=1'); ?>">New request</a>
     <?php endif; ?>
 </div>
 
 <?php if ($flash !== ''): ?><div class="alert alert-success"><?php echo htmlspecialchars($flash); ?></div><?php endif; ?>
 
-<?php if ($showForm && !am_is_auditor_readonly()): ?>
+<?php if ($showForm && am_can_request_assets()): ?>
     <div class="card border-0 shadow mb-4">
         <div class="card-header bg-white"><strong>New phone request</strong></div>
         <div class="card-body">

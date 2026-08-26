@@ -44,7 +44,7 @@ foreach ($countries as $c) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    am_require_can_mutate();
+    am_require_can_request();
     $payload = [];
     foreach ($template['fields'] as $field) {
         $name = (string)($field['name'] ?? '');
@@ -127,7 +127,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $e): ?><li><?php echo htmlspecialchars($e); ?></li><?php endforeach; ?></ul></div>
     <?php endif; ?>
 
-    <?php if (am_is_auditor_readonly()): ?>
+    <?php if (!am_can_request_assets()): ?>
     <div class="alert alert-warning">Read-only accounts cannot submit workflows.</div>
     <?php else: ?>
     <div class="card border-0 shadow">

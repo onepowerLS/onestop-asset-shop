@@ -54,7 +54,7 @@ $errors = [];
 $submitted = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    am_require_can_mutate();
+    am_require_can_request();
 
     $submitterName  = trim((string)($_POST['submitter_name'] ?? ''));
     $submitterEmail = trim((string)($_POST['submitter_email'] ?? ''));
@@ -202,7 +202,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $e): ?><li><?php echo htmlspecialchars($e); ?></li><?php endforeach; ?></ul></div>
     <?php endif; ?>
 
-    <?php if (am_is_auditor_readonly()): ?>
+    <?php if (!am_can_request_assets()): ?>
     <div class="alert alert-warning">Read-only accounts cannot submit dispatch requests.</div>
     <?php else: ?>
     <form method="post" action="" id="dispatchForm">
@@ -266,7 +266,9 @@ include __DIR__ . '/../includes/header.php';
                         <?php if (count($userCountries) <= 1): ?>
                         <input type="text" class="form-control" readonly
                             value="<?php echo htmlspecialchars($userCountries[$selectedCountryId]['country_name'] ?? ''); ?>">
-                        <input type="hidden" name="country_id" value="<?php echo htmlspecialchars($selectedCountryId); ?>">
+                        <input type="hidden" name="country_id" id="country_id"
+                            data-country-name="<?php echo htmlspecialchars($userCountries[$selectedCountryId]['country_name'] ?? ''); ?>"
+                            value="<?php echo htmlspecialchars($selectedCountryId); ?>">
                         <?php else: ?>
                         <select name="country_id" id="country_id" class="form-select" required>
                             <?php foreach ($userCountries as $cid => $c): ?>
@@ -439,11 +441,13 @@ function dispatchResolveReceiverEmail(rawName) {
 function syncReceiverEmailField() {
     var nameEl = document.getElementById('receiver_name');
     var emailEl = document.getElementById('receiver_email');
+    if (!nameEl || !emailEl) return;
     emailEl.value = dispatchResolveReceiverEmail(nameEl.value) || '';
 }
 
 function renderLineItems() {
     var tbody = document.getElementById('lineItemsBody');
+    if (!tbody) return;
     var noRow = document.getElementById('noItemsRow');
     tbody.innerHTML = '';
     if (lineItems.length === 0) {
@@ -496,7 +500,8 @@ function escHtml(s) {
 }
 
 function syncHiddenField() {
-    document.getElementById('lineItemsJson').value = JSON.stringify(lineItems);
+    var hidden = document.getElementById('lineItemsJson');
+    if (hidden) hidden.value = JSON.stringify(lineItems);
 }
 
 // ── Country → site filtering ──────────────────────────────
@@ -508,45 +513,70 @@ var countryToCode = {};
 <?php endif; endforeach; ?>
 
 function filterSitesByCountry() {
-    var selCountryId = document.getElementById('country_id').value;
+    var sel = document.getElementById('country_id');
+    if (!sel) {
+        syncSearchCountryLabel();
+        return;
+    }
+    var selCountryId = sel.value;
     var targetCode = countryToCode[selCountryId] || '';
     var siteSelect = document.getElementById('site_code');
-    var currentVal = siteSelect.value;
-    var found = false;
-    for (var i = 0; i < siteSelect.options.length; i++) {
-        var opt = siteSelect.options[i];
-        if (opt.value === '') continue; // placeholder
-        var optCountry = opt.getAttribute('data-country') || '';
-        if (targetCode === '' || optCountry === targetCode) {
-            opt.style.display = '';
-            if (opt.value === currentVal) found = true;
-        } else {
-            opt.style.display = 'none';
+    if (siteSelect) {
+        var currentVal = siteSelect.value;
+        var found = false;
+        for (var i = 0; i < siteSelect.options.length; i++) {
+            var opt = siteSelect.options[i];
+            if (opt.value === '') continue; // placeholder
+            var optCountry = opt.getAttribute('data-country') || '';
+            if (targetCode === '' || optCountry === targetCode) {
+                opt.style.display = '';
+                if (opt.value === currentVal) found = true;
+            } else {
+                opt.style.display = 'none';
+            }
         }
+        if (!found) siteSelect.value = '';
     }
-    if (!found) siteSelect.value = '';
-    // Keep search API in sync with selected country
     countryId = selCountryId;
-    var sel = document.getElementById('country_id');
-    var selOpt = sel.options[sel.selectedIndex];
-    var lab = document.getElementById('itemSearchCountryLabel');
-    if (lab) lab.textContent = selOpt ? (selOpt.text || sel.value || '—') : '—';
+    syncSearchCountryLabel();
 }
-document.getElementById('country_id').addEventListener('change', filterSitesByCountry);
-// Run once on load to filter to default country
+
+function countryLabelText() {
+    var sel = document.getElementById('country_id');
+    if (!sel) return '—';
+    if (sel.tagName === 'SELECT' && sel.options && sel.selectedIndex >= 0) {
+        var selOpt = sel.options[sel.selectedIndex];
+        return selOpt ? (selOpt.text || sel.value || '—') : '—';
+    }
+    return sel.getAttribute('data-country-name') || sel.value || '—';
+}
+
+function syncSearchCountryLabel() {
+    var lab = document.getElementById('itemSearchCountryLabel');
+    if (lab) lab.textContent = countryLabelText();
+}
+
+var countryEl = document.getElementById('country_id');
+if (countryEl) countryEl.addEventListener('change', filterSitesByCountry);
 filterSitesByCountry();
 
 // ── Employee autocomplete ──────────────────────────────────
-document.getElementById('receiver_name').addEventListener('input', syncReceiverEmailField);
-document.getElementById('receiver_name').addEventListener('change', syncReceiverEmailField);
+var receiverNameEl = document.getElementById('receiver_name');
+if (receiverNameEl) {
+    receiverNameEl.addEventListener('input', syncReceiverEmailField);
+    receiverNameEl.addEventListener('change', syncReceiverEmailField);
+}
 
 // ── Item search modal ──────────────────────────────────────
 var searchTimer = null;
-document.getElementById('itemSearchInput').addEventListener('input', function() {
-    var q = this.value.trim();
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(function() { doSearch(q); }, 300);
-});
+var itemSearchInput = document.getElementById('itemSearchInput');
+if (itemSearchInput) {
+    itemSearchInput.addEventListener('input', function() {
+        var q = this.value.trim();
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() { doSearch(q); }, 300);
+    });
+}
 
 function doSearch(q) {
     var tbody = document.getElementById('searchResultsBody');
@@ -563,7 +593,10 @@ function doSearch(q) {
         .then(function(data) {
             tbody.innerHTML = '';
             if (!data.ok || !data.items || data.items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">No items found matching "' + escHtml(q) + '".</td></tr>';
+                var emptyMsg = data.error
+                    ? escHtml(data.error)
+                    : ('No items found matching "' + escHtml(q) + '".');
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">' + emptyMsg + '</td></tr>';
                 return;
             }
             data.items.forEach(function(item) {
@@ -617,22 +650,30 @@ function doSearch(q) {
 }
 
 // Reset modal search when opened
-document.getElementById('itemSearchModal').addEventListener('shown.bs.modal', function() {
-    document.getElementById('itemSearchInput').value = '';
-    document.getElementById('searchResultsBody').innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">Type to search catalog items in your country…</td></tr>';
-    document.getElementById('itemSearchInput').focus();
-});
+var itemSearchModal = document.getElementById('itemSearchModal');
+if (itemSearchModal) {
+    itemSearchModal.addEventListener('shown.bs.modal', function() {
+        var input = document.getElementById('itemSearchInput');
+        var results = document.getElementById('searchResultsBody');
+        if (input) input.value = '';
+        if (results) results.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-3">Type to search catalog items in your country…</td></tr>';
+        if (input) input.focus();
+    });
+}
 
 // Form submit: validate at least one item
-document.getElementById('dispatchForm').addEventListener('submit', function(e) {
-    syncHiddenField();
-    if (lineItems.length === 0) {
-        e.preventDefault();
-        alert('Please add at least one item to the request.');
-        return false;
-    }
-    return true;
-});
+var dispatchForm = document.getElementById('dispatchForm');
+if (dispatchForm) {
+    dispatchForm.addEventListener('submit', function(e) {
+        syncHiddenField();
+        if (lineItems.length === 0) {
+            e.preventDefault();
+            alert('Please add at least one item to the request.');
+            return false;
+        }
+        return true;
+    });
+}
 
 // Initial render
 renderLineItems();

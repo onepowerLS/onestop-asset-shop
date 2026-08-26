@@ -53,7 +53,19 @@ $_SESSION = [
     'privilege_version' => '2026.08.10.3',
 ];
 authz_expect(!am_can_operate_assets(), 'signed grant overrides a stale local Admin display role');
-authz_expect(am_is_auditor_readonly(), 'signed Level D remains read-only');
+authz_expect(!am_can_request_assets(), 'view-only Level D cannot submit requests');
+authz_expect(am_is_auditor_readonly(), 'signed view-only Level D remains warehouse read-only');
+
+$_SESSION = [
+    'role' => 'Viewer',
+    'privilege_system' => 'am',
+    'privilege_level' => 'D',
+    'privilege_actions' => ['view_assets', 'request_assets'],
+    'privilege_version' => '2026.08.25.1',
+];
+authz_expect(am_can_request_assets(), 'Level D requester can submit personal requests');
+authz_expect(!am_can_operate_assets(), 'Level D requester cannot operate warehouse records');
+authz_expect(am_is_auditor_readonly(), 'Level D requester is still warehouse read-only');
 
 $_SESSION = [
     'role' => 'Viewer',
