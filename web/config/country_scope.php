@@ -36,6 +36,7 @@ function am_org_to_country_map(): array {
         '1pwr_lesotho' => 'LSO',
         '1pwr_benin'   => 'BEN',
         '1pwr_zambia'  => 'ZMB',
+        'kuwala'       => 'ZMB',
     ];
 }
 
