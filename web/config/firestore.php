@@ -209,7 +209,21 @@ function am_firestore_get_document(string $collection, string $documentId, ?stri
     $url = am_firestore_base_url() . '/' . rawurlencode($collection) . '/' . rawurlencode($documentId);
     $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
     if (!$result['ok']) {
-        return null;
+        $st = (int)($result['status'] ?? 0);
+        if ($st === 401 || $st === 403) {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['am_firestore_reauth'] = true;
+            }
+            $adminTok = ($idTokenOverride === null) ? am_firestore_admin_bearer() : '';
+            if ($adminTok !== '') {
+                error_log("[am_firestore_get_document] User token failed (HTTP {$st}) for {$collection}/{$documentId}; retrying with admin bearer");
+                $result = am_http_get_json($url, ['Authorization: Bearer ' . $adminTok]);
+            }
+        }
+        if (!$result['ok']) {
+            error_log("[am_firestore_get_document] HTTP {$st} for {$collection}/{$documentId}: " . (string)($result['error'] ?? 'unknown'));
+            return null;
+        }
     }
 
     return am_firestore_document_to_array($result['json']);
@@ -566,6 +580,17 @@ function am_resolve_asset_country_id(array $asset, array $countries): string {
     return '';
 }
 
+function am_firestore_admin_bearer(): string {
+    if (!class_exists('am_firebase_admin_token', false) && file_exists(__DIR__ . '/firebase_admin_token.php')) {
+        require_once __DIR__ . '/firebase_admin_token.php';
+    }
+    $tok = function_exists('am_firebase_admin_token') ? trim((string) am_firebase_admin_token()) : '';
+    if ($tok !== '') {
+        return $tok;
+    }
+    return trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
+}
+
 function am_firestore_get_collection(string $collectionName, int $pageSize = 1000, ?string $idTokenOverride = null): array {
     $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
@@ -580,6 +605,7 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
     $out = [];
     $pageToken = '';
     $guard = 0;
+    $usedFallback = false;
 
     do {
         $url = $baseUrl . '?pageSize=' . $ps;
@@ -594,8 +620,18 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
                 if (session_status() === PHP_SESSION_ACTIVE) {
                     $_SESSION['am_firestore_reauth'] = true;
                 }
+                $adminTok = ($idTokenOverride === null) ? am_firestore_admin_bearer() : '';
+                if ($adminTok !== '' && !$usedFallback) {
+                    error_log("[am_firestore_get_collection] User token failed (HTTP {$st}) for {$collectionName}; retrying with admin bearer");
+                    $usedFallback = true;
+                    $token = $adminTok;
+                    $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
+                }
             }
-            break;
+            if (!$result['ok']) {
+                error_log("[am_firestore_get_collection] HTTP {$st} for {$collectionName}: " . (string)($result['error'] ?? 'unknown'));
+                break;
+            }
         }
 
         $docs = $result['json']['documents'] ?? [];
