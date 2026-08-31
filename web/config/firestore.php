@@ -17,6 +17,45 @@ function am_firestore_id_token(): string {
     return (string)($_SESSION['firebase_id_token'] ?? '');
 }
 
+/**
+ * If the session has a Firebase refresh token (set at login), mint a fresh ID token once per
+ * request so Firestore reads succeed without relying on the browser calling tokeninfo.
+ */
+function am_firestore_refresh_session_token_from_refresh_token(): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $rt = trim((string)($_SESSION['firebase_refresh_token'] ?? ''));
+    if ($rt === '') {
+        return;
+    }
+    $cur = (string)($_SESSION['firebase_id_token'] ?? '');
+    $exp = am_firebase_id_token_exp_unix($cur);
+    if ($exp !== null && $exp > time() + 120) {
+        return;
+    }
+    $res = am_firebase_exchange_refresh_token($rt);
+    if (empty($res['ok']) || empty($res['id_token'])) {
+        return;
+    }
+    $_SESSION['firebase_id_token'] = (string)$res['id_token'];
+    if (!empty($res['refresh_token'])) {
+        $_SESSION['firebase_refresh_token'] = (string)$res['refresh_token'];
+    }
+}
+
+/** Session token, or a Bearer override (e.g. FM / API callers passing a Firebase ID token). */
+function am_firestore_resolve_id_token(?string $overrideToken = null): string {
+    $t = trim((string)$overrideToken);
+    if ($t !== '') {
+        return $t;
+    }
+    am_firestore_refresh_session_token_from_refresh_token();
+    return am_firestore_id_token();
+}
+
 function am_firestore_base_url(): string {
     $project = am_firestore_project_id();
     return 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
@@ -161,8 +200,8 @@ function am_php_to_firestore_fields(array $data): array {
 
 // ── Single-document read ────────────────────────────────────────────
 
-function am_firestore_get_document(string $collection, string $documentId): ?array {
-    $token = am_firestore_id_token();
+function am_firestore_get_document(string $collection, string $documentId, ?string $idTokenOverride = null): ?array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return null;
     }
@@ -170,7 +209,21 @@ function am_firestore_get_document(string $collection, string $documentId): ?arr
     $url = am_firestore_base_url() . '/' . rawurlencode($collection) . '/' . rawurlencode($documentId);
     $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
     if (!$result['ok']) {
-        return null;
+        $st = (int)($result['status'] ?? 0);
+        if ($st === 401 || $st === 403) {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['am_firestore_reauth'] = true;
+            }
+            $adminTok = ($idTokenOverride === null) ? am_firestore_admin_bearer() : '';
+            if ($adminTok !== '') {
+                error_log("[am_firestore_get_document] User token failed (HTTP {$st}) for {$collection}/{$documentId}; retrying with admin bearer");
+                $result = am_http_get_json($url, ['Authorization: Bearer ' . $adminTok]);
+            }
+        }
+        if (!$result['ok']) {
+            error_log("[am_firestore_get_document] HTTP {$st} for {$collection}/{$documentId}: " . (string)($result['error'] ?? 'unknown'));
+            return null;
+        }
     }
 
     return am_firestore_document_to_array($result['json']);
@@ -178,8 +231,8 @@ function am_firestore_get_document(string $collection, string $documentId): ?arr
 
 // ── Create document ─────────────────────────────────────────────────
 
-function am_firestore_create_document(string $collection, array $data, ?string $documentId = null): array {
-    $token = am_firestore_id_token();
+function am_firestore_create_document(string $collection, array $data, ?string $documentId = null, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
         return ['ok' => false, 'error' => 'Not authenticated', 'id' => ''];
     }
@@ -201,13 +254,104 @@ function am_firestore_create_document(string $collection, array $data, ?string $
     $parts = explode('/', (string)$docName);
     $createdId = end($parts);
 
+    if (function_exists('am_mutation_log_record')) {
+        am_mutation_log_record('create', $collection, (string)$createdId, $data, $idTokenOverride, array_keys($data));
+    }
+
     return ['ok' => true, 'error' => null, 'id' => $createdId, 'data' => am_firestore_document_to_array($result['json'])];
+}
+
+/**
+ * Commit several Firestore creates/updates atomically.
+ *
+ * Each operation is:
+ *   ['mode' => 'create'|'update', 'collection' => '...', 'id' => '...', 'data' => [...]]
+ *
+ * A create fails when the document already exists.  Dispatch workflows use that
+ * property with deterministic transaction ids so a retried request cannot apply
+ * the same inventory movement twice.
+ *
+ * @param list<array{mode:string, collection:string, id:string, data:array<string,mixed>}> $operations
+ * @return array{ok:bool, error:?string, status?:int}
+ */
+function am_firestore_commit_operations(array $operations, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
+    if ($token === '') {
+        return ['ok' => false, 'error' => 'Not authenticated'];
+    }
+    if ($operations === []) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $writes = [];
+    foreach ($operations as $operation) {
+        $mode = (string)($operation['mode'] ?? '');
+        $collection = trim((string)($operation['collection'] ?? ''));
+        $documentId = trim((string)($operation['id'] ?? ''));
+        $data = $operation['data'] ?? null;
+        if (!in_array($mode, ['create', 'update'], true)
+            || $collection === ''
+            || $documentId === ''
+            || !is_array($data)
+            || $data === []) {
+            return ['ok' => false, 'error' => 'Invalid Firestore commit operation'];
+        }
+
+        $name = 'projects/' . am_firestore_project_id()
+            . '/databases/(default)/documents/' . $collection . '/' . $documentId;
+        $write = [
+            'update' => [
+                'name' => $name,
+                'fields' => am_php_to_firestore_fields($data),
+            ],
+            'currentDocument' => $mode === 'create' ? ['exists' => false] : ['exists' => true],
+        ];
+        if ($mode === 'update') {
+            $write['updateMask'] = ['fieldPaths' => array_values(array_map('strval', array_keys($data)))];
+        }
+        $writes[] = $write;
+    }
+
+    $project = rawurlencode(am_firestore_project_id());
+    $url = 'https://firestore.googleapis.com/v1/projects/' . $project
+        . '/databases/(default)/documents:commit';
+    $result = am_http_request_json(
+        'POST',
+        $url,
+        ['writes' => $writes],
+        ['Authorization: Bearer ' . $token]
+    );
+    if (!$result['ok']) {
+        $message = $result['json']['error']['message'] ?? ($result['error'] ?? 'Atomic commit failed');
+        return ['ok' => false, 'error' => (string)$message, 'status' => (int)($result['status'] ?? 0)];
+    }
+
+    // The canonical transaction document committed alongside these writes is
+    // the audit record. Mutation-log fan-out remains best-effort and is not
+    // allowed to weaken the atomic inventory/event invariant.
+    if (function_exists('am_mutation_log_record')) {
+        foreach ($operations as $operation) {
+            am_mutation_log_record(
+                (string)$operation['mode'],
+                (string)$operation['collection'],
+                (string)$operation['id'],
+                (array)$operation['data'],
+                $idTokenOverride,
+                array_keys((array)$operation['data'])
+            );
+        }
+    }
+    return ['ok' => true, 'error' => null, 'status' => (int)($result['status'] ?? 200)];
+}
+
+function am_firestore_random_document_id(): string {
+    return bin2hex(random_bytes(10));
 }
 
 // ── Update document ─────────────────────────────────────────────────
 
-function am_firestore_update_document(string $collection, string $documentId, array $data): array {
-    $token = am_firestore_id_token();
+function am_firestore_update_document(string $collection, string $documentId, array $data, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
     }
@@ -231,15 +375,27 @@ function am_firestore_update_document(string $collection, string $documentId, ar
         return ['ok' => false, 'error' => $msg];
     }
 
+    if (function_exists('am_mutation_log_record')) {
+        $infer = function_exists('am_mutation_log_merge_row_for_infer')
+            ? am_mutation_log_merge_row_for_infer($collection, $documentId, $data, $idTokenOverride)
+            : $data;
+        am_mutation_log_record('update', $collection, $documentId, $infer, $idTokenOverride, array_keys($data));
+    }
+
     return ['ok' => true, 'error' => null, 'data' => am_firestore_document_to_array($result['json'])];
 }
 
 // ── Delete document ─────────────────────────────────────────────────
 
-function am_firestore_delete_document(string $collection, string $documentId): array {
-    $token = am_firestore_id_token();
+function am_firestore_delete_document(string $collection, string $documentId, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '' || $documentId === '') {
         return ['ok' => false, 'error' => 'Not authenticated or missing document ID'];
+    }
+
+    $prefetch = [];
+    if (function_exists('am_mutation_log_prefetch_before_delete') && am_mutation_log_enabled() && am_mutation_log_should_record($collection)) {
+        $prefetch = am_mutation_log_prefetch_before_delete($collection, $documentId, $idTokenOverride);
     }
 
     $url = am_firestore_base_url() . '/' . rawurlencode($collection) . '/' . rawurlencode($documentId);
@@ -248,6 +404,10 @@ function am_firestore_delete_document(string $collection, string $documentId): a
     if (!$result['ok']) {
         $msg = $result['json']['error']['message'] ?? ($result['error'] ?? 'Delete failed');
         return ['ok' => false, 'error' => $msg];
+    }
+
+    if (function_exists('am_mutation_log_record')) {
+        am_mutation_log_record('delete', $collection, $documentId, is_array($prefetch) ? $prefetch : [], $idTokenOverride, []);
     }
 
     return ['ok' => true, 'error' => null];
@@ -334,33 +494,162 @@ function am_firestore_document_to_array(array $doc): array {
     return $data;
 }
 
-function am_firestore_get_collection(string $collectionName, int $pageSize = 1000): array {
-    $token = am_firestore_id_token();
+/**
+ * Resolve pr_master_countries document id for dashboard/joins.
+ * Migration rows often set country_code (e.g. LSO) without country_id; AM forms set country_id.
+ */
+function am_country_id_known_in_master(string $countryId, array $countries): bool {
+    if ($countryId === '') {
+        return false;
+    }
+    foreach ($countries as $c) {
+        $id = (string)($c['country_id'] ?? $c['id'] ?? '');
+        if ($id !== '' && $id === $countryId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Map common country_code / legacy strings to LSO, ZMB, BEN. */
+function am_normalize_asset_country_code_field(string $raw): string {
+    $u = strtoupper(trim($raw));
+    if ($u === '') {
+        return '';
+    }
+    if (in_array($u, ['LSO', 'ZMB', 'BEN'], true)) {
+        return $u;
+    }
+    static $aliases = [
+        'LESOTHO' => 'LSO',
+        'ZAMBIA' => 'ZMB',
+        'BENIN' => 'BEN',
+    ];
+    return $aliases[$u] ?? '';
+}
+
+function am_infer_country_code_from_tags(string $assetTag, string $qrCodeId): string {
+    foreach ([$assetTag, $qrCodeId] as $s) {
+        if ($s === '') {
+            continue;
+        }
+        // asset_tag: 1PWR-FA-LSO-000001 → middle segment is class, next is 3-letter country
+        if (preg_match('/^1PWR-[A-Z]+-([A-Z]{3})-\d+/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+        // qr_code_id: 1PWR-LSO-FA-000001 → country first after prefix
+        if (preg_match('/^1PWR-([A-Z]{3})-[A-Z]+-\d+/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+    }
+    foreach ([$assetTag, $qrCodeId] as $s) {
+        if ($s === '') {
+            continue;
+        }
+        // Legacy / free-form: any standalone org code in the string
+        if (preg_match('/\b(LSO|ZMB|BEN)\b/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+    }
+    return '';
+}
+
+function am_resolve_asset_country_id(array $asset, array $countries): string {
+    $cid = trim((string)($asset['country_id'] ?? ''));
+    if ($cid !== '' && am_country_id_known_in_master($cid, $countries)) {
+        return $cid;
+    }
+
+    $code = am_normalize_asset_country_code_field((string)($asset['country_code'] ?? ''));
+    if ($code === '') {
+        $code = am_infer_country_code_from_tags(
+            (string)($asset['asset_tag'] ?? ''),
+            (string)($asset['qr_code_id'] ?? '')
+        );
+    }
+    if ($code === '') {
+        return '';
+    }
+
+    foreach ($countries as $c) {
+        $cc = strtoupper(trim((string)($c['country_code'] ?? '')));
+        if ($cc !== '' && $cc === $code) {
+            return (string)($c['country_id'] ?? $c['id'] ?? '');
+        }
+    }
+    return '';
+}
+
+function am_firestore_admin_bearer(): string {
+    if (!class_exists('am_firebase_admin_token', false) && file_exists(__DIR__ . '/firebase_admin_token.php')) {
+        require_once __DIR__ . '/firebase_admin_token.php';
+    }
+    $tok = function_exists('am_firebase_admin_token') ? trim((string) am_firebase_admin_token()) : '';
+    if ($tok !== '') {
+        return $tok;
+    }
+    return trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
+}
+
+function am_firestore_get_collection(string $collectionName, int $pageSize = 1000, ?string $idTokenOverride = null): array {
+    $token = am_firestore_resolve_id_token($idTokenOverride);
     if ($token === '') {
         return [];
     }
 
     $project = am_firestore_project_id();
-    $url = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
-        '/databases/(default)/documents/' . rawurlencode($collectionName) .
-        '?pageSize=' . max(1, min(1000, $pageSize));
+    $baseUrl = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($project) .
+        '/databases/(default)/documents/' . rawurlencode($collectionName);
 
-    $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
-    if (!$result['ok']) {
-        return [];
-    }
-
-    $docs = $result['json']['documents'] ?? [];
-    if (!is_array($docs)) {
-        return [];
-    }
-
+    $ps = max(1, min(1000, $pageSize));
     $out = [];
-    foreach ($docs as $doc) {
-        if (is_array($doc)) {
-            $out[] = am_firestore_document_to_array($doc);
+    $pageToken = '';
+    $guard = 0;
+    $usedFallback = false;
+
+    do {
+        $url = $baseUrl . '?pageSize=' . $ps;
+        if ($pageToken !== '') {
+            $url .= '&pageToken=' . rawurlencode($pageToken);
         }
-    }
+
+        $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
+        if (!$result['ok']) {
+            $st = (int)($result['status'] ?? 0);
+            if ($st === 401 || $st === 403) {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION['am_firestore_reauth'] = true;
+                }
+                $adminTok = ($idTokenOverride === null) ? am_firestore_admin_bearer() : '';
+                if ($adminTok !== '' && !$usedFallback) {
+                    error_log("[am_firestore_get_collection] User token failed (HTTP {$st}) for {$collectionName}; retrying with admin bearer");
+                    $usedFallback = true;
+                    $token = $adminTok;
+                    $result = am_http_get_json($url, ['Authorization: Bearer ' . $token]);
+                }
+            }
+            if (!$result['ok']) {
+                error_log("[am_firestore_get_collection] HTTP {$st} for {$collectionName}: " . (string)($result['error'] ?? 'unknown'));
+                break;
+            }
+        }
+
+        $docs = $result['json']['documents'] ?? [];
+        if (is_array($docs)) {
+            foreach ($docs as $doc) {
+                if (is_array($doc)) {
+                    $out[] = am_firestore_document_to_array($doc);
+                }
+            }
+        }
+
+        $pageToken = (string)($result['json']['nextPageToken'] ?? '');
+        $guard++;
+        if ($guard > 10000) {
+            break;
+        }
+    } while ($pageToken !== '');
+
     return $out;
 }
 
@@ -371,14 +660,65 @@ function am_firestore_get_collection(string $collectionName, int $pageSize = 100
 // maintained by the PR / Ops team.
 
 function am_get_pr_sites(): array {
-    $orgToCountry = [
-        '1pwr_lesotho' => 'LSO',
-        '1pwr_benin'   => 'BEN',
-        '1pwr_zambia'  => 'ZMB',
-    ];
+    require_once __DIR__ . '/country_scope.php';
+    $orgToCountry = am_org_to_country_map();
 
     $seen = [];
     $locations = [];
+
+    // 0. `am_reference_sites` — AM-owned cache (preferred). Read with the admin
+    //    bearer so dropdowns populate even when the user's Firebase session has
+    //    expired (the original Metro empty-dropdown bug). Falls through to the
+    //    legacy session-token reads below only if the cache is empty.
+    $adminToken = '';
+    if (file_exists(__DIR__ . '/firebase_admin_token.php')) {
+        require_once __DIR__ . '/firebase_admin_token.php';
+        $adminToken = function_exists('am_firebase_admin_token') ? trim((string) am_firebase_admin_token()) : '';
+    }
+    if ($adminToken === '') {
+        $adminToken = trim((string) am_env('FIREBASE_ADMIN_BEARER_TOKEN', ''));
+    }
+    $fanoutSites = $adminToken !== ''
+        ? am_firestore_get_collection('am_reference_sites', 1000, $adminToken)
+        : am_firestore_get_collection('am_reference_sites', 1000);
+    foreach ($fanoutSites as $s) {
+        $orgId = strtolower((string)($s['organizationId'] ?? ''));
+        if (!isset($orgToCountry[$orgId])) continue;
+        $countryCode = $orgToCountry[$orgId];
+
+        $code = strtoupper(trim((string)($s['code'] ?? '')));
+        $name = trim((string)($s['name'] ?? ''));
+        if ($code === '' || $name === '') continue;
+
+        $key = $code . '|' . $countryCode;
+        if (isset($seen[$key])) continue;
+        $seen[$key] = true;
+
+        $locations[] = [
+            'id'                   => $s['id'] ?? strtolower($orgId . '_' . $code),
+            'location_code'        => strtoupper($countryCode) . '-' . $code,
+            'location_name'        => $name,
+            'location_type'        => 'Site',
+            'country_code'         => $countryCode,
+            'region'               => (string)($s['region'] ?? ''),
+            'parent_location_code' => '',
+            'active'               => ($s['active'] ?? true) ? 1 : 0,
+            'latitude'             => isset($s['latitude']) ? (float)$s['latitude'] : null,
+            'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
+            'organization_id'      => $orgId,
+        ];
+    }
+
+    // Cache-first short-circuit: if the admin-bearer cache had data, skip the
+    // legacy session-token reads entirely.
+    if (!empty($locations)) {
+        usort($locations, fn($a, $b) =>
+            strcmp($a['country_code'], $b['country_code']) ?: strcmp($a['location_name'], $b['location_name'])
+        );
+        return $locations;
+    }
+
+    error_log('[am_get_pr_sites] Fallback: am_reference_sites cache empty, reading legacy sites + referenceData_sites');
 
     // 1. `sites` collection — Lesotho field sites (canonical)
     $sites = am_firestore_get_collection('sites', 500);
@@ -400,6 +740,9 @@ function am_get_pr_sites(): array {
             'region'               => $s['region'] ?? '',
             'parent_location_code' => '',
             'active'               => ($s['active'] ?? true) ? 1 : 0,
+            'latitude'             => isset($s['latitude']) ? (float)$s['latitude'] : null,
+            'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
+            'organization_id'      => $orgId,
         ];
     }
 
@@ -428,6 +771,9 @@ function am_get_pr_sites(): array {
             'region'               => '',
             'parent_location_code' => '',
             'active'               => ($s['active'] ?? true) ? 1 : 0,
+            'latitude'             => isset($s['latitude']) ? (float)$s['latitude'] : null,
+            'longitude'            => isset($s['longitude']) ? (float)$s['longitude'] : null,
+            'organization_id'      => $orgId,
         ];
     }
 
@@ -437,3 +783,79 @@ function am_get_pr_sites(): array {
 
     return $locations;
 }
+
+/**
+ * Load shared `users/{uid}` profile (same document as PR portal).
+ * Includes optional `capabilities` map (e.g. sim_team_assign, sim_phone_link).
+ */
+function am_fetch_pr_user_profile(string $idToken, string $uid): array {
+    $cfg = am_firebase_config();
+    if (empty($cfg['project_id']) || empty($idToken) || empty($uid)) {
+        return ['ok' => false, 'data' => []];
+    }
+
+    require_once __DIR__ . '/country_scope.php';
+    $base = 'https://firestore.googleapis.com/v1/projects/' . rawurlencode($cfg['project_id']) .
+        '/databases/(default)/documents/';
+
+    // Canonical identity is nexus_users (managed in Nexus). Read it first and
+    // map systemAccess.am -> role/permissionLevel. PR is only a transition
+    // fallback for profiles that do not yet have an AM-specific entry; then
+    // fall back to the legacy
+    // `users` doc during transition. Both are the user's own doc, so the
+    // Firestore rules allow the read (isOwnDocument).
+    $data = null;
+    $nx = am_http_get_json($base . 'nexus_users/' . rawurlencode($uid), ['Authorization: Bearer ' . $idToken]);
+    if ($nx['ok']) {
+        $nxData = am_firestore_document_to_array($nx['json']);
+        $data = $nxData;
+        $sa = $nxData['systemAccess'] ?? null;
+        if (is_array($sa) && (isset($sa['am']) || isset($sa['pr']))) {
+            $am = isset($sa['am']) && is_array($sa['am'])
+                ? $sa['am']
+                : (is_array($sa['pr'] ?? null) ? $sa['pr'] : []);
+            $data['role'] = (string)($am['role'] ?? '');
+            $data['permissionLevel'] = $am['permissionLevel'] ?? null;
+            if (!isset($data['capabilities']) && isset($am['capabilities'])) {
+                $data['capabilities'] = $am['capabilities'];
+            }
+        }
+    }
+    if ($data === null) {
+        $result = am_http_get_json($base . 'users/' . rawurlencode($uid), ['Authorization: Bearer ' . $idToken]);
+        if (!$result['ok']) {
+            return ['ok' => false, 'data' => []];
+        }
+        $data = am_firestore_document_to_array($result['json']);
+    }
+
+    $caps = $data['capabilities'] ?? [];
+    if (!is_array($caps)) {
+        $caps = [];
+    }
+
+    $amCountryAccess = am_extract_am_country_access_codes($data);
+    $amOrgAccess = am_extract_am_org_access($data);
+    if (empty($amOrgAccess)) {
+        $amOrgAccess = am_org_ids_from_country_codes($amCountryAccess);
+    }
+
+    return [
+        'ok' => true,
+        'data' => [
+            'firstName' => (string)($data['firstName'] ?? ''),
+            'lastName' => (string)($data['lastName'] ?? ''),
+            'role' => (string)($data['role'] ?? ''),
+            'permissionLevel' => $data['permissionLevel'] ?? null,
+            'department' => (string)($data['department'] ?? ''),
+            'organization' => (string)($data['organization'] ?? ''),
+            'organizationId' => (string)($data['organizationId'] ?? $data['organization_id'] ?? ''),
+            'isActive' => $data['isActive'] ?? true,
+            'capabilities' => $caps,
+            'amCountryAccess' => $amCountryAccess,
+            'amOrgAccess' => $amOrgAccess,
+        ],
+    ];
+}
+
+require_once __DIR__ . '/mutation_log.php';
