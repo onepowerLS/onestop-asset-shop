@@ -117,3 +117,11 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - `qr_code_id` field missing on some older assets (causes PHP warnings in catalog)
 - Legacy `pr_master_locations` collection still exists in Firestore (now unused, can be cleaned up)
 - Country filter dropdown uses `pr_master_countries` IDs (1, 2, 3) — could be mapped to org names
+
+## 2026-09-02 — Cursor — Fix: no new requests since Aug 27 (read + write root causes)
+- **Symptom**: LS stores team (Thabo/Metro) reported submitted requests invisible; Service Workflows empty; last request AMW-2026-00131 (Aug 27).
+- **Read-side root cause**: tracked `firebase-service-account.json` symlink (committed Jul 20, `ec025c8`) pointed at a macOS Dropbox path, so every EC2 deploy recreated a dangling link; the admin-bearer read fallback (`169bf1b`) threw on mint and reads died on expired user tokens. Fixed: untracked + gitignored the file (`79d1178`, deployed), placed the real SA key at `/var/www/onestop-asset-shop/firebase-service-account.json` (apache 640) — verified mint + 129-doc read on the server.
+- **Write-side root cause**: claim-only authz + `am_require_can_request()` (Level D) while the Nexus AM catalog lacked `request_assets` and rules required Level C for creates. Fixed on the Nexus side (see nexus-portal session log): `request_assets` added to catalog (163d99e), rules `canRequestAssets` for `am_core_requests` (other session, Sep 1) + `am_core_phone_requests` (mine, `eb459a3`), functions + rules deployed. Verified live: D-level token created a request (200), update correctly denied.
+- **Side effects**: production deploys of `main` (`79d1178`); server file placement; Firestore housekeeping verified already done (DIAG-DELETE-ME + empty docs gone).
+- **User action required**: all AM users must sign out and re-launch via Nexus SSO once to pick up `request_assets` claims. Thabo (B grant) + Metro (AM Lead in HR → B) approved for fulfilment.
+- **Note**: LS stores team was using shared `amtest@1pwrafrica.com` fallback session (unsigned → read-only). Instructed to use personal Nexus accounts. TestAdmin left enabled per MSO decision.
