@@ -57,3 +57,6 @@ secrets/
 # Build output
 dist/
 build/
+
+# Service account key must never be committed (server places it manually)
+firebase-service-account.json
