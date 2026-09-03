@@ -125,3 +125,10 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - **Side effects**: production deploys of `main` (`79d1178`); server file placement; Firestore housekeeping verified already done (DIAG-DELETE-ME + empty docs gone).
 - **User action required**: all AM users must sign out and re-launch via Nexus SSO once to pick up `request_assets` claims. Thabo (B grant) + Metro (AM Lead in HR → B) approved for fulfilment.
 - **Note**: LS stores team was using shared `amtest@1pwrafrica.com` fallback session (unsigned → read-only). Instructed to use personal Nexus accounts. TestAdmin left enabled per MSO decision.
+
+## 2026-09-03 — Cursor — Fix: country dropdowns empty / "country_id required" on request forms
+- **Symptom**: THAKHOLI reported the dispatch form wouldn't allow country selection; catalog search showed "country_id required".
+- **Root cause**: once the admin-bearer read fallback started working (79d1178, Sep 2), `am_get_countries()` began returning the `am_reference_countries` canonical cache — which carries PR's ISO-2 shape (`{code: 'LS', name}`) with no `country_id`/`country_code`. `dispatch-new.php` filters on `country_code` ∈ ISO-3 allow-list → zero countries → empty dropdown. (Latent incompatibility exposed by the symlink fix, not caused by a data change.)
+- **Fix**: `am_get_countries()` now normalizes every row via `am_normalize_country_row()` — ISO-2→ISO-3 code mapping and legacy numeric `country_id` (LSO=1, ZMB=2, BEN=3, the FK stored on requests/inventory). Commit `dbff80a`, deployed to EC2; verified on-server: 3 countries with correct shape.
+- **Side effects**: production deploy of `main` (`dbff80a`). No data changes.
+- **Follow-up**: the same shape mismatch may lurk for other canonical types (organizations/departments/employees) if consumers expect different field names — worth a shape audit when touching those.
