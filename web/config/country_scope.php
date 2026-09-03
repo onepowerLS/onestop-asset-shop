@@ -15,14 +15,48 @@ require_once __DIR__ . '/canonical_sync.php';
  * After 30 days of no fallback hits, the fallback can be removed.
  */
 function am_get_countries(int $pageSize = 500): array {
+    $rows = [];
     if (function_exists('am_canonical_get')) {
         $cached = am_canonical_get('countries');
         if (!empty($cached)) {
-            return $cached;
+            $rows = $cached;
+        } else {
+            error_log('[am_get_countries] Fallback: am_reference_countries cache empty, reading pr_master_countries');
         }
-        error_log('[am_get_countries] Fallback: am_reference_countries cache empty, reading pr_master_countries');
     }
-    return am_firestore_get_collection('pr_master_countries', $pageSize);
+    if ($rows === []) {
+        $rows = am_firestore_get_collection('pr_master_countries', $pageSize);
+    }
+    return array_map('am_normalize_country_row', $rows);
+}
+
+/**
+ * Normalize a country row from any source into the shape the app expects:
+ * country_id (legacy numeric id — the foreign key stored on requests and
+ * inventory levels), country_code (ISO-3), country_name.
+ *
+ * The canonical cache (am_reference_countries) carries PR's ISO-2 shape
+ * ({code: 'LS', name}) with no country_id/country_code; without this mapping
+ * every country dropdown renders empty (2026-09-03 "country_id required").
+ */
+function am_normalize_country_row(array $row): array {
+    static $iso2ToIso3 = ['LS' => 'LSO', 'ZM' => 'ZMB', 'BJ' => 'BEN', 'BN' => 'BEN'];
+    // Legacy numeric ids from pr_master_countries — stored on existing
+    // requests (requested_for_country) and inventory levels (country_id).
+    static $iso3ToLegacyId = ['LSO' => '1', 'ZMB' => '2', 'BEN' => '3'];
+
+    $code = strtoupper(trim((string)($row['country_code'] ?? $row['code'] ?? '')));
+    if (isset($iso2ToIso3[$code])) {
+        $code = $iso2ToIso3[$code];
+    }
+    $id = trim((string)($row['country_id'] ?? ''));
+    if ($id === '') {
+        $id = $iso3ToLegacyId[$code] ?? $code;
+    }
+    $row['country_id'] = $id;
+    $row['country_code'] = $code;
+    $row['country_name'] = trim((string)($row['country_name'] ?? $row['name'] ?? ''));
+    return $row;
 }
 
 /** @return list<string> */
