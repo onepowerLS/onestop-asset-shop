@@ -146,3 +146,8 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Verified live: `/api/v1/health` 200 version e7195ee; `/api/v1/inventory` 401 without key; 200 with key (`site_id=MAS` returned 51 rows).
 - Side effects: production AM code + env; production Firestore rules released.
 - Follow-up: add the What's New row in Admin UI; give the ugridpredict key to the forecast service.
+
+## 2026-09-07 — Cursor — What's New entry for inventory read API
+- Created live Firestore `am_core_whats_new` doc `QcXau2iopCucfBCdmcBB` (title: Inventory read API for forecast and reporting) via EC2 admin token. Users who have not dismissed it will see the login primer.
+- Added the same entry to `scripts/seed_whats_new.php` and Admin seed list so re-seeds skip it.
+- Side effects: one production Firestore write to `am_core_whats_new`. No deploy required for the popup (data-only). Seed-list code will follow on next push.

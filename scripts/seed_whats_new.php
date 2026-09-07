@@ -27,6 +27,15 @@ if ($adminToken === '') {
 
 $entries = [
     [
+        'title' => 'Inventory read API for forecast and reporting',
+        'summary' => 'Forecast and reporting tools can now read stock on hand, allocations, movements and the part master via a secure API key. AM screens are unchanged.',
+        'details' => '<p>Asset Management now exposes a read-only inventory API for machine consumers (uGridPREDICT, Nexus, reporting).</p><ul><li><strong>Stock position</strong> — on hand, allocated and available by part and site (<code>/api/v1/inventory</code>).</li><li><strong>Allocations and movements</strong> — what is reserved, and a signed movement history so consumption rate is measurable.</li><li><strong>Part master</strong> — AM identifiers as they are, plus optional <code>ugp_part_id</code>. Unmapped parts: <code>/api/v1/parts?unmapped=true</code>.</li></ul><p>No AM screen changed. Keys are issued by an AM admin (env <code>AM_API_KEY_UGRIDPREDICT</code> and siblings). Auth is the existing <code>X-API-Key</code> header.</p>',
+        'category' => 'feature',
+        'icon' => 'fa-chart-line',
+        'released_at' => '2026-09-07T14:00:00Z',
+        'deep_link' => '/whats-new.php',
+    ],
+    [
         'title' => 'Clear access-denial explanations',
         'summary' => 'Blocked actions now show your effective assignment, the role or capability required, and the correct access owner to contact.',
         'details' => '<p>Asset Management now explains privilege denials instead of showing a generic read-only or forbidden message.</p><ul><li>See the role, permission level, and department currently applied.</li><li>See the role or capability required for the attempted action.</li><li>Contact the correct owner: country HR for department assignments, Nexus/IS&amp;T for explicit tool access, or an AM Superadmin for protected local roles.</li><li>Sign out and back in after an access correction to refresh signed privileges.</li></ul>',

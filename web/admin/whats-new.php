@@ -20,6 +20,15 @@ if (($_GET['seed'] ?? '') === '1') {
     // Run the in-process seed (same data as scripts/seed_whats_new.php).
     $seedEntries = [
         [
+            'title' => 'Inventory read API for forecast and reporting',
+            'summary' => 'Forecast and reporting tools can now read stock on hand, allocations, movements and the part master via a secure API key. AM screens are unchanged.',
+            'details' => '<p>Asset Management now exposes a read-only inventory API for machine consumers (uGridPREDICT, Nexus, reporting).</p><ul><li><strong>Stock position</strong> — on hand, allocated and available by part and site.</li><li><strong>Allocations and movements</strong> — what is reserved, and a signed movement history so consumption rate is measurable.</li><li><strong>Part master</strong> — AM identifiers as they are, plus optional UGP part id. Unmapped parts are listed as a data-quality worklist.</li></ul><p>No AM screen changed. API keys are issued by an AM admin.</p>',
+            'category' => 'feature',
+            'icon' => 'fa-chart-line',
+            'released_at' => '2026-09-07T14:00:00Z',
+            'deep_link' => '/whats-new.php',
+        ],
+        [
             'title' => 'Item transaction history and request emails',
             'summary' => 'Item pages now show date, quantity, site, activity and operator; requesters receive itemized emails as requests move through submission, approval and fulfillment.',
             'details' => '<p><strong>Transactions now tell the full story.</strong></p><ul><li>Item detail shows transaction date, quantity, site, activity, operator and notes.</li><li>Older imported items show a clearly labelled opening snapshot instead of an empty section.</li><li>Catalog creation/edits, checkout/check-in, production, allocation and dispatch write linked ledger entries.</li><li>Requesters receive an itemized email at submission, approval and fulfillment (also rejection or cancellation).</li></ul>',

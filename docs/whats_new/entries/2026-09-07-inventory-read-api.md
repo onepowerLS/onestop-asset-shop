@@ -2,9 +2,9 @@
 title: Inventory read API for forecast and reporting
 category: feature
 released_at: 2026-09-07
-deep_link: /api/v1/health
+deep_link: /whats-new.php
 ---
 
-Machine consumers can now read stock on hand, allocations, movements and the part master via `/api/v1/*` using an API key.
+Forecast and reporting tools can now read stock on hand, allocations, movements and the part master via a secure API key.
 
-This does not change any AM screen. It is the feed uGridPREDICT uses to constrain connection targets by material actually in the store.
+AM screens are unchanged. This is the feed uGridPREDICT uses to constrain connection targets by material actually in the store.
