@@ -19,8 +19,14 @@ Master ownership map: `nexus-portal/docs/CANONICAL_DATA_OWNERSHIP.md`.
 | Method | Path | Purpose | Auth | Consumers |
 |--------|------|---------|------|-----------|
 | GET | `/api/vehicles` | Vehicle asset registry | X-API-Key | FM, PR, Nexus |
-| GET | `/api/loadout-manifests/index.php` | Loadout manifests | Bearer / api_key | FM |
-| GET | `/api/mutations/index.php` | Mutation log | X-API-Key | Nexus, reporting |
+| GET | `/api/loadout-manifests/index.php` | Loadout manifests (now includes `lines[]`, `site_id`) | Bearer / api_key | FM, ugridpredict |
+| GET | `/api/mutations/index.php` | Mutation **audit** log (record edits, not stock ledger) | X-API-Key | Nexus, reporting |
+| GET | `/api/v1/inventory` | Stock on hand / allocated / available by part and site | X-API-Key | ugridpredict, Nexus, reporting |
+| GET | `/api/v1/allocations` | Reserved / issued / returned commitments | X-API-Key | ugridpredict |
+| GET | `/api/v1/movements` | Signed stock movement history (`occurred_since`) | X-API-Key | ugridpredict, brief 02 join |
+| GET | `/api/v1/loadouts` | Forecast-shaped loadouts with `lines[]` | X-API-Key | ugridpredict |
+| GET | `/api/v1/parts` | AM part master; `?unmapped=true` for missing `ugp_part_id` | X-API-Key | ugridpredict |
+| GET | `/api/v1/health` | Liveness | none | monitoring |
 
 ## Canonical data sync (consumer)
 

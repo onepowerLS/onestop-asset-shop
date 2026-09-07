@@ -6,6 +6,7 @@
  * write succeeds. Transaction documents are append-only under Firestore rules.
  */
 require_once __DIR__ . '/firestore.php';
+require_once __DIR__ . '/inventory_movements.php';
 
 /** @return array<string, mixed> */
 function am_transaction_actor_fields(): array {
@@ -47,7 +48,12 @@ function am_log_asset_transaction(
     $data['asset_id'] = $assetId;
     $data['quantity'] = max(0, (int)($data['quantity'] ?? $quantity));
 
-    return am_firestore_create_document('am_core_transactions', $data);
+    $result = am_firestore_create_document('am_core_transactions', $data);
+    if (!empty($result['ok']) && function_exists('am_inventory_movement_record_from_transaction')) {
+        $data['id'] = (string)($result['id'] ?? '');
+        am_inventory_movement_record_from_transaction($data);
+    }
+    return $result;
 }
 
 /**

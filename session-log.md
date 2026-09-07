@@ -132,3 +132,9 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - **Fix**: `am_get_countries()` now normalizes every row via `am_normalize_country_row()` — ISO-2→ISO-3 code mapping and legacy numeric `country_id` (LSO=1, ZMB=2, BEN=3, the FK stored on requests/inventory). Commit `dbff80a`, deployed to EC2; verified on-server: 3 countries with correct shape.
 - **Side effects**: production deploy of `main` (`dbff80a`). No data changes.
 - **Follow-up**: the same shape mismatch may lurk for other canonical types (organizations/departments/employees) if consumers expect different field names — worth a shape audit when touching those.
+
+## 2026-09-07 — Cursor — Brief 01 inventory read API
+- What: Read-only `/api/v1/{inventory,allocations,movements,loadouts,parts,health}` with existing `X-API-Key` scheme. `qty_available` computed server-side. Movements are a new append-only collection plus a projection of `am_core_transactions` (mutations endpoint is an audit log, not a stock ledger). Extended loadout payload with `lines[]` / `site_id`.
+- Side effects: none deployed yet. Nexus `firestore.rules` gained `am_core_inventory_movements` (append-only) — **must be deployed from the Nexus repo**, not AM. Provision `AM_API_KEY_UGRIDPREDICT` on EC2 `.env` before consumers can call.
+- Key files: `web/config/integration_api.php`, `web/config/inventory_read.php`, `web/config/inventory_movements.php`, `web/api/v1/*`, `CROSS_REPO_API_CONTRACT.md`
+- Follow-ups: seed `AM_API_KEY_UGRIDPREDICT`; deploy Nexus rules; add What's New entry in Admin UI once live; smoke-test `?site_id=MAS`.

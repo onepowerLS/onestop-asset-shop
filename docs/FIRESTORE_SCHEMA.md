@@ -120,6 +120,24 @@ Stock tracking per item per location. Used for reorder alerts.
 
 `quantity_allocated` is a stored current-state projection, not transaction history. For inventory dispatch, only an **Approved** request contributes to it. Approval, fulfillment, and cancellation update this projection in the same atomic Firestore commit that creates an immutable `am_core_transactions` event. A **Fulfilled** request must therefore have released its reservation. Do not reconstruct the audit trail from this balance field.
 
+### am_core_inventory_movements
+
+Append-only **stock movement ledger** (signed quantity, from/to store, type, reference). Distinct from `am_core_mutation_logs` (record-edit audit) and complementary to `am_core_transactions` (workflow ledger). Written alongside dispatch commits and `am_log_asset_transaction()`. `GET /api/v1/movements` also projects historical `am_core_transactions` into this shape.
+
+| Field | Type | Description |
+|---|---|---|
+| `part_id` | string | UGP part id when known, else `asset_id` |
+| `asset_id` | string | `am_core_assets` doc ID |
+| `qty` | integer | Signed: receipts/returns positive, issues negative |
+| `from_store` | string | Source location_code / id |
+| `to_store` | string | Destination location_code / id |
+| `site_id` | string | Canonical site (usually `to_store` or `from_store`) |
+| `movement_type` | string | `receipt` / `issue` / `transfer` / `adjustment` / `return` |
+| `occurred_at` | string | ISO timestamp of the physical event |
+| `recorded_at` | string | ISO timestamp when AM wrote the row |
+| `reference` | string | PR/PO number, dispatch request number, or loadout id |
+| `recorded_by` | string | Firebase UID |
+
 **Rollup in the UI (no schema change):** Stock Levels (**Rollup**) and the asset registry (**Catalog → Grouped**) merge *display* lines for **Material / Consumable / Inventory** when multiple `am_core_assets` rows share the same **`ugp_part_id`** at the same **location + country**, or the same **category + normalized name + location + country + class** when `ugp_part_id` is empty. **Fixed assets** always show one row per record. This does not delete or merge documents in Firestore; cleaning duplicate documents is a separate data task.
 
 ### am_core_duplicate_dismissals

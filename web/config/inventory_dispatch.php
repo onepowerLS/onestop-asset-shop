@@ -5,6 +5,7 @@
  * Dispatch reservations and movements are balance-changing events.  Every such
  * event must be committed atomically with an immutable am_core_transactions row.
  */
+require_once __DIR__ . '/inventory_movements.php';
 
 function am_dispatch_event_id(string $requestId, int $lineIndex, string $phase): string {
     $safeRequest = preg_replace('/[^A-Za-z0-9_-]/', '_', $requestId) ?: 'request';
@@ -101,6 +102,16 @@ function am_dispatch_commit_event(array $operations, string $eventId, array $tra
         'id' => $eventId,
         'data' => $transaction,
     ];
+    if (function_exists('am_inventory_movement_from_transaction')) {
+        $tx = $transaction;
+        $tx['id'] = $eventId;
+        $operations[] = [
+            'mode' => 'create',
+            'collection' => AM_INVENTORY_MOVEMENTS_COLLECTION,
+            'id' => 'mv_' . $eventId,
+            'data' => am_inventory_movement_from_transaction($tx),
+        ];
+    }
     $result = am_firestore_commit_operations($operations);
     if (!$result['ok'] && stripos((string)($result['error'] ?? ''), 'ALREADY_EXISTS') !== false) {
         // A concurrent retry won the deterministic event id. Its atomic commit

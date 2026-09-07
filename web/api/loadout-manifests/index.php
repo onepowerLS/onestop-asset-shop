@@ -74,6 +74,27 @@ function am_loadout_api_resolve_token(?string $rawPostBody): string {
 
 function am_loadout_manifest_json(array $doc): array {
     $doc['id'] = (string)($doc['id'] ?? '');
+    $rawLines = $doc['lines'] ?? $doc['line_items'] ?? [];
+    $lines = [];
+    if (is_array($rawLines)) {
+        foreach ($rawLines as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $lines[] = [
+                'part_id' => (string)($row['asset_id'] ?? $row['part_id'] ?? ''),
+                'qty' => (int)($row['quantity'] ?? $row['qty'] ?? 0),
+                'asset_id' => (string)($row['asset_id'] ?? ''),
+            ];
+        }
+    }
+    $doc['loadout_id'] = (string)($doc['id'] ?? $doc['manifest_number'] ?? '');
+    $doc['site_id'] = (string)($doc['destination_site_id'] ?? $doc['site_id'] ?? '');
+    $doc['crew_id'] = $doc['crew_id'] ?? null;
+    $status = (string)($doc['status'] ?? '');
+    $doc['dispatched_at'] = (string)($doc['shipped_at'] ?? (($status === 'Shipped' || $status === 'Delivered') ? ($doc['updated_at'] ?? '') : ''));
+    $doc['received_at'] = (string)($doc['delivered_at'] ?? ($status === 'Delivered' ? ($doc['updated_at'] ?? '') : ''));
+    $doc['lines'] = $lines;
     return $doc;
 }
 

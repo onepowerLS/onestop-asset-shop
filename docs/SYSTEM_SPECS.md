@@ -93,3 +93,14 @@ To add, rename, move, or deactivate a site: do it in the PR portal. AM picks up 
 ### Loadout manifest destination
 
 `destination_site_id` is required for every loadout manifest save except `Cancelled` (including `Draft`). Validation lives in `web/loadout/edit.php` and the form field is marked required. When the site dropdown is empty because PR portal sync returned no sites, the form shows an inline error linking to Admin → Locations.
+
+## 7. Inventory read API (machine consumers)
+
+Read-only `/api/v1/*` endpoints (Brief 01) expose stock position, allocations, movements, parts and loadouts to ugridpredict / Nexus / reporting.
+
+- Auth: existing `X-API-Key` scheme (`AM_API_KEY_UGRIDPREDICT`, `AM_API_KEY_NEXUS`, `AM_API_KEY_REPORTING`, plus legacy mutation/loadout keys). Resolves to `am_firestore_admin_access_token()`. 60 req/min per consumer. Every call is logged (`consumer`, endpoint, status, duration_ms).
+- `qty_available` is computed server-side as `qty_on_hand - qty_allocated`. Consumers must not derive it.
+- Stock is held **per location**. A location is the store; `site_id` and `store_id` are both the canonical `location_code` from `am_reference_sites`.
+- `/api/mutations` is a **record-edit audit log**, not a stock ledger. Movements live in `am_core_inventory_movements` and are also projected from `am_core_transactions` so history is readable immediately.
+- `ugp_part_id` on `am_core_assets` is the join to UGP BOM lines. Do not auto-fuzzy-match. `GET /api/v1/parts?unmapped=true` is the data-quality worklist.
+- Units are `am_core_assets.unit_of_measure` (`EA`, `M`, `KG`, `L`, `BOX`, `ROLL`, `SET`). Conductor is `M`.
