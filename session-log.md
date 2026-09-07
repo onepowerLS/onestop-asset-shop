@@ -138,3 +138,11 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Side effects: none deployed yet. Nexus `firestore.rules` gained `am_core_inventory_movements` (append-only) — **must be deployed from the Nexus repo**, not AM. Provision `AM_API_KEY_UGRIDPREDICT` on EC2 `.env` before consumers can call.
 - Key files: `web/config/integration_api.php`, `web/config/inventory_read.php`, `web/config/inventory_movements.php`, `web/api/v1/*`, `CROSS_REPO_API_CONTRACT.md`
 - Follow-ups: seed `AM_API_KEY_UGRIDPREDICT`; deploy Nexus rules; add What's New entry in Admin UI once live; smoke-test `?site_id=MAS`.
+
+## 2026-09-07 — Cursor — Deploy Brief 01 inventory API + Nexus rules
+- Pushed AM `e7195ee` to `main`; pulled on EC2 `/var/www/onestop-asset-shop` (live commit `e7195ee`).
+- Appended `AM_API_KEY_UGRIDPREDICT` to EC2 `.env` (640 apache:apache). Did not commit the secret.
+- Deployed `firestore.rules` from Nexus repo `feat/am-rules-claim-only` @ `047e3cb` to project `pr-system-4ea55` (`firebase deploy --only firestore:rules` only — no functions).
+- Verified live: `/api/v1/health` 200 version e7195ee; `/api/v1/inventory` 401 without key; 200 with key (`site_id=MAS` returned 51 rows).
+- Side effects: production AM code + env; production Firestore rules released.
+- Follow-up: add the What's New row in Admin UI; give the ugridpredict key to the forecast service.
