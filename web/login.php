@@ -10,6 +10,15 @@ if (is_logged_in()) {
     redirect('index.php');
 }
 
+// Centralized auth: the local form is an emergency fallback only
+// (?fallback=1, e.g. Nexus outage). Normal sign-in happens at Nexus, which
+// SSOs back via /sso.php.
+if (($_GET['fallback'] ?? '') !== '1') {
+    header('Location: https://nexus.1pwrafrica.com/sso/authorize?tool=am&redirect_uri='
+        . urlencode('https://am.1pwrafrica.com/sso.php?return=' . urlencode('/index.php')));
+    exit;
+}
+
 $error = (string)($_SESSION['auth_error'] ?? '');
 unset($_SESSION['auth_error']);
 
@@ -140,6 +149,11 @@ $firebaseConfigured = !empty($firebaseCfg['api_key']) && !empty($firebaseCfg['pr
             <span id="errorText"><?php echo htmlspecialchars($error); ?></span>
         </div>
 
+        <div class="alert alert-warning" style="font-size:13px;">
+            Emergency access when Nexus is unavailable: this sign-in is <strong>read-only</strong>.
+            To create, edit, approve, or administer, sign in through the Nexus portal.
+        </div>
+
         <form id="loginForm" onsubmit="return handleLogin(event)">
             <div class="field">
                 <label for="identifier">Email</label>
@@ -216,7 +230,12 @@ $firebaseConfigured = !empty($firebaseCfg['api_key']) && !empty($firebaseCfg['pr
             var resp = await fetch('/auth/firebase-login.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken, uid: cred.user.uid, email: cred.user.email })
+                body: JSON.stringify({
+                    id_token: idToken,
+                    uid: cred.user.uid,
+                    email: cred.user.email,
+                    refresh_token: cred.user.refreshToken || ''
+                })
             });
 
             var data = await resp.json();

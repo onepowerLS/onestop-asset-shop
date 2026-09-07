@@ -1,13 +1,9 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
-
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    $_SESSION['flash_error'] = 'Admin access required.';
-    header('Location: ' . base_url('index.php'));
-    exit;
-}
+am_require_admin();
 
 $page_title = 'Manage Categories';
 $errors = [];
@@ -15,54 +11,26 @@ $editId = $_GET['edit'] ?? '';
 
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 
+// R5 Retirement: PR is now the sole author of pr_master_categories.
+// AM admin can view but not create/update/delete. These operations are
+// handled by the PR system's admin UI.
+$readOnlyNotice = 'Categories are now managed by the PR System. Contact the PR admin to create, update, or delete categories.';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $catId = trim($_POST['category_doc_id'] ?? '');
-    $catCode = trim($_POST['category_code'] ?? '');
-    $catName = trim($_POST['category_name'] ?? '');
-    $itemClass = trim($_POST['item_class'] ?? '');
-    $deptScope = trim($_POST['department_scope'] ?? 'All');
-    $description = trim($_POST['description'] ?? '');
-    $usefulLife = trim($_POST['useful_life_years'] ?? '');
-    $depMethod = trim($_POST['depreciation_method'] ?? 'None');
-    $reorder = isset($_POST['reorder_enabled']) ? 1 : 0;
-
-    if ($catName === '') $errors[] = 'Category name is required.';
-    if ($catCode === '') $errors[] = 'Category code is required.';
-    if (!in_array($itemClass, ['FixedAsset', 'Material', 'Consumable', 'Inventory'])) $errors[] = 'Valid item class is required.';
-
-    if (empty($errors)) {
-        $data = [
-            'category_code' => $catCode,
-            'category_name' => $catName,
-            'item_class' => $itemClass,
-            'department_scope' => $deptScope,
-            'description' => $description,
-            'useful_life_years' => $usefulLife !== '' ? (int)$usefulLife : null,
-            'depreciation_method' => $depMethod,
-            'reorder_enabled' => $reorder,
-            'active' => 1,
-        ];
-
-        if ($action === 'update' && $catId !== '') {
-            $result = am_firestore_update_document('pr_master_categories', $catId, $data);
-        } else {
-            $result = am_firestore_create_document('pr_master_categories', $data);
-        }
-
-        if ($result['ok']) {
-            $_SESSION['flash_success'] = $action === 'update' ? 'Category updated.' : 'Category created.';
-            header('Location: ' . base_url('admin/categories.php'));
-            exit;
-        } else {
-            $errors[] = $result['error'] ?? 'Save failed.';
-        }
-    }
+    $_SESSION['flash_error'] = $readOnlyNotice;
+    header('Location: ' . base_url('admin/categories.php'));
+    exit;
 }
 
 if ($_GET['delete'] ?? '') {
-    $result = am_firestore_delete_document('pr_master_categories', $_GET['delete']);
-    $_SESSION['flash_success'] = $result['ok'] ? 'Category deleted.' : 'Delete failed.';
+    $_SESSION['flash_error'] = $readOnlyNotice;
+    header('Location: ' . base_url('admin/categories.php'));
+    exit;
+}
+
+// Seed additional consumable categories (idempotent — skips existing codes).
+if (($_GET['seed_consumables'] ?? '') === '1' && am_is_admin_role()) {
+    $_SESSION['flash_error'] = $readOnlyNotice;
     header('Location: ' . base_url('admin/categories.php'));
     exit;
 }
@@ -97,6 +65,10 @@ include __DIR__ . '/../includes/header.php';
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center py-4">
         <h1 class="h2">Manage Categories</h1>
+        <a href="<?php echo base_url('admin/categories.php?seed_consumables=1'); ?>" class="btn btn-outline-success btn-sm"
+           onclick="return confirm('Add missing consumable categories (Maintenance, Lubricants, Fuel, Print, IT, Safety, Food, Misc)? Existing codes are skipped.')">
+            <i class="fas fa-seedling me-1"></i>Seed consumable categories
+        </a>
     </div>
 
     <?php if ($flash): ?>

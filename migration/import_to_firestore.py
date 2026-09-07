@@ -28,11 +28,12 @@ BASE_URL = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 COLLECTIONS = [
-    ("pr_master_countries",  "pr_master_countries.json",  "country_code"),
-    ("pr_master_locations",  "pr_master_locations.json",  "location_code"),
-    ("pr_master_categories", "pr_master_categories.json", "category_code"),
-    ("am_core_assets",       "am_core_assets.json",       None),
-    ("pr_master_requests",   "pr_master_requests.json",   "request_number"),
+    ("pr_master_countries",         "pr_master_countries.json",         "country_code"),
+    ("pr_master_locations",         "pr_master_locations.json",         "location_code"),
+    ("pr_master_categories",        "pr_master_categories.json",        "category_code"),
+    ("am_core_assets",              "am_core_assets.json",              None),
+    ("pr_master_requests",          "pr_master_requests.json",          "request_number"),
+    ("am_core_archived_requests",   "am_core_archived_requests.json",   "archived_request_number"),
 ]
 
 

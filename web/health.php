@@ -5,10 +5,12 @@
  * Used by deployment scripts and monitoring tools
  */
 header('Content-Type: application/json');
+require_once __DIR__ . '/config/version.php';
 
 $health = [
     'status' => 'healthy',
     'timestamp' => date('c'),
+    'build' => am_app_version(),
     'checks' => []
 ];
 

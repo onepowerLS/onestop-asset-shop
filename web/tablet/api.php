@@ -8,6 +8,7 @@
  * POST { action: 'stockcount', asset_id, counted }
  */
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/authz.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
@@ -46,6 +47,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
+    am_require_can_mutate_json();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $action = $input['action'] ?? '';
     $assetId = $input['asset_id'] ?? '';

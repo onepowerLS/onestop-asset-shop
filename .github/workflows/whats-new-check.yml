@@ -1,0 +1,19 @@
+name: What's New policy
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Feature commits have What's New marker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run What's New policy check
+        run: |
+          # Compare the PR head against the base branch.
+          bash scripts/check-whats-new.sh "origin/${{ github.base_ref }}..HEAD" < /dev/null

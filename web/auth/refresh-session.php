@@ -1,12 +1,14 @@
 <?php
 /**
- * Updates PHP session Firebase ID token from the client SDK (fresh token).
+ * Updates PHP session Firebase ID token from the client SDK (fresh token) or server refresh token.
  * Firestore reads on the server use this token; it expires ~1h without refresh.
  *
- * Verifies id_token via Google's tokeninfo using POST (GET + query string can
- * exceed URL limits for long JWTs and return 400).
+ * Verification uses Google's tokeninfo with POST (form body) so long JWTs are not broken by
+ * GET URL length limits. If tokeninfo fails, we fall back to exchanging firebase_refresh_token.
  */
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/firebase.php';
+require_once __DIR__ . '/../config/country_scope.php';
 
 header('Content-Type: application/json');
 
@@ -22,83 +24,134 @@ if (!is_logged_in() || empty($_SESSION['user_id'])) {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
-$idToken = trim((string)($input['id_token'] ?? ''));
-if ($idToken === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Missing id_token']);
-    exit;
-}
-
-$data = am_verify_google_id_token($idToken);
-if ($data === null) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Token verification failed']);
-    exit;
-}
-
-$uid = (string)($data['user_id'] ?? $data['sub'] ?? '');
-if ($uid === '' || $uid !== (string)$_SESSION['user_id']) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'User mismatch']);
-    exit;
-}
-
-$_SESSION['firebase_id_token'] = $idToken;
-echo json_encode(['ok' => true]);
+$expectedUid = (string)$_SESSION['user_id'];
 
 /**
- * @return array<string,mixed>|null
+ * Re-parse the signed Nexus privilege from a freshly validated ID token and
+ * reconcile the session authorization snapshot with it. Previously the claim
+ * was parsed only at login, so role changes in Nexus required a full
+ * re-login; Firestore reads/writes already use the fresh token, so the UI
+ * must follow the same claim or it would drift from what Firestore allows.
+ *
+ * A token carrying no AM claim (or one whose claim lost view_assets) means
+ * the privilege was revoked or the session is a non-SSO fallback: downgrade
+ * to read-only rather than keep serving stale grants.
  */
-function am_verify_google_id_token(string $idToken): ?array {
-    $url = 'https://oauth2.googleapis.com/tokeninfo';
-    $body = http_build_query(['id_token' => $idToken], '', '&', PHP_QUERY_RFC3986);
-
-    $raw = am_refresh_session_http_post($url, $body);
-    if ($raw === null || $raw === '') {
-        return null;
-    }
-
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
-        return null;
-    }
-
-    if (isset($data['error_description']) || isset($data['error'])) {
-        return null;
-    }
-
-    return $data;
-}
-
-function am_refresh_session_http_post(string $url, string $body): ?string {
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 15,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-            CURLOPT_POSTFIELDS => $body,
-        ]);
-        $resp = curl_exec($ch);
-        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        unset($ch);
-        if ($resp === false || $code < 200 || $code >= 300) {
-            return null;
+$apply_privilege_from_token = static function (string $idToken): void {
+    $privilege = am_nexus_privilege_from_verified_id_token($idToken);
+    if ($privilege === null) {
+        if (($_SESSION['auth_source'] ?? '') === 'nexus_sso') {
+            // SSO session whose refreshed token lost the claim: fail closed.
+            $_SESSION['privilege_system'] = '';
+            $_SESSION['privilege_level'] = '';
+            $_SESSION['privilege_actions'] = [];
+            $_SESSION['privilege_version'] = '';
+            $_SESSION['privilege_scope_countries'] = [];
+            $_SESSION['privilege_scope_organizations'] = [];
+            $_SESSION['privilege_role_crud_owners'] = [];
+            $_SESSION['role'] = 'Viewer';
         }
-        return is_string($resp) ? $resp : null;
+        return;
     }
+    if (!in_array('view_assets', (array)($privilege['actions'] ?? []), true)) {
+        // AM access explicitly removed; drop the signed grant entirely.
+        $_SESSION['privilege_system'] = '';
+        $_SESSION['privilege_level'] = '';
+        $_SESSION['privilege_actions'] = [];
+        $_SESSION['privilege_version'] = '';
+        $_SESSION['role'] = 'Viewer';
+        return;
+    }
+    $_SESSION['privilege_system'] = $privilege['system'] ?? '';
+    $_SESSION['privilege_level'] = $privilege['level'] ?? '';
+    $_SESSION['privilege_actions'] = $privilege['actions'] ?? [];
+    $_SESSION['privilege_version'] = $privilege['version'] ?? '';
+    $_SESSION['privilege_scope_countries'] = $privilege['scope_countries'] ?? [];
+    $_SESSION['privilege_scope_organizations'] = $privilege['scope_organizations'] ?? [];
+    $_SESSION['privilege_role_crud_owners'] = $privilege['role_crud_owners'] ?? [];
+    $_SESSION['role'] = am_map_nexus_privilege_level_to_role((string)($privilege['level'] ?? ''));
+    $_SESSION['auth_source'] = 'nexus_sso';
 
-    $ctx = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-            'content' => $body,
-            'timeout' => 15,
-            'ignore_errors' => true,
-        ],
-    ]);
-    $resp = @file_get_contents($url, false, $ctx);
-    return $resp === false ? null : $resp;
+    $allow = (array)($privilege['scope_countries'] ?? []);
+    $_SESSION['am_country_allow'] = am_apply_default_country_allow_if_empty($allow);
+    $orgAccess = (array)($privilege['scope_organizations'] ?? []);
+    if ($orgAccess === []) {
+        $orgAccess = am_org_ids_from_country_codes($_SESSION['am_country_allow']);
+    }
+    $_SESSION['am_org_allow'] = am_apply_default_org_allow_if_empty($orgAccess);
+};
+
+/**
+ * Mint ID token from session refresh token and validate claims match this user.
+ */
+$try_apply_session_from_exchange = static function () use ($expectedUid, $apply_privilege_from_token): bool {
+    $rt = trim((string)($_SESSION['firebase_refresh_token'] ?? ''));
+    if ($rt === '') {
+        return false;
+    }
+    $res = am_firebase_exchange_refresh_token($rt);
+    if (empty($res['ok']) || empty($res['id_token'])) {
+        return false;
+    }
+    $newToken = (string)$res['id_token'];
+    $payload = am_firebase_decode_id_token_payload($newToken);
+    if ($payload === null || !am_firebase_id_token_payload_matches_session($payload, $expectedUid)) {
+        return false;
+    }
+    $_SESSION['firebase_id_token'] = $newToken;
+    if (!empty($res['refresh_token'])) {
+        $_SESSION['firebase_refresh_token'] = (string)$res['refresh_token'];
+    }
+    $apply_privilege_from_token($newToken);
+    return true;
+};
+
+$input = json_decode(file_get_contents('php://input'), true);
+if (!is_array($input)) {
+    $input = [];
 }
+$idToken = trim((string)($input['id_token'] ?? ''));
+
+if ($idToken !== '') {
+    $data = am_verify_google_id_token($idToken);
+    if ($data !== null) {
+        $uid = (string)($data['user_id'] ?? $data['sub'] ?? '');
+        if ($uid === '' || $uid !== $expectedUid) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'User mismatch']);
+            exit;
+        }
+        $_SESSION['firebase_id_token'] = $idToken;
+        $apply_privilege_from_token($idToken);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    // RCA: tokeninfo often fails from app servers while the JWT from getIdToken() is still valid.
+    // Refresh-token exchange is often unavailable because the web SDK does not expose refreshToken to JS.
+    if (am_accept_firebase_id_token_for_php_session($idToken, $expectedUid)) {
+        $_SESSION['firebase_id_token'] = $idToken;
+        $apply_privilege_from_token($idToken);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    if ($try_apply_session_from_exchange()) {
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    http_response_code(400);
+    echo json_encode([
+        'ok'    => false,
+        'error' => 'Token verification failed',
+        'hint'  => 'tokeninfo_failed_claims_mismatch_or_expired_and_no_valid_refresh_token_in_session',
+    ]);
+    exit;
+}
+
+if ($try_apply_session_from_exchange()) {
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
+http_response_code(400);
+echo json_encode(['ok' => false, 'error' => 'Missing id_token']);
+exit;

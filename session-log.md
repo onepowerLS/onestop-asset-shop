@@ -117,3 +117,37 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - `qr_code_id` field missing on some older assets (causes PHP warnings in catalog)
 - Legacy `pr_master_locations` collection still exists in Firestore (now unused, can be cleaned up)
 - Country filter dropdown uses `pr_master_countries` IDs (1, 2, 3) — could be mapped to org names
+
+## 2026-09-02 — Cursor — Fix: no new requests since Aug 27 (read + write root causes)
+- **Symptom**: LS stores team (Thabo/Metro) reported submitted requests invisible; Service Workflows empty; last request AMW-2026-00131 (Aug 27).
+- **Read-side root cause**: tracked `firebase-service-account.json` symlink (committed Jul 20, `ec025c8`) pointed at a macOS Dropbox path, so every EC2 deploy recreated a dangling link; the admin-bearer read fallback (`169bf1b`) threw on mint and reads died on expired user tokens. Fixed: untracked + gitignored the file (`79d1178`, deployed), placed the real SA key at `/var/www/onestop-asset-shop/firebase-service-account.json` (apache 640) — verified mint + 129-doc read on the server.
+- **Write-side root cause**: claim-only authz + `am_require_can_request()` (Level D) while the Nexus AM catalog lacked `request_assets` and rules required Level C for creates. Fixed on the Nexus side (see nexus-portal session log): `request_assets` added to catalog (163d99e), rules `canRequestAssets` for `am_core_requests` (other session, Sep 1) + `am_core_phone_requests` (mine, `eb459a3`), functions + rules deployed. Verified live: D-level token created a request (200), update correctly denied.
+- **Side effects**: production deploys of `main` (`79d1178`); server file placement; Firestore housekeeping verified already done (DIAG-DELETE-ME + empty docs gone).
+- **User action required**: all AM users must sign out and re-launch via Nexus SSO once to pick up `request_assets` claims. Thabo (B grant) + Metro (AM Lead in HR → B) approved for fulfilment.
+- **Note**: LS stores team was using shared `amtest@1pwrafrica.com` fallback session (unsigned → read-only). Instructed to use personal Nexus accounts. TestAdmin left enabled per MSO decision.
+
+## 2026-09-03 — Cursor — Fix: country dropdowns empty / "country_id required" on request forms
+- **Symptom**: THAKHOLI reported the dispatch form wouldn't allow country selection; catalog search showed "country_id required".
+- **Root cause**: once the admin-bearer read fallback started working (79d1178, Sep 2), `am_get_countries()` began returning the `am_reference_countries` canonical cache — which carries PR's ISO-2 shape (`{code: 'LS', name}`) with no `country_id`/`country_code`. `dispatch-new.php` filters on `country_code` ∈ ISO-3 allow-list → zero countries → empty dropdown. (Latent incompatibility exposed by the symlink fix, not caused by a data change.)
+- **Fix**: `am_get_countries()` now normalizes every row via `am_normalize_country_row()` — ISO-2→ISO-3 code mapping and legacy numeric `country_id` (LSO=1, ZMB=2, BEN=3, the FK stored on requests/inventory). Commit `dbff80a`, deployed to EC2; verified on-server: 3 countries with correct shape.
+- **Side effects**: production deploy of `main` (`dbff80a`). No data changes.
+- **Follow-up**: the same shape mismatch may lurk for other canonical types (organizations/departments/employees) if consumers expect different field names — worth a shape audit when touching those.
+
+## 2026-09-07 — Cursor — Brief 01 inventory read API
+- What: Read-only `/api/v1/{inventory,allocations,movements,loadouts,parts,health}` with existing `X-API-Key` scheme. `qty_available` computed server-side. Movements are a new append-only collection plus a projection of `am_core_transactions` (mutations endpoint is an audit log, not a stock ledger). Extended loadout payload with `lines[]` / `site_id`.
+- Side effects: none deployed yet. Nexus `firestore.rules` gained `am_core_inventory_movements` (append-only) — **must be deployed from the Nexus repo**, not AM. Provision `AM_API_KEY_UGRIDPREDICT` on EC2 `.env` before consumers can call.
+- Key files: `web/config/integration_api.php`, `web/config/inventory_read.php`, `web/config/inventory_movements.php`, `web/api/v1/*`, `CROSS_REPO_API_CONTRACT.md`
+- Follow-ups: seed `AM_API_KEY_UGRIDPREDICT`; deploy Nexus rules; add What's New entry in Admin UI once live; smoke-test `?site_id=MAS`.
+
+## 2026-09-07 — Cursor — Deploy Brief 01 inventory API + Nexus rules
+- Pushed AM `e7195ee` to `main`; pulled on EC2 `/var/www/onestop-asset-shop` (live commit `e7195ee`).
+- Appended `AM_API_KEY_UGRIDPREDICT` to EC2 `.env` (640 apache:apache). Did not commit the secret.
+- Deployed `firestore.rules` from Nexus repo `feat/am-rules-claim-only` @ `047e3cb` to project `pr-system-4ea55` (`firebase deploy --only firestore:rules` only — no functions).
+- Verified live: `/api/v1/health` 200 version e7195ee; `/api/v1/inventory` 401 without key; 200 with key (`site_id=MAS` returned 51 rows).
+- Side effects: production AM code + env; production Firestore rules released.
+- Follow-up: add the What's New row in Admin UI; give the ugridpredict key to the forecast service.
+
+## 2026-09-07 — Cursor — What's New entry for inventory read API
+- Created live Firestore `am_core_whats_new` doc `QcXau2iopCucfBCdmcBB` (title: Inventory read API for forecast and reporting) via EC2 admin token. Users who have not dismissed it will see the login primer.
+- Added the same entry to `scripts/seed_whats_new.php` and Admin seed list so re-seeds skip it.
+- Side effects: one production Firestore write to `am_core_whats_new`. No deploy required for the popup (data-only). Seed-list code will follow on next push.

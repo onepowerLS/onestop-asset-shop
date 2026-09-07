@@ -1,12 +1,18 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/locale.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
+am_ensure_country_scope_from_session();
 
 $assetId = $_GET['id'] ?? '';
 $qrCode = $_GET['qr'] ?? '';
 
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $categories = am_firestore_get_collection('pr_master_categories', 1000);
 $locations = am_get_pr_sites();
 
@@ -20,11 +26,7 @@ foreach ($categories as $c) {
     $cid = (string)($c['category_id'] ?? $c['id'] ?? '');
     if ($cid !== '') $categoryById[$cid] = $c;
 }
-$locationById = [];
-foreach ($locations as $l) {
-    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
-    if ($lid !== '') $locationById[$lid] = $l;
-}
+$locationById = am_build_location_index($locations);
 
 $asset = null;
 
@@ -33,11 +35,15 @@ if ($assetId !== '') {
 } elseif ($qrCode !== '') {
     $allAssets = am_firestore_get_collection('am_core_assets', 2000);
     foreach ($allAssets as $a) {
-        if ((string)($a['qr_code_id'] ?? '') === $qrCode) {
-            $asset = $a;
-            $assetId = (string)($a['id'] ?? '');
-            break;
+        if ((string)($a['qr_code_id'] ?? '') !== $qrCode) {
+            continue;
         }
+        if (!am_asset_passes_country_scope($a, $countries, $locationById)) {
+            continue;
+        }
+        $asset = $a;
+        $assetId = (string)($a['id'] ?? '');
+        break;
     }
 }
 
@@ -47,28 +53,101 @@ if (!$asset) {
     exit;
 }
 
+am_require_asset_visible($asset, $countries);
+
 $page_title = (string)($asset['name'] ?? 'Item Detail');
 
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
-$transactions = am_firestore_get_collection('am_core_transactions', 2000);
+$inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 5000);
 
 $itemAllocations = array_filter($allocations, fn($a) => (string)($a['asset_id'] ?? '') === $assetId);
-$itemTransactions = array_filter($transactions, fn($t) => (string)($t['asset_id'] ?? '') === $assetId);
-usort($itemTransactions, function ($a, $b) {
-    return strtotime((string)($b['transaction_date'] ?? $b['created_at'] ?? '1970-01-01'))
-        <=> strtotime((string)($a['transaction_date'] ?? $a['created_at'] ?? '1970-01-01'));
-});
+$transactionQuerySucceeded = false;
+$itemTransactions = am_get_asset_transactions([
+    $assetId,
+    (string)($asset['asset_id'] ?? ''),
+    (string)($asset['id'] ?? ''),
+], 500, $transactionQuerySucceeded);
 
 $classColors = ['FixedAsset' => 'primary', 'Material' => 'warning', 'Consumable' => 'info', 'Inventory' => 'success'];
-$classLabels = ['FixedAsset' => 'Fixed Asset', 'Material' => 'Material', 'Consumable' => 'Consumable', 'Inventory' => 'Inventory'];
+$classLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui('class_material'), 'Consumable' => am_ui('class_consumable'), 'Inventory' => am_ui('class_inventory')];
 $cls = (string)($asset['item_class'] ?? '');
+$isStockable = in_array($cls, ['Material', 'Consumable', 'Inventory'], true);
 
-$country = $countryById[(string)($asset['country_id'] ?? '')] ?? [];
+$stockQohAll = 0;
+$stockAllocAll = 0;
+$stockQohHere = 0;
+$stockAllocHere = 0;
+$stockRowCountAll = 0;
+$stockRowCountHere = 0;
+$assetLocRaw = (string)($asset['location_id'] ?? '');
+$assetLocCanonical = am_canonical_location_code($assetLocRaw, $locationById);
+
+$itemInventoryRows = am_inventory_rows_for_asset($assetId, $inventoryLevels, $locationById, $asset);
+foreach ($itemInventoryRows as $inv) {
+    $stockRowCountAll++;
+    $qoh = (int)($inv['quantity_on_hand'] ?? 0);
+    $alloc = (int)($inv['quantity_allocated'] ?? 0);
+    $stockQohAll += $qoh;
+    $stockAllocAll += $alloc;
+
+    $invLocCanonical = am_canonical_location_code((string)($inv['location_id'] ?? ''), $locationById);
+    if ($assetLocCanonical !== '' && $invLocCanonical === $assetLocCanonical) {
+        $stockRowCountHere++;
+        $stockQohHere += $qoh;
+        $stockAllocHere += $alloc;
+    }
+}
+
+$useCurrentLocationRows = $isStockable && $stockRowCountHere > 0;
+$hasInventoryRows = $stockRowCountAll > 0;
+$effectiveQoh = $isStockable
+    ? ($useCurrentLocationRows ? $stockQohHere : ($hasInventoryRows ? $stockQohAll : (int)($asset['quantity'] ?? 1)))
+    : (int)($asset['quantity'] ?? 1);
+$effectiveAlloc = $isStockable
+    ? ($useCurrentLocationRows ? $stockAllocHere : $stockAllocAll)
+    : 0;
+$effectiveAvail = max(0, $effectiveQoh - $effectiveAlloc);
+
+// Imported/legacy items pre-date the transaction ledger. Show a clearly
+// labelled opening snapshot so users can still see date, quantity and site;
+// future mutations append immutable ledger rows through transactions.php.
+if ($transactionQuerySucceeded && empty($itemTransactions)) {
+    $openingRows = $itemInventoryRows;
+    if (empty($openingRows)) {
+        $openingRows = [[
+            'location_id' => (string)($asset['location_id'] ?? ''),
+            'quantity_on_hand' => $effectiveQoh,
+            'quantity_allocated' => $effectiveAlloc,
+        ]];
+    }
+    foreach ($openingRows as $openingRow) {
+        $openingQoh = (int)($openingRow['quantity_on_hand'] ?? 0);
+        $openingAlloc = (int)($openingRow['quantity_allocated'] ?? 0);
+        $openingSite = (string)($openingRow['location_id'] ?? $asset['location_id'] ?? '');
+        $itemTransactions[] = [
+            'transaction_type' => 'OpeningBalance',
+            'transaction_date' => (string)($asset['created_at'] ?? $asset['updated_at'] ?? date('c')),
+            'asset_id' => $assetId,
+            'quantity' => $openingQoh,
+            'site_code' => $openingSite,
+            'to_location_id' => $openingSite,
+            'performed_by_name' => 'Legacy import',
+            'notes' => 'Opening snapshot; detailed transaction tracking was not available when this item was imported.'
+                . ($openingAlloc > 0 ? ' Allocated: ' . $openingAlloc . ' ' . (string)($asset['unit_of_measure'] ?? 'EA') . '.' : ''),
+            'is_opening_snapshot' => true,
+        ];
+    }
+}
+
+$resolvedCountryId = am_resolve_asset_country_id($asset, $countries);
+$country = $countryById[$resolvedCountryId] ?? [];
 $category = $categoryById[(string)($asset['category_id'] ?? '')] ?? [];
 $location = $locationById[(string)($asset['location_id'] ?? '')] ?? [];
 
 $flash = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_success']);
+$flashError = $_SESSION['flash_error'] ?? '';
+unset($_SESSION['flash_error']);
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -78,7 +157,7 @@ include __DIR__ . '/../includes/header.php';
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>">Catalog</a></li>
+                    <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php'); ?>"><?php echo htmlspecialchars(am_ui('sidebar_catalog')); ?></a></li>
                     <?php if ($cls): ?>
                     <li class="breadcrumb-item"><a href="<?php echo base_url('assets/index.php?item_class=' . urlencode($cls)); ?>"><?php echo htmlspecialchars($classLabels[$cls] ?? $cls); ?></a></li>
                     <?php endif; ?>
@@ -91,11 +170,22 @@ include __DIR__ . '/../includes/header.php';
             </h1>
         </div>
         <div class="btn-toolbar mb-2 mb-md-0">
+            <?php if (!am_is_auditor_readonly()): ?>
             <a href="<?php echo base_url('assets/edit.php?id=' . urlencode($assetId)); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center me-2">
-                <i class="fas fa-edit me-2"></i>Edit
+                <i class="fas fa-edit me-2"></i><?php echo htmlspecialchars(am_ui('view_edit')); ?>
             </a>
+            <?php endif; ?>
+            <?php if (am_is_manager_role()): ?>
+            <form method="POST" action="<?php echo base_url('assets/delete.php'); ?>" class="d-inline-flex align-items-center me-2" id="deleteAssetForm">
+                <input type="hidden" name="asset_id" value="<?php echo htmlspecialchars($assetId); ?>">
+                <input type="hidden" name="delete_reason" id="deleteReasonField" value="">
+                <button type="submit" class="btn btn-sm btn-danger d-inline-flex align-items-center">
+                    <i class="fas fa-trash me-2"></i><?php echo htmlspecialchars(am_ui('view_delete')); ?>
+                </button>
+            </form>
+            <?php endif; ?>
             <a href="<?php echo base_url('assets/index.php'); ?>" class="btn btn-sm btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Back to List
+                <i class="fas fa-arrow-left me-2"></i><?php echo htmlspecialchars(am_ui('view_back_to_list')); ?>
             </a>
         </div>
     </div>
@@ -106,30 +196,42 @@ include __DIR__ . '/../includes/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <?php endif; ?>
+    <?php if ($flashError): ?>
+    <div class="alert alert-danger alert-dismissible fade show">
+        <?php echo htmlspecialchars($flashError); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php endif; ?>
 
     <div class="row">
         <!-- Main Details -->
         <div class="col-12 col-lg-8 mb-4">
             <div class="card border-0 shadow">
-                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Item Details</h2></div>
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('view_item_details')); ?></h2></div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Asset Tag</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_asset_tag')); ?></small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['asset_tag'] ?? 'N/A'); ?></p>
                         </div>
                         <?php if (($asset['legacy_tag'] ?? '') !== ''): ?>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Legacy ID</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_legacy_id')); ?></small>
                             <p class="fw-bold mb-0"><code><?php echo htmlspecialchars($asset['legacy_tag']); ?></code></p>
                         </div>
                         <?php endif; ?>
+                        <?php if (trim((string)($asset['ugp_part_id'] ?? '')) !== ''): ?>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">QR Code</small>
-                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['qr_code_id'] ?: 'Not assigned'); ?></p>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('view_ugp_part_id')); ?></small>
+                            <p class="fw-bold mb-0"><code><?php echo htmlspecialchars((string)$asset['ugp_part_id']); ?></code></p>
+                        </div>
+                        <?php endif; ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_qr_code')); ?></small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['qr_code_id'] ?: am_ui('view_not_assigned')); ?></p>
                         </div>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Status</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_status')); ?></small>
                             <p class="mb-0">
                                 <span class="badge bg-<?php
                                     echo match($asset['status'] ?? '') {
@@ -138,33 +240,52 @@ include __DIR__ . '/../includes/header.php';
                                         'Missing' => 'danger', default => 'secondary'
                                     };
                                 ?>"><?php echo htmlspecialchars($asset['status'] ?? 'Unknown'); ?></span>
+                                <?php if (in_array((string)($asset['status'] ?? ''), ['Allocated', 'CheckedOut', 'InProject', 'Deployed'], true) && !empty($asset['allocated_department'])): ?>
+                                <span class="badge bg-secondary ms-1"><?php echo htmlspecialchars($asset['allocated_department']); ?></span>
+                                <?php endif; ?>
                             </p>
                         </div>
+                        <?php if (in_array((string)($asset['status'] ?? ''), ['Allocated', 'CheckedOut', 'InProject', 'Deployed'], true) && !empty($asset['allocated_project'])): ?>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Category</small>
+                            <small class="text-gray-500">Project / concession</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['allocated_project']); ?></p>
+                        </div>
+                        <?php endif; ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_category')); ?></small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($category['category_name'] ?? 'N/A'); ?></p>
                         </div>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Country</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_country')); ?></small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars(($country['country_name'] ?? '') . ' (' . ($country['country_code'] ?? '') . ')'); ?></p>
                         </div>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Location</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_location')); ?></small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($location['location_name'] ?? 'N/A'); ?></p>
                         </div>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Condition</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('form_condition')); ?></small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($asset['condition_status'] ?? 'N/A'); ?></p>
                         </div>
                         <?php if ($cls !== 'FixedAsset'): ?>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500">Quantity</small>
-                            <p class="fw-bold mb-0"><?php echo (int)($asset['quantity'] ?? 1); ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                            <small class="text-gray-500"><?php echo $isStockable ? htmlspecialchars(am_ui('view_on_hand')) : htmlspecialchars(am_ui('form_quantity')); ?></small>
+                            <p class="fw-bold mb-0"><?php echo (int)$effectiveQoh; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
                         </div>
+                        <?php if ($isStockable): ?>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('view_allocated')); ?></small>
+                            <p class="fw-bold mb-0"><?php echo (int)$effectiveAlloc; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('view_available_qty')); ?></small>
+                            <p class="fw-bold mb-0"><?php echo (int)$effectiveAvail; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
+                        </div>
+                        <?php endif; ?>
                         <?php endif; ?>
                         <?php if ($asset['description'] ?? ''): ?>
                         <div class="col-12">
-                            <small class="text-gray-500">Description</small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('form_description')); ?></small>
                             <p class="mb-0"><?php echo nl2br(htmlspecialchars($asset['description'])); ?></p>
                         </div>
                         <?php endif; ?>
@@ -208,6 +329,127 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
             </div>
+            <?php
+            $catId = (string)($asset['category_id'] ?? '');
+            $isVehicle = (bool)preg_match('/^FA-VEH/', $catId);
+            if ($cls === 'FixedAsset' && $isVehicle):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-car me-2 text-primary"></i>Vehicle Details</h2></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Vehicle Type</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['vehicle_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Year</small>
+                            <p class="fw-bold mb-0"><?php echo !empty($asset['vehicle_year']) ? htmlspecialchars((string)$asset['vehicle_year']) : '—'; ?></p>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-gray-500">Engine Number</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['engine_number'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Transmission</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['transmission_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Fuel Type</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['fuel_type'] ?? '—')); ?></p>
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <small class="text-gray-500">Drive</small>
+                            <p class="fw-bold mb-0"><?php echo htmlspecialchars((string)($asset['drive_type'] ?? '—')); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php
+            $hasOdo = !empty($asset['odometer_first_km']) || !empty($asset['odometer_last_km']);
+            if ($cls === 'FixedAsset' && $isVehicle && $hasOdo):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-tachometer-alt me-2 text-success"></i>Odometer</h2></div>
+                <div class="card-body">
+                    <p class="small text-gray-500 mb-3">Detailed readings are managed in FM. AM stores first/last summary.</p>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">First Reading</small>
+                            <p class="fw-bold mb-0"><?php echo number_format((int)($asset['odometer_first_km'] ?? 0)); ?> km</p>
+                            <small class="text-gray-400"><?php echo htmlspecialchars((string)($asset['odometer_first_date'] ?? '—')); ?></small>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <small class="text-gray-500">Last Reading</small>
+                            <p class="fw-bold mb-0"><?php echo number_format((int)($asset['odometer_last_km'] ?? 0)); ?> km</p>
+                            <small class="text-gray-400"><?php echo htmlspecialchars((string)($asset['odometer_last_date'] ?? '—')); ?></small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <small class="text-gray-500">Total Distance</small>
+                            <p class="fw-bold mb-0">
+                                <?php
+                                $firstKm = (int)($asset['odometer_first_km'] ?? 0);
+                                $lastKm = (int)($asset['odometer_last_km'] ?? 0);
+                                echo ($lastKm > $firstKm) ? number_format($lastKm - $firstKm) . ' km' : '—';
+                                ?>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php
+            $builtFrom = $asset['built_from'] ?? [];
+            if ($cls === 'FixedAsset' && is_array($builtFrom) && !empty($builtFrom)):
+            ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header">
+                    <h2 class="fs-5 fw-bold mb-0">
+                        <i class="fas fa-microchip me-2 text-purple"></i>Assembly Lineage
+                    </h2>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Material</th><th>Tag</th><th class="text-end">Qty Consumed</th><th>Unit</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($builtFrom as $component):
+                                    $compId = (string)($component['asset_id'] ?? '');
+                                ?>
+                                <tr>
+                                    <td>
+                                        <?php if ($compId !== ''): ?>
+                                        <a href="<?php echo base_url('assets/view.php?id=' . urlencode($compId)); ?>">
+                                            <?php echo htmlspecialchars($component['name'] ?? 'Unknown'); ?>
+                                        </a>
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($component['name'] ?? 'Unknown'); ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><code class="text-muted"><?php echo htmlspecialchars($component['asset_tag'] ?? '—'); ?></code></td>
+                                    <td class="text-end"><?php echo (int)($component['quantity'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($component['unit'] ?? 'EA'); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php if (!empty($asset['assembled_at']) || !empty($asset['assembled_by'])): ?>
+                <div class="card-footer">
+                    <small class="text-gray-500">
+                        Assembled <?php echo htmlspecialchars(substr((string)($asset['assembled_at'] ?? ''), 0, 10)); ?>
+                        <?php if (!empty($asset['assembled_by'])): ?>
+                            by <?php echo htmlspecialchars($asset['assembled_by']); ?>
+                        <?php endif; ?>
+                    </small>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <?php endif; ?>
         </div>
 
@@ -215,7 +457,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="col-12 col-lg-4 mb-4">
             <?php if ($asset['notes'] ?? ''): ?>
             <div class="card border-0 shadow mb-4">
-                <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Notes</h2></div>
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('form_notes')); ?></h2></div>
                 <div class="card-body">
                     <p class="mb-0"><?php echo nl2br(htmlspecialchars($asset['notes'])); ?></p>
                 </div>
@@ -261,32 +503,58 @@ include __DIR__ . '/../includes/header.php';
 
     <!-- Transaction History -->
     <div class="card border-0 shadow">
-        <div class="card-header"><h2 class="fs-5 fw-bold mb-0">Transaction History</h2></div>
+        <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('view_transactions')); ?></h2></div>
         <div class="card-body">
-            <?php if (empty($itemTransactions)): ?>
-            <p class="text-gray-500 text-center py-3 mb-0">No transactions recorded for this item.</p>
-            <?php else: ?>
+            <?php if (!$transactionQuerySucceeded): ?>
+            <div class="alert alert-warning mb-3">Transaction history could not be loaded. Refresh the page or sign in again; no opening balance has been inferred.</div>
+            <?php endif; ?>
             <div class="table-responsive">
                 <table class="table table-hover">
-                    <thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>From</th><th>To</th><th>Device</th><th>Notes</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Activity</th><th>Quantity</th><th>Site</th><th>Performed by</th><th>Notes</th></tr></thead>
                     <tbody>
                         <?php foreach (array_slice($itemTransactions, 0, 50) as $txn): ?>
                         <tr>
                             <td><?php echo date('M d, Y H:i', strtotime((string)($txn['transaction_date'] ?? $txn['created_at'] ?? ''))); ?></td>
-                            <td><span class="badge bg-primary"><?php echo htmlspecialchars($txn['transaction_type'] ?? ''); ?></span></td>
-                            <td><?php echo (int)($txn['quantity'] ?? 1); ?></td>
-                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['from_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
-                            <td><?php echo htmlspecialchars(($locationById[(string)($txn['to_location_id'] ?? '')] ?? [])['location_name'] ?? '—'); ?></td>
-                            <td><span class="badge bg-gray-200 text-gray-800"><?php echo htmlspecialchars($txn['device_type'] ?? 'Desktop'); ?></span></td>
+                            <td><span class="badge bg-<?php echo !empty($txn['is_opening_snapshot']) ? 'secondary' : 'primary'; ?>"><?php echo htmlspecialchars($txn['transaction_type'] ?? ''); ?></span></td>
+                            <td><?php echo (int)($txn['quantity'] ?? 1); ?> <?php echo htmlspecialchars((string)($asset['unit_of_measure'] ?? 'EA')); ?></td>
+                            <?php
+                            $txnSiteId = am_transaction_site_id($txn);
+                            $txnSite = $locationById[$txnSiteId] ?? [];
+                            $txnSiteLabel = trim((string)($txnSite['location_name'] ?? $txn['site_name'] ?? $txnSiteId));
+                            ?>
+                            <td><?php echo htmlspecialchars($txnSiteLabel !== '' ? $txnSiteLabel : '—'); ?></td>
+                            <td><?php echo htmlspecialchars((string)($txn['performed_by_name'] ?? $txn['employee_name'] ?? $txn['performed_by'] ?? 'System')); ?></td>
                             <td><?php echo htmlspecialchars(substr((string)($txn['notes'] ?? ''), 0, 60)); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    var form = document.getElementById('deleteAssetForm');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+        var ok = confirm('Delete this item from active catalog? A full snapshot will be archived.');
+        if (!ok) {
+            e.preventDefault();
+            return;
+        }
+        var reason = prompt('Reason for deleting this item (optional):', 'No longer needed');
+        if (reason === null) {
+            e.preventDefault();
+            return;
+        }
+        var reasonField = document.getElementById('deleteReasonField');
+        if (reasonField) {
+            reasonField.value = reason.trim();
+        }
+    });
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

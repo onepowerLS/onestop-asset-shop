@@ -1,0 +1,29 @@
+---
+description: What's New entry required for feature commits (enforced by CI + pre-push hook)
+alwaysApply: true
+---
+
+# What's New policy
+
+When you (the AI agent) make a commit whose subject starts with `feat:`, `feature:`, `improve:`, or `enhance:` (a user-facing feature or reconfiguration), you MUST also:
+
+1. Add an entry at **Admin → What's New** in the deployed app (or instruct the user to do so once the change is live). This is what users will see in the login primer.
+2. Add a marker file `docs/whats_new/entries/YYYY-MM-DD-slug.md` in the same commit (or same PR), using the template in `docs/whats_new/README.md`. This is the repo-side signal that an entry was added.
+
+CI (`.github/workflows/whats-new-check.yml`) and the local pre-push hook (`scripts/check-whats-new.sh`) enforce this — a feature commit without an accompanying marker file will be rejected.
+
+## When a marker is NOT required
+
+Pure fixes, chores, refactors, docs, tests, style, or perf changes (`fix:`, `chore:`, `refactor:`, `docs:`, `test:`, `style:`, `perf:`) do NOT require a marker. If a `fix:` materially changes a user-visible workflow, promote the commit subject to `feat:` or `improve:` so the policy triggers and a marker is added.
+
+## Decision rule
+
+- Subject starts with `feat` / `feature` / `improve` / `enhance` → marker required.
+- Anything else → marker not required.
+- When in doubt, add a marker — it doubles as a readable changelog entry.
+
+## See also
+
+- `docs/SYSTEM_SPECS.md` §1 — full What's New policy (triggering rule, modal behavior, lifecycle).
+- `docs/whats_new/README.md` — marker file template and pre-push hook install instructions.
+- `web/config/whats_new.php`, `web/includes/whats_new_modal.php`, `web/admin/whats-new.php` — implementation.

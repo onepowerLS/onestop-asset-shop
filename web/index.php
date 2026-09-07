@@ -4,15 +4,29 @@
  */
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/firestore.php';
+require_once __DIR__ . '/config/authz.php';
+require_once __DIR__ . '/config/country_scope.php';
+require_once __DIR__ . '/config/locale.php';
 require_login();
+am_ensure_country_scope_from_session();
 
-$page_title = 'Dashboard';
+$page_title = am_ui('dashboard_title');
 
 // Firestore-backed dashboard statistics
 $assets = am_firestore_get_collection('am_core_assets', 1000);
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $transactions = am_firestore_get_collection('am_core_transactions', 1000);
 $requests = am_firestore_get_collection('pr_master_requests', 1000);
+
+$locationById = [];
+foreach (am_get_pr_sites() as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+}
+
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
 
 $totalAssets = count($assets);
 
@@ -36,14 +50,16 @@ foreach ($countries as $country) {
     ];
 }
 foreach ($assets as $asset) {
-    $countryId = (string)($asset['country_id'] ?? '');
+    $countryId = am_asset_country_bucket_id_for_ui($asset, $countries, $locationById);
     if ($countryId === '') {
         continue;
     }
     if (!isset($countryMap[$countryId])) {
+        $isCodeBucket = str_starts_with($countryId, '__code__');
+        $label = $isCodeBucket ? substr($countryId, 8) : 'Unknown';
         $countryMap[$countryId] = [
-            'country_name' => 'Unknown',
-            'country_code' => 'N/A',
+            'country_name' => $isCodeBucket ? $label : 'Unknown',
+            'country_code' => $isCodeBucket ? $label : 'N/A',
             'count' => 0,
         ];
     }
@@ -99,25 +115,68 @@ foreach ($requests as $req) {
     }
 }
 
+$am_firestore_session_token_missing = is_logged_in() && trim((string)am_firestore_id_token()) === '';
+
+// Snapshot for browser-console cross-check (so we can see exactly what Firestore returned
+// post-country-scope filtering) without exposing sensitive fields.
+$am_dashboard_debug = [
+    'assets_total' => $totalAssets,
+    'classes' => $classCounts,
+    'countries_buckets' => count($assetsByCountry),
+    'countries_with_assets' => count(array_filter($assetsByCountry, fn($c) => (int)$c['count'] > 0)),
+    'status_buckets' => count($assetsByStatus),
+    'transactions_fetched' => count($transactions),
+    'requests_fetched' => count($requests),
+    'pending_requests' => $pendingRequests,
+    'firestore_token_missing' => $am_firestore_session_token_missing,
+    'country_scope' => function_exists('am_country_allow_codes') ? am_country_allow_codes() : null,
+];
+
 include __DIR__ . '/includes/header.php';
 ?>
 
+<script>
+// Dashboard debug snapshot — cross-check in the browser console whether the
+// server-side fetch returned data (i.e. is the zero-count purely client/UI
+// or is the PHP/Firestore pipeline returning 0 rows).
+window.AM_DASHBOARD = <?php echo json_encode($am_dashboard_debug, JSON_UNESCAPED_SLASHES); ?>;
+(function(){
+    try {
+        var d = window.AM_DASHBOARD || {};
+        var css = 'color:#fff;background:#198754;padding:2px 6px;border-radius:3px;font-weight:600;';
+        console.log('%cAM dashboard%c assets=%d countries=%d statuses=%d pending=%d token_missing=%s',
+            css, '',
+            d.assets_total || 0,
+            d.countries_with_assets || 0,
+            d.status_buckets || 0,
+            d.pending_requests || 0,
+            String(d.firestore_token_missing));
+        console.log('AM_DASHBOARD', d);
+    } catch (e) {}
+})();
+</script>
+
 <div class="py-4">
+    <?php if (!empty($am_firestore_session_token_missing)): ?>
+    <div class="alert alert-danger"><?php echo htmlspecialchars(am_ui('firestore_token_notice')); ?></div>
+    <?php endif; ?>
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
         <div class="d-block mb-4 mb-md-0">
-            <h1 class="h2">Dashboard</h1>
-            <p class="mb-0">Welcome to OneStop Asset Shop - Consolidated Asset Management</p>
+            <h1 class="h2"><?php echo htmlspecialchars(am_ui('dashboard_title')); ?></h1>
+            <p class="mb-0"><?php echo htmlspecialchars(am_ui('dashboard_welcome')); ?></p>
         </div>
+        <?php if (!am_is_auditor_readonly()): ?>
         <div class="btn-toolbar mb-2 mb-md-0">
             <a href="<?php echo base_url('assets/add.php'); ?>" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center">
                 <i class="fas fa-plus me-2"></i>
-                Add New Asset
+                <?php echo htmlspecialchars(am_ui('dashboard_add_asset')); ?>
             </a>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Summary Row -->
-    <div class="row mb-4">
+    <div class="row mb-4" data-tutorial="tutorial-dashboard-kpis">
         <div class="col-12 col-sm-6 col-xl-3 mb-4">
             <div class="card border-0 shadow">
                 <div class="card-body">
@@ -129,7 +188,7 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Total Items</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_total_items')); ?></h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo number_format($totalAssets); ?></h3>
                             </div>
                         </div>
@@ -149,7 +208,7 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Pending Requests</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_pending_requests')); ?></h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo number_format($pendingRequests); ?></h3>
                             </div>
                         </div>
@@ -169,7 +228,7 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Countries</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_countries')); ?></h2>
                                 <h3 class="fw-extrabold mb-2"><?php echo count($assetsByCountry); ?></h3>
                             </div>
                         </div>
@@ -189,7 +248,7 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-12 col-xl-7 py-3">
                             <div class="d-block">
-                                <h2 class="h5 fw-normal text-gray-600 mb-0">Available</h2>
+                                <h2 class="h5 fw-normal text-gray-600 mb-0"><?php echo htmlspecialchars(am_ui('dashboard_available')); ?></h2>
                                 <h3 class="fw-extrabold mb-2">
                                     <?php 
                                     $available = array_filter($assetsByStatus, fn($s) => $s['status'] === 'Available');
@@ -207,13 +266,13 @@ include __DIR__ . '/includes/header.php';
     <!-- Item Classification Breakdown -->
     <?php
     $classConfig = [
-        'FixedAsset'  => ['label' => 'Fixed Assets',  'icon' => 'fa-building',       'color' => 'primary',   'desc' => 'PP&E: vehicles, equipment, infrastructure'],
-        'Material'    => ['label' => 'Materials',      'icon' => 'fa-cubes',          'color' => 'warning',   'desc' => 'Construction & installation inputs'],
-        'Consumable'  => ['label' => 'Consumables',    'icon' => 'fa-recycle',        'color' => 'info',      'desc' => 'Operational supplies, PPE, office'],
-        'Inventory'   => ['label' => 'Inventory',      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => 'Meters, ready boards, spare parts'],
+        'FixedAsset'  => ['label' => am_ui('class_fixed_assets'),  'icon' => 'fa-building',       'color' => 'primary',   'desc' => am_ui('desc_fixed_assets')],
+        'Material'    => ['label' => am_ui('class_materials'),      'icon' => 'fa-cubes',          'color' => 'warning',   'desc' => am_ui('desc_materials')],
+        'Consumable'  => ['label' => am_ui('class_consumables'),    'icon' => 'fa-recycle',        'color' => 'info',      'desc' => am_ui('desc_consumables')],
+        'Inventory'   => ['label' => am_ui('class_inventory'),      'icon' => 'fa-boxes-stacked',  'color' => 'success',   'desc' => am_ui('desc_inventory')],
     ];
     ?>
-    <div class="row mb-4">
+    <div class="row mb-4" data-tutorial="tutorial-dashboard-class">
         <?php foreach ($classConfig as $classKey => $cfg): ?>
         <div class="col-12 col-sm-6 col-xl-3 mb-4">
             <a href="<?php echo base_url('assets/index.php?item_class=' . $classKey); ?>" class="text-decoration-none">
@@ -239,7 +298,7 @@ include __DIR__ . '/includes/header.php';
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
-                            <h2 class="fs-5 fw-bold mb-0">Assets by Country</h2>
+                            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('dashboard_assets_by_country')); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -248,8 +307,8 @@ include __DIR__ . '/includes/header.php';
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Country</th>
-                                    <th class="text-end">Count</th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_country')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('th_count')); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -277,7 +336,7 @@ include __DIR__ . '/includes/header.php';
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
-                            <h2 class="fs-5 fw-bold mb-0">Assets by Status</h2>
+                            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('dashboard_assets_by_status')); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -286,8 +345,8 @@ include __DIR__ . '/includes/header.php';
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Status</th>
-                                    <th class="text-end">Count</th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_status')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('th_count')); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -323,16 +382,16 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <!-- Recent Transactions -->
-    <div class="row">
+    <div class="row" data-tutorial="tutorial-dashboard-recent">
         <div class="col-12 mb-4">
             <div class="card border-0 shadow">
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
-                            <h2 class="fs-5 fw-bold mb-0">Recent Transactions</h2>
+                            <h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('dashboard_recent_transactions')); ?></h2>
                         </div>
                         <div class="col text-end">
-                            <a href="<?php echo base_url('transactions/index.php'); ?>" class="btn btn-sm btn-primary">View All</a>
+                            <a href="<?php echo base_url('transactions/index.php'); ?>" class="btn btn-sm btn-primary"><?php echo htmlspecialchars(am_ui('dashboard_view_all')); ?></a>
                         </div>
                     </div>
                 </div>
@@ -341,17 +400,17 @@ include __DIR__ . '/includes/header.php';
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Asset</th>
-                                    <th>QR Code</th>
-                                    <th>Device</th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_date')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_type')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_asset')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_qr_code')); ?></th>
+                                    <th><?php echo htmlspecialchars(am_ui('th_device')); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($recentTransactions)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center text-gray-500">No recent transactions</td>
+                                    <td colspan="5" class="text-center text-gray-500"><?php echo htmlspecialchars(am_ui('dashboard_no_transactions')); ?></td>
                                 </tr>
                                 <?php else: ?>
                                 <?php foreach ($recentTransactions as $txn): ?>

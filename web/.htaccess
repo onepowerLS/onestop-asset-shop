@@ -6,6 +6,11 @@ RewriteEngine On
 # Base URL rewriting
 RewriteBase /
 
+# Pretty /api/v1/{resource} → /api/v1/{resource}.php
+RewriteCond %{REQUEST_URI} ^/api/v1/([a-z0-9_-]+)/?$ [NC]
+RewriteCond %{DOCUMENT_ROOT}/api/v1/%1.php -f
+RewriteRule ^api/v1/([a-z0-9_-]+)/?$ api/v1/$1.php [L,QSA]
+
 # Allow direct access to API endpoints
 RewriteCond %{REQUEST_URI} ^/api/ [NC]
 RewriteRule ^ - [L]

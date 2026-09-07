@@ -1,18 +1,30 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/authz.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/employee_directory.php';
+require_once __DIR__ . '/../config/transactions.php';
 require_login();
+am_ensure_country_scope_from_session();
+am_require_can_mutate();
 
 $page_title = 'Check-Out / Check-In';
 $errors = [];
 $success = '';
 
-$assets = am_firestore_get_collection('am_core_assets', 2000);
-$employees = am_firestore_get_collection('pr_master_employees', 2000);
-if (empty($employees)) {
-    $employees = am_firestore_get_collection('am_core_employees', 2000);
-}
+$countries = am_get_countries();
 $locations = am_get_pr_sites();
+$locationById = [];
+foreach ($locations as $l) {
+    $lid = (string)($l['location_id'] ?? $l['id'] ?? '');
+    if ($lid !== '') {
+        $locationById[$lid] = $l;
+    }
+}
+$assets = am_firestore_get_collection('am_core_assets', 2000);
+$assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
+$employees = am_employee_directory_load();
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 
 $assetById = [];
@@ -30,6 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($assetDocId === '') $errors[] = 'Please select an item.';
 
+    $postedAsset = $assetById[$assetDocId] ?? null;
+    if ($postedAsset) {
+        $pCid = am_resolve_asset_country_id($postedAsset, $countries);
+        if ($pCid === '' || !am_user_may_access_country_id($pCid, $countries)) {
+            $errors[] = 'You cannot act on items outside your country access.';
+        }
+    } elseif ($assetDocId !== '') {
+        $errors[] = 'Invalid item.';
+    }
+
     if ($action === 'checkout') {
         if ($employeeId === '') $errors[] = 'Please select an employee.';
 
@@ -46,17 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $allocResult = am_firestore_create_document('am_core_allocations', $allocData);
 
             $txnData = [
-                'transaction_type' => 'CheckOut',
-                'asset_id' => $assetDocId,
-                'quantity' => 1,
                 'to_location_id' => $locationId,
+                'site_code' => $locationId,
                 'employee_id' => $employeeId,
-                'performed_by' => $_SESSION['user_id'] ?? '',
-                'device_type' => 'Desktop',
                 'notes' => $notes,
-                'transaction_date' => date('c'),
+                'asset_name' => (string)($postedAsset['name'] ?? ''),
+                'asset_tag' => (string)($postedAsset['asset_tag'] ?? ''),
             ];
-            am_firestore_create_document('am_core_transactions', $txnData);
+            am_log_asset_transaction($assetDocId, 'CheckOut', 1, $txnData);
 
             am_firestore_update_document('am_core_assets', $assetDocId, [
                 'status' => 'CheckedOut',
@@ -81,16 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $txnData = [
-                'transaction_type' => 'CheckIn',
-                'asset_id' => $assetDocId,
-                'quantity' => 1,
                 'to_location_id' => $locationId,
-                'performed_by' => $_SESSION['user_id'] ?? '',
-                'device_type' => 'Desktop',
+                'site_code' => $locationId,
                 'notes' => $notes,
-                'transaction_date' => date('c'),
+                'asset_name' => (string)($postedAsset['name'] ?? ''),
+                'asset_tag' => (string)($postedAsset['asset_tag'] ?? ''),
             ];
-            am_firestore_create_document('am_core_transactions', $txnData);
+            am_log_asset_transaction($assetDocId, 'CheckIn', 1, $txnData);
 
             $hasOtherActive = false;
             foreach ($allocations as $alloc) {
@@ -155,7 +171,7 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="row">
         <!-- Check-Out Form -->
-        <div class="col-12 col-lg-6 mb-4">
+        <div class="col-12 col-lg-6 mb-4" data-tutorial="tutorial-checkout-out">
             <div class="card border-0 shadow">
                 <div class="card-header bg-primary text-white"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-sign-out-alt me-2"></i>Check-Out Item</h2></div>
                 <div class="card-body">
@@ -202,7 +218,7 @@ include __DIR__ . '/../includes/header.php';
         </div>
 
         <!-- Check-In Form -->
-        <div class="col-12 col-lg-6 mb-4">
+        <div class="col-12 col-lg-6 mb-4" data-tutorial="tutorial-checkout-in">
             <div class="card border-0 shadow">
                 <div class="card-header bg-success text-white"><h2 class="fs-5 fw-bold mb-0"><i class="fas fa-sign-in-alt me-2"></i>Check-In Item</h2></div>
                 <div class="card-body">
@@ -251,7 +267,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <!-- Active Allocations -->
-    <div class="card border-0 shadow">
+    <div class="card border-0 shadow" data-tutorial="tutorial-checkout-active">
         <div class="card-header">
             <h2 class="fs-5 fw-bold mb-0">Active Allocations (<?php echo count($activeAllocs); ?>)</h2>
         </div>

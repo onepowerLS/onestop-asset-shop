@@ -11,8 +11,9 @@ if (empty($_SESSION['firebase_id_token'])) {
 }
 
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
 
-$countries = am_firestore_get_collection('pr_master_countries', 100);
+$countries = am_get_countries();
 $pageTitle = 'Reports';
 include __DIR__ . '/../includes/header.php';
 include __DIR__ . '/../includes/sidebar.php';
@@ -24,9 +25,9 @@ include __DIR__ . '/../includes/sidebar.php';
     <div class="py-4">
         <h2 class="h4 mb-4">Reports &amp; Export</h2>
 
-        <div class="row g-4">
+        <div class="row g-4" data-tutorial="tutorial-reports-grid">
             <!-- Asset Register -->
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4" data-tutorial="tutorial-reports-asset-card">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
                         <h5><i class="fas fa-clipboard-list text-primary me-2"></i>Asset Register</h5>

@@ -1,18 +1,15 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/country_scope.php';
+require_once __DIR__ . '/../config/authz.php';
 require_login();
-
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    $_SESSION['flash_error'] = 'Admin access required.';
-    header('Location: ' . base_url('index.php'));
-    exit;
-}
+am_require_admin();
 
 $page_title = 'Locations (from PR Portal)';
 
 $locations = am_get_pr_sites();
-$countries = am_firestore_get_collection('pr_master_countries', 500);
+$countries = am_get_countries();
 $countries = array_values(array_filter($countries, fn($c) => ((int)($c['active'] ?? 1)) !== 0));
 
 $countryNames = [];
@@ -44,8 +41,14 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="alert alert-light border mb-4">
         <i class="fas fa-info-circle me-2 text-primary"></i>
-        Location data is read live from the PR portal's <code>sites</code> and <code>referenceData_sites</code> collections.
+        Location data is read live from the PR portal's <code>sites</code> and <code>referenceData_sites</code> collections
+        (plus the <code>am_reference_sites</code> fanout cache).
         To add, rename, or remove a site, update it in the PR portal &mdash; changes appear here automatically.
+        <?php if (empty($locations)): ?>
+        <br><strong class="text-danger">No locations were returned.</strong>
+        This usually means the Firestore token was rejected (401/403) or the PR portal collections are empty.
+        Refresh the page once to retry; if still empty, contact the PR/Ops owner to verify sites exist for your country.
+        <?php endif; ?>
     </div>
 
     <?php foreach ($byCountry as $cc => $locs):

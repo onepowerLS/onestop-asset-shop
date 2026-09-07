@@ -12,6 +12,7 @@ if (empty($_SESSION['firebase_id_token'])) {
 }
 
 require_once __DIR__ . '/../config/firestore.php';
+require_once __DIR__ . '/../config/transactions.php';
 
 $report = $_GET['report'] ?? '';
 $format = $_GET['format'] ?? 'csv';
@@ -88,6 +89,15 @@ function report_transactions(): array {
     foreach ($assets as $a) {
         $assetNames[$a['id'] ?? ''] = $a['name'] ?? $a['asset_tag'] ?? '';
     }
+    $locations = am_get_pr_sites();
+    $locationNames = [];
+    foreach ($locations as $location) {
+        $name = (string)($location['location_name'] ?? '');
+        foreach (['id', 'location_id', 'location_code'] as $field) {
+            $key = trim((string)($location[$field] ?? ''));
+            if ($key !== '') $locationNames[$key] = $name ?: $key;
+        }
+    }
 
     $rows = [];
     foreach ($txns as $t) {
@@ -97,15 +107,16 @@ function report_transactions(): array {
         if ($to && $txDate > $to) continue;
 
         $aid = $t['asset_id'] ?? '';
+        $siteId = am_transaction_site_id($t);
         $rows[] = [
             $t['transaction_date'] ?? '',
             $t['transaction_type'] ?? '',
             $assetNames[$aid] ?? $aid,
             $t['quantity'] ?? '',
+            $locationNames[$siteId] ?? ($t['site_name'] ?? $siteId),
             $t['employee_name'] ?? '',
-            $t['device_type'] ?? '',
             $t['notes'] ?? '',
-            $t['performed_by'] ?? '',
+            $t['performed_by_name'] ?? $t['performed_by'] ?? '',
         ];
     }
 
@@ -113,7 +124,7 @@ function report_transactions(): array {
 
     return [
         'title' => 'Transaction Log' . ($type ? " — {$type}" : ''),
-        'headers' => ['Date','Type','Item','Qty','Employee','Device','Notes','Performed By'],
+        'headers' => ['Date','Type','Item','Quantity','Site','Employee','Notes','Performed By'],
         'rows' => $rows,
     ];
 }
