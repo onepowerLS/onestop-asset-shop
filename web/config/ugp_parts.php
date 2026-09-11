@@ -38,7 +38,7 @@ function am_ugp_name_match_candidates(string $normalizedNameKey, array $assets, 
     }
     $out = [];
     foreach ($assets as $a) {
-        if ((string)($a['item_class'] ?? '') !== 'Inventory') {
+        if (!in_array((string)($a['item_class'] ?? ''), ['Inventory', 'Material', 'Consumable'], true)) {
             continue;
         }
         if (trim((string)($a['ugp_part_id'] ?? '')) !== '') {
@@ -92,7 +92,6 @@ function am_ugp_sync_single_part(array $part, array $ctx): array {
     $categories = $ctx['categories'] ?? [];
     $allAssets = $ctx['all_assets'] ?? [];
     $token = $ctx['id_token_override'] ?? null;
-    $linkOnName = (bool)($ctx['link_on_normalized_name'] ?? true);
     $dryRun = (bool)($ctx['dry_run'] ?? false);
 
     $ugpId = trim((string)($part['ugp_part_id'] ?? $part['id'] ?? ''));
@@ -131,38 +130,13 @@ function am_ugp_sync_single_part(array $part, array $ctx): array {
 
     $norm = am_ugp_normalize_key($name);
     $candidates = am_ugp_name_match_candidates($norm, $allAssets, $countryId, $countries);
-    if (count($candidates) > 1) {
+    if (count($candidates) > 0) {
         return [
             'ok' => false,
             'action' => 'ambiguous',
-            'message' => 'Multiple Inventory items match normalized name; resolve manually.',
+            'message' => 'Name matches are proposals only. An AM approver must verify specification and units before linking; no stock or mapping changed.',
             'candidates' => $candidates,
         ];
-    }
-    if (count($candidates) === 1 && $linkOnName) {
-        $row = $candidates[0];
-        $docId = (string)($row['asset_id'] ?? $row['id'] ?? '');
-        if ($docId === '') {
-            return ['ok' => false, 'action' => 'error', 'message' => 'Candidate asset missing id.'];
-        }
-        $patch = [
-            'ugp_part_id' => $ugpId,
-            'ugp_last_sync_at' => date('c'),
-            'updated_at' => date('c'),
-            'notes' => am_ugp_merge_note((string)($row['notes'] ?? ''), 'Linked from UGP part ' . $ugpId . ' by normalized name match.'),
-        ];
-        $desc = trim((string)($part['description'] ?? ''));
-        if ($desc !== '' && trim((string)($row['description'] ?? '')) === '') {
-            $patch['description'] = $desc;
-        }
-        if ($dryRun) {
-            return ['ok' => true, 'action' => 'linked', 'asset_id' => $docId, 'message' => 'Would link ugp_part_id to existing Inventory row.'];
-        }
-        $r = am_firestore_update_document('am_core_assets', $docId, $patch, $token);
-        if (!$r['ok']) {
-            return ['ok' => false, 'action' => 'error', 'message' => (string)($r['error'] ?? 'Link failed')];
-        }
-        return ['ok' => true, 'action' => 'linked', 'asset_id' => $docId, 'message' => 'Linked UGP id to existing Inventory item (name match).'];
     }
 
     $catId = am_ugp_default_inventory_category_id($categories);
@@ -178,10 +152,10 @@ function am_ugp_sync_single_part(array $part, array $ctx): array {
         }
     }
 
-    $qty = (int)($part['quantity'] ?? 0);
-    if ($qty < 0) {
-        $qty = 0;
+    if (isset($part['quantity']) && (!is_numeric($part['quantity']) || (float)$part['quantity'] != 0.0)) {
+        return ['ok' => false, 'action' => 'error', 'message' => 'Catalogue sync cannot record stock. Receive goods through the AM receipt workflow.'];
     }
+    $qty = 0;
     $uom = trim((string)($part['unit_of_measure'] ?? 'EA'));
     if ($uom === '') {
         $uom = 'EA';

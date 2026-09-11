@@ -66,3 +66,10 @@ Nexus (`nexus.1pwrafrica.com`) is the IdP. `require_login()`
 and reuses `POST /auth/firebase-login.php` to create the PHP session.
 **Emergency fallback:** `/login.php?fallback=1` (Firebase email/password).
 Full flow + outage procedure: `nexus-portal/docs/NEXUS_AUTH_RUNBOOK.md`.
+
+## Receipt/mapping pilot — local implementation, 10 September 2026
+
+See `docs/PR_AM_PILOT_IMPLEMENTATION_20260910.md`. Signed Nexus AM approvers invoke
+trusted shared-Firestore transactions for stock receipts, full reversals and verified
+UGP mappings. No production cutover is asserted. Name-only auto-linking is disabled;
+UGP catalogue sync must not manufacture stock. Whole-unit goods only in this pilot.

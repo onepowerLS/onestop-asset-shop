@@ -10,7 +10,7 @@
  *   "parts": [
  *     { "ugp_part_id": "...", "name": "...", "description": "...", "quantity": 0, "unit_of_measure": "EA" }
  *   ],
- *   "link_on_normalized_name": true,
+ *   "link_on_normalized_name": false,
  *   "dry_run": false
  * }
  *
@@ -87,7 +87,7 @@ $countries = am_get_countries();
 $categories = am_firestore_get_collection('pr_master_categories', 1000, $token);
 $allAssets = am_firestore_get_collection('am_core_assets', 2000, $token);
 
-$linkName = (bool)($input['link_on_normalized_name'] ?? true);
+$linkName = (bool)($input['link_on_normalized_name'] ?? false);
 $dryRun = (bool)($input['dry_run'] ?? false);
 
 $results = [];

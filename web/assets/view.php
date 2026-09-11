@@ -150,6 +150,10 @@ $flashError = $_SESSION['flash_error'] ?? '';
 unset($_SESSION['flash_error']);
 
 include __DIR__ . '/../includes/header.php';
+if (am_is_manager_role()) {
+    echo '<a class="btn btn-outline-primary my-3" href="' . htmlspecialchars(base_url('assets/ugp-mapping.php?id=' . urlencode($assetId))) . '">Verify UGP mapping</a>';
+}
+
 ?>
 
 <div class="py-4">

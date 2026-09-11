@@ -1,0 +1,600 @@
+{
+  "snapshotId": "8ec0df34-2dc0-45ce-aeb2-6f1d8d6a2497",
+  "sourceMetadata": {
+    "am": {
+      "path": "/api/v1/parts",
+      "retrieved_at": "2026-09-08T17:54:54.908231+00:00",
+      "count": 2926,
+      "sha256": "b3b69bfa67dd595e7d92b3385bb2128766b28b2ce37234f58a4fc8a792297c6d"
+    },
+    "pr": {
+      "path": "/api/v1/purchase-requests",
+      "retrieved_at": "2026-09-08T17:55:30.120084+00:00",
+      "count": 1864,
+      "sha256": "2577fb9e6a2ffd899933abf0a56376d9745b961be3935804d2eaa9be7f353bbf"
+    }
+  },
+  "parts": {
+    "abc-dead-end-clamp": {
+      "name": "ABC Dead-End Clamp",
+      "specification": "ABC dead-end/strain clamp for bundled conductors 25-95mm\u00b2, wedge-type termination",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "fb5c14b5-7174-442e-9e40-3e6a5e048dd5",
+        "6fc25f29-e3d4-4e1a-a197-1371b4a1e991"
+      ]
+    },
+    "cable-tie-200mm": {
+      "name": "Cable Tie - 200mm",
+      "specification": "4.8mm \u00d7 200mm black UV-stable nylon",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "9Y6l1EPOkmkHdFMnQbU8"
+      ]
+    },
+    "connector-ipc-16-35": {
+      "name": "Connector - IPC 16-35mm\u00b2",
+      "specification": "Insulation piercing connector 16-35mm\u00b2",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "b65ee7d5-c240-496c-9fb9-350c8d9f2cae",
+        "b076aca5-20fa-4e13-950d-ac6c95973be0"
+      ]
+    },
+    "cross-arm-mv-2.5m": {
+      "name": "Cross Arm - MV 2.5m",
+      "specification": "2.5m galvanized steel MV cross arm per OnePower spec",
+      "unit": "piece",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "crows-foot-earthing-system": {
+      "name": "Crow's Foot Earthing System",
+      "specification": "Complete crow's foot earthing for transformer poles - 3 earth rods radial pattern, bonding MV/LV",
+      "unit": "kit",
+      "category": "components",
+      "candidateIds": [
+        "PfEqOBvaaCN5an9jbxzA",
+        "3c4c2466-5d3f-4b78-81f2-ff7e41b35fec",
+        "xuE2aSf0aEvHGYN4AXBV"
+      ]
+    },
+    "earthing-clamp": {
+      "name": "Earth Clamp - Rod to Wire",
+      "specification": "Bronze earth clamp for rod to wire connection",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "lKph3eLgS9wnxkJyTomK",
+        "3c4c2466-5d3f-4b78-81f2-ff7e41b35fec"
+      ]
+    },
+    "earthing-kit-mv-sparkgap": {
+      "name": "MV Earthing Kit - Spark Gap",
+      "specification": "Spark gap earthing assembly for non-transformer MV poles",
+      "unit": "kit",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "earthing-rod": {
+      "name": "Earth Rod - Copper 1.5m",
+      "specification": "1.5m solid copper earth rod 16mm dia",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "PfEqOBvaaCN5an9jbxzA",
+        "4d776953-f7d7-4dd8-be6d-539d0950aff0",
+        "c94bb151-a093-4762-b9b6-2645df585bf8",
+        "85948e26-880e-4054-a5f7-1db25e1322fa"
+      ]
+    },
+    "earthing-wire-16mm": {
+      "name": "Earth Wire - Bare Copper 16mm\u00b2",
+      "specification": "16mm\u00b2 bare stranded copper earth wire",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "flat-bracing-strap": {
+      "name": "Flat Bracing Strap",
+      "specification": "Galvanized flat bracing strap 910x50x6mm for cross arm support",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "JnIVAOxR4dMYyFgsGGA1",
+        "cf166e69-3082-4ef6-9cb3-87923745007b"
+      ]
+    },
+    "fuse-mv-dropout": {
+      "name": "Fuse - MV Dropout 11kV",
+      "specification": "11kV dropout fuse cutout",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "mZ6SbXf54RZW77ZRk73x",
+        "dbff28b6-a678-4e89-9677-6af7a199fbc9"
+      ]
+    },
+    "hook-bolt-m16": {
+      "name": "Hook Bolt - M16 Galvanized",
+      "specification": "M16\u00d7200mm galvanized pigtail/hook bolt for ABC clamp mounting",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "e3dcd351-627a-490c-8c34-3f42354cd1a2"
+      ]
+    },
+    "line-post-insulator-assembly": {
+      "name": "Line Post Insulator Assembly - MV",
+      "specification": "Complete 11kV line post insulator assembly with spindle M20 and hardware for intermediate poles",
+      "unit": "piece",
+      "category": "components",
+      "candidateIds": [
+        "K6z8nNHKL6DSYcUZ5whD",
+        "jOVqLKqSNml7zrzzmRtX",
+        "bcf61a12-866b-4dc3-ab9e-b9ad08b0ab89"
+      ]
+    },
+    "long-rod-insulator-assembly": {
+      "name": "Long Rod Insulator Assembly - MV",
+      "specification": "Complete 11kV long rod insulator assembly with D-shackle 70kN and thimble clevis for strain poles",
+      "unit": "piece",
+      "category": "components",
+      "candidateIds": [
+        "hIvBQc9RA9B8FdG8t9sf",
+        "cf8ff53c-5bfd-40a4-a582-5ca4ef6f4ecf",
+        "e9548e45-c023-4fb3-90a5-a4838841f451",
+        "XjR7q0nBt8JEBGod0qUj"
+      ]
+    },
+    "meter-enclosure-1way": {
+      "name": "Meter Enclosure - 1-Way",
+      "specification": "Single meter IP65 weatherproof enclosure",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "02f25d6f-6ff2-4b4f-ae6e-27ddaef88193",
+        "03a16d45-803f-427a-bcdd-0dbef94f3da5",
+        "04891213-7610-41e8-9421-98cf7127adee",
+        "062f6d11-01cf-4cea-a6d7-b832cb37b03e",
+        "0773124b-db61-4ffd-a005-d26fa22ef9e2",
+        "07b1d333-97f6-4271-a73c-2bd7a1a703c7",
+        "07d644ab-e850-46fb-bd6e-0d42b7de29cc",
+        "0b9e1cef-4ea2-4e5b-83c0-1061ae7af830",
+        "0c6a24a6-251a-42fb-938a-515a58503ad3",
+        "0fa42576-ea6b-4857-bbc6-993cf6e1b6e5",
+        "10e56647-373a-4a10-b011-79db1cc63f0b",
+        "122892a2-0a38-41ff-b4b1-f1a27ff08605",
+        "1299d127-de1f-449f-9367-6513f656b841",
+        "12d61566-a207-478e-b2eb-3c43be9e389d",
+        "13534ba7-863a-495b-b932-8eeb925c334e",
+        "143ae723-9506-49cb-9b93-8c2ecb0055d8",
+        "14c80a62-1489-4027-9a4b-8638daf79236",
+        "1590bec8-a444-4524-b375-522545520861",
+        "162637a1-24f7-4e1a-a4be-512dc79366b0",
+        "1686b255-2091-48b4-8d91-902415f41e3c",
+        "16dc2cdb-c76b-4a3b-83cc-777f573f1650",
+        "1775eddc-7b06-438a-ab02-edfff5b2b24a",
+        "177b122b-63c7-4021-9ed6-03a21bc21969",
+        "17ea0310-6a81-4b68-b7b7-5228f7e1840e",
+        "17fd5767-7682-48ad-8704-21a3ba6778a6",
+        "181a2624-98b3-4585-96e4-dc43b0ffdfd7",
+        "193e4125-40b3-4822-8bc9-f042740ab9da",
+        "19f16a7b-4aae-4857-9936-941e60d3e756",
+        "1acf1a3d-72ed-46bc-8e9d-342222f77722",
+        "1ca2a6a0-c8fb-4c20-a175-67733740141e",
+        "1ded515d-5279-4065-91a8-2f7648f65acc",
+        "1e10106d-10bd-4e60-8032-fc6a7dad931f",
+        "1e50fdfe-0a1c-476a-8e36-61e9c7472e3a",
+        "1fbfc78a-5f4b-45ed-8848-0ae10657244f",
+        "203254b7-6e38-4598-a3a9-3791aff40428",
+        "20c297a6-e91b-4172-bbb5-15aee312c903",
+        "20eacf27-84ff-4d4c-8a83-2f1b13078fd2",
+        "212f9a53-61dc-4f15-89a1-b7862bb242bf",
+        "218d5be9-1abe-469c-9320-09eac9068a31",
+        "21ad240d-8147-434f-9d81-d98c0b53460b",
+        "22375c8b-aafd-4585-8b9e-e0e5bf9a0009",
+        "229899dc-60d3-4377-a94f-0d4c20c030eb",
+        "24de423d-3251-41fe-929c-6b50668125c9",
+        "2539cc8d-de5f-4612-a54e-5ee071555962",
+        "256b3f2e-b202-4956-8664-0917a3610743",
+        "2592c3cb-88a1-4924-8455-73500c43751b",
+        "268c1cb8-d140-4c58-b71c-70806fdb6b93",
+        "26c14835-9e3f-42a9-96be-5909b6f003a1",
+        "28d1ea2f-f52c-467d-a624-cce8aeb9a34a",
+        "28fe87f4-399c-49d0-92ac-3230ef6b1e6c",
+        "297e1e67-959d-4d9a-bdb5-66408cb11c4b",
+        "2a839b27-9de7-48c3-b793-36f02fdc4bf5",
+        "2df3f856-78ce-4b91-a4d2-209e774a23a7",
+        "3091a8ac-ad9f-4579-a7a4-58bed2b13ebb",
+        "3168600e-a5ab-4284-9752-a2cb12f5f718",
+        "32967874-62c3-424f-b64b-f61af47466e8",
+        "332d3371-6a2e-4e65-b1f8-ad2b4c533937",
+        "338229d1-56d8-4ee0-9247-c8c59a54bde6",
+        "373a76ce-0b8b-42ae-a2b6-2734d7c66034",
+        "3b1e46df-91ae-4e95-bc34-cd57209f3db8",
+        "3b343c03-534f-4367-9259-8d0bfc31d844",
+        "3b49a75c-60c9-4bb5-9858-7a102cabda4f",
+        "3b8abc2a-498a-4fe5-a7b9-6bb940d41335",
+        "3ba58a2f-7655-4762-b963-6b7d0b8f81ea",
+        "3f234652-e585-4f92-a97d-60ff58d6cabf",
+        "407413da-34fc-4980-833c-efede9da718e",
+        "4082be5e-e89d-4f60-9ea2-fc8b580417c8",
+        "40d49dc2-31a9-48c4-8aeb-912c59a7ad66",
+        "410c81f2-d08e-410b-b8f2-6e17f0b9f06b",
+        "43e97551-1eda-415c-ba38-8e1d4bec65bc",
+        "456e660e-56c2-4c3a-9c00-c9fff31cf52f",
+        "45dd518a-916e-4249-84b7-8054232ae8c9",
+        "468a1ad3-fe5a-45db-970a-df9c5b407363",
+        "46ab20b2-625a-4b45-a234-0b16a80829d5",
+        "47d3f072-d2fb-4a98-9cd8-cf1b04247278",
+        "486d7f30-dde3-4ed0-88fb-6c72b4f7a082",
+        "48e9fc56-3fd6-4789-b4fc-9a76c30dee51",
+        "49650eeb-aa5c-4816-a8c8-639f44ebc1c7",
+        "4b7eb9f9-bd41-4517-be71-7b5327683fc4",
+        "4ebefa63-8553-4e01-845f-536d643fb08e",
+        "4eec0c50-cf7a-4eba-9232-4535a02d61a4",
+        "5011dfda-702c-40ef-bece-651e0c93b78b",
+        "5017f996-9fe5-4963-b066-84ad60662f1d",
+        "52543969-b9f9-4fbc-8182-eadfbb60658a",
+        "52d32ed2-61b9-4f6c-b5a4-4032aa60e627",
+        "549d7844-a487-433e-9947-eea84fdcaa34",
+        "5b3b5b09-6d51-49ff-b31b-36d7479aaabf",
+        "5e87dcbe-0ba0-4955-9ce5-cc79d34e4826",
+        "5ea58092-769a-46e6-a56e-993fa74c7b1d",
+        "5eb3bf2c-ca44-4b8a-8acb-154cf0156e44",
+        "5f341e2e-d7f1-4fe9-91d4-666834ce0c75",
+        "601625e5-40d8-43c2-ad31-9988a57567eb",
+        "60c1b10e-75eb-4f0a-a611-4ae75ac767cd",
+        "614a5cde-36e4-4b14-9bb5-eff403d7be00",
+        "62ad6452-5632-4965-9f69-61a9ab4c7c84",
+        "62db892c-8863-4775-8bed-545a87230853",
+        "651981a3-6dd4-4154-9ae8-afe360d0244c",
+        "6539cead-08d0-497b-86ad-d9dc78f421b8",
+        "68ce6647-0cb0-4b40-8c7d-3da37f28973e",
+        "690c7159-984b-4baf-947e-ab6fd3abc076",
+        "6a078574-e89a-41c2-8199-ed7142d2abb1",
+        "6a2bfe2d-6bec-4689-b92b-412e35c08c63",
+        "6d5a9f79-4b8d-44d4-b12f-e263120e89e3",
+        "6e605b88-df2f-4a4d-b3df-c2cf88365b44",
+        "6fa505a6-b318-4ff9-82ec-c71164055eff",
+        "7095f765-6b91-4901-a1f2-ab8156c8a7b8",
+        "73da535c-3158-4ecb-a2f7-0c4cfc0f032f",
+        "77df5de1-2bd7-43a7-9cad-1ebb8a056430",
+        "781209f1-3f62-4bf0-a8bd-feeec48c38fb",
+        "7939e350-79aa-460c-8542-a8e447a33253",
+        "7950a75d-c1af-460a-b759-d1c887e7c743",
+        "7a1fa789-47c1-487a-9682-4bd8f1b28ffd",
+        "7a924b78-a908-48e6-892a-2d6fb0ae1388",
+        "7ebcbf7e-b633-4f14-b755-720be48b578c",
+        "7f3e05d6-0091-4c9b-ab07-3d0c3018bf19",
+        "7f9a0acd-a804-4b09-893e-fca6aefe5921",
+        "80791161-516a-426e-9d42-c6ae8a7d6600",
+        "8079ca26-dc2a-48db-9626-11ab3ffef3cf",
+        "80d99f7b-5356-4793-ac27-ea96d364beaf",
+        "83297e83-55f6-4374-889b-759c08e109d1",
+        "8588efda-cd61-4417-8829-506ed2121e18",
+        "87971802-ff8e-4abc-92bd-bdb13c120e43",
+        "898b3cf6-e19b-47f6-98bb-5923fe5b8671",
+        "8a72a38a-465f-4cc1-83af-f62752cf3522",
+        "8a90416f-f53f-467e-bc53-6b42e326a509",
+        "8b0c51a7-03a8-4c4d-8298-21b823eed255",
+        "8b67e01f-0757-431f-afbe-4831060a92fd",
+        "8b6c3f72-cb11-424a-a44f-14774d2af4fa",
+        "8b89244a-05d7-4677-ac82-ca299078f8b2",
+        "8ee5bdb6-491d-4419-80ef-13751fa0e465",
+        "8f40fd5a-c0b9-4f47-95f7-0e8a07f35486",
+        "8fe4008d-518d-4f3f-afa6-cb5786d29b50",
+        "925757db-5b02-4c7c-93d4-bfedd002e17e",
+        "925d8598-3d23-4621-8f55-0e4bb2101de2",
+        "932e38fb-33e9-463f-81e7-ed7904a6f820",
+        "94dc39ca-5053-46f1-acc7-ecfd44085700",
+        "97813b97-2221-47ef-bd61-7fd3648584b8",
+        "98009808-81d5-431b-9c7b-e4f130ba26e8",
+        "995542ff-ed17-46ac-aa57-6ab240469de2",
+        "99714329-e67f-444f-b919-51b741b59a8c",
+        "9a83031f-eb6e-4979-b0b8-f8effda44545",
+        "9a97133a-24bf-4efd-af5c-11b7bce4a285",
+        "9ccab39a-9fc0-4754-bb5b-1e0497bd1b85",
+        "9d603463-f56d-4e94-803e-e578dde53c6f",
+        "a019f621-ebf3-4330-9a3a-2d581597368a",
+        "a19795d9-33a0-45e8-9b01-70f2e082cea6",
+        "a1e15452-0afc-4ef3-9c82-6ea1c92a2629",
+        "a3aa1d3d-37bb-4b39-97a2-942746b876a8",
+        "a41c3176-dd11-46bf-8871-a2902c7ccb33",
+        "a4d6f2f9-272d-4dd7-9db9-d7cc05762f9f",
+        "a6895d1f-202c-44d0-b1a1-428c4b25fbd1",
+        "a6b77bf0-411d-4e82-ac8b-3c1c2cae9831",
+        "a7482a82-0af2-40fb-ac03-a1c6dcac3dd1",
+        "a90f7f8a-39b6-489d-9a52-a03d80273996",
+        "aab917c9-e8e5-4129-ab4c-6b4f22a22a63",
+        "abd8d14a-e337-4aee-a8fc-92a9d7a05624",
+        "ac2170bc-a950-4826-a2c2-8d7ec48ba27e",
+        "ad19dd6b-5fb3-4e30-a771-3c9c6a466908",
+        "add46049-b1ac-4724-b421-cc4c11dd3b11",
+        "ade89e84-0db8-429a-8d9f-8eb75304823f",
+        "ae0c93d6-301f-4f14-9543-30c8c41298fd",
+        "ae849948-1ce3-4906-a58f-41a51a39c5c7",
+        "af7efebe-cf96-4fcf-9ccc-f94a6bcdb2da",
+        "b10d4fcd-add4-4637-9ac3-94824ad7033b",
+        "b31b182c-7fcb-4905-ace3-19152428e16e",
+        "b3d70fcc-340a-4c1c-a19a-798f88c4bd3a",
+        "b47d2c7e-5d76-4e14-a331-1306256229ab",
+        "b9d56922-d452-47e0-8e38-681cdf5ff286",
+        "b9eb4f41-a159-4323-9820-002a3d50c7dd",
+        "b9ed00fb-c97e-4a1b-83f0-ebebd523ac12",
+        "ba4c401c-fe25-47a3-8418-28ac535d8451",
+        "ba4ce1f1-e1b1-44b0-ab4f-4bd8e89c323b",
+        "bb2ebe15-cf14-4f24-aaf7-2ac0b9c89f89",
+        "bb9f0b8d-84c5-4b41-bb3f-8ccce78f697c",
+        "bba8a092-2682-4e08-9058-28893f46a55a",
+        "bc6e87c6-eb32-4e55-9b88-e0909e62b0c4",
+        "bcb004d5-8326-4c19-8fcd-27f9ca2bc8e7",
+        "c039c262-ba89-49c8-a55a-5d861f0b169e",
+        "c1ebf8ea-1220-4c56-99bd-3b567933fc81",
+        "c341677a-570e-4c39-83ca-8b898d5e445c",
+        "c401a3bd-f41a-4591-9e41-87e485d6140e",
+        "c464e437-3be9-4c9a-8dae-c9ff27c5e790",
+        "c49e19d9-01e9-4813-895c-6cf882a6f330",
+        "c531a03c-43bb-4f80-8aac-12059cd7de86",
+        "c5966b10-6311-450b-8a2a-ae792958b7b4",
+        "c65d204e-af0e-43c5-a03f-18f154b24709",
+        "c6ffec58-72db-45d7-bd30-44056f29e810",
+        "c7aeb181-ed2d-4ba9-88aa-26fb3ce44a87",
+        "c7dbeb94-6866-48ce-8b05-c41205d1329d",
+        "c876d7fd-3b18-48cb-92af-3e992cf4d0a4",
+        "c90c5b38-98ce-47ce-a675-8192aaee584b",
+        "c93a5166-ade3-4b5d-9898-74519c6dd913",
+        "c9c61d9c-3e21-42ad-ae85-458a6b10dd63",
+        "ca8ae725-3d75-4d0e-b446-304d44ad7c22",
+        "cc37ef9c-32d8-4810-aaf5-6974f38e3acd",
+        "cc516dc7-ee98-4f62-97d7-6b92ca9c4957",
+        "cca454a2-4b6c-49a9-8c1c-4065110c08b5",
+        "ced7d1d1-6e45-4144-8e71-7d83c2edad60",
+        "cef5bc0d-e76c-4f38-8471-3613177ad658",
+        "cfa5f7a0-3675-4da5-bc54-20466ee3771f",
+        "cff980c0-c4dd-4cc2-8795-05686265977b",
+        "d16c013d-ce3b-4b6f-9f32-e9ba8589faef",
+        "d3feb72e-1fc2-41e6-b430-a342921495d5",
+        "d4e89c7c-7cf5-42ce-9d90-c521c97f1fcb",
+        "d602fe95-1eb0-4fc7-879d-e48114ad2590",
+        "d6283184-b3f4-419f-b059-80dcb1d1a609",
+        "d69a0a54-03db-4c15-959a-66bcbebac0ed",
+        "d8e0ce95-6c53-4d54-ae51-4be215cfcd08",
+        "db6ed0ba-447e-44cb-a0d0-f69b4a298d97",
+        "db96ac6a-8296-47ab-8286-53bc9ce34940",
+        "dcca4248-40a3-423d-8da1-bbb483fd2afd",
+        "e085daac-279a-412e-b4df-1012e043d9ff",
+        "e21794fa-a75e-4f12-8ae3-e4b88c377fcf",
+        "e24c72b9-d3ad-4649-858d-0fcbf3ae09b3",
+        "e3b07276-0933-47e1-8f55-c6132b779a88",
+        "e401a32b-40fa-4380-adda-d824d1b11666",
+        "e50c52e3-9697-480d-b2b4-2c4fc9d62884",
+        "e546c373-f51b-4e2e-9e96-5fa9ec853e9f",
+        "e588e98d-7492-47a0-b7df-8be670389637",
+        "e87c3207-dd05-4bc9-928b-db3cc0eb1e76",
+        "e8ab04c7-40d2-4d20-8c2c-2dc109db27c0",
+        "e9178421-5b8c-4a31-aecd-86a989c6b73c",
+        "ea35f9b5-a64f-45c6-8007-423211b3be3c",
+        "ece06412-9edc-4b05-882c-a54fb27550cb",
+        "ed3990c3-de17-4f9e-bd5f-692fb8c3815e",
+        "effd6a20-1334-4567-b9ea-57aeff0bc782",
+        "f15250d1-d482-4dff-93ab-652e4a664b71",
+        "f18e3003-b42f-4c84-9e4c-8ea790d12362",
+        "f1d59f4a-efdb-4dba-a4f7-f8e6efe54368",
+        "f2501231-5f3a-43eb-816f-105d41257353",
+        "f30dc64a-8abc-4dda-ac84-d196a9370d7b",
+        "f674840d-e7da-462d-b8f8-e6068199a257",
+        "f72dc1d4-0998-4559-878b-c4d8109fa1a4",
+        "f74f0531-0a2f-4a9d-ad80-36099a218cd7",
+        "f7b57883-2d91-4f11-992e-071e9a883410",
+        "f7cfdcf8-d3fb-4bb7-bb22-139294971b66",
+        "fab05825-83ca-4bed-a157-64a8d80a18f6",
+        "fc2c5c10-3982-4ff3-8711-2c4c492602ec",
+        "fc50e202-4258-49dd-8d5d-856c4e0d51fd",
+        "fd36f764-6b13-4c5b-beee-ad444564c10e",
+        "fe26675a-b65f-4af3-930a-8f106bd797b5",
+        "ff4fb9ae-da74-405b-93c7-b373ab514883",
+        "95b3c2ce-1932-4265-9327-99098377622c",
+        "nMokhC9gB6aEAFKGWcIk"
+      ]
+    },
+    "meter-inhouse-1mtr": {
+      "name": "Smart Meter - 1MTR (in-house)",
+      "specification": "OnePower in-house 1MTR single-phase prepaid meter",
+      "unit": "piece",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "mv-stay-kit": {
+      "name": "MV Stay Kit - Complete",
+      "specification": "Complete MV stay assembly: 7/4.0mm stay wire 20m, screw anchor, 145mm insulator, thimbles, guy grips",
+      "unit": "kit",
+      "category": "components",
+      "candidateIds": [
+        "a1b538e7-6d13-4022-ad37-7c91f39f91f3",
+        "94fa2dae-e41a-4bb5-9e69-bb0d5d170e4f",
+        "dd261b19-e184-4048-9390-6825a16ee1fd",
+        "1f3da631-afa8-4369-bf54-ecccb97a423d",
+        "dc3e2c40-6414-435e-a34e-4a074a6856de",
+        "2454de40-c366-4861-a367-e0886b9021d8"
+      ]
+    },
+    "neutral-arrestor-lv": {
+      "name": "LV Neutral Arrestor",
+      "specification": "Lightning/surge arrestor for LV neutral at transformer secondary",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "04b59825-aa95-42e7-b119-b6f7da5d010d",
+        "37d9e4ac-5028-4551-ae54-388dd6a4fd44"
+      ]
+    },
+    "neutral-earth-bond-clamp": {
+      "name": "Neutral-Earth Bond Clamp",
+      "specification": "Bronze clamp for bonding neutral conductor to earth wire",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "xuE2aSf0aEvHGYN4AXBV",
+        "lKph3eLgS9wnxkJyTomK"
+      ]
+    },
+    "pole-wooden-10m": {
+      "name": "Wooden Pole - 10m MV",
+      "specification": "10m CCA treated wooden pole, Class 2 for MV lines",
+      "unit": "piece",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "pole-wooden-9m": {
+      "name": "Wooden Pole - 9m",
+      "specification": "9m CCA treated wooden pole, Class 3",
+      "unit": "piece",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "stay-anchor": {
+      "name": "Stay Anchor - Screw Type",
+      "specification": "1200mm screw-in ground anchor for stay wire",
+      "unit": "piece",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "stay-clamp": {
+      "name": "Stay Clamp - U-Bolt",
+      "specification": "U-bolt stay wire clamp",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "JlmmnE8F26cy9rJepHCn"
+      ]
+    },
+    "stay-insulator-lv": {
+      "name": "Stay Insulator - LV",
+      "specification": "90mm porcelain egg-type stay insulator for LV applications",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "88951024-2922-47f6-a722-ad8d514368b2",
+        "026f8db5-ee17-4ef8-8790-7d7037f1d367"
+      ]
+    },
+    "stay-thimble": {
+      "name": "Stay Thimble",
+      "specification": "Galvanized thimble for stay wire termination",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "2454de40-c366-4861-a367-e0886b9021d8",
+        "cc6effca-7a90-4c14-8608-99737ea53939"
+      ]
+    },
+    "stay-wire-3x3.35": {
+      "name": "Stay Wire - 7/3.35mm",
+      "specification": "7-strand 3.35mm galvanized steel stay wire",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": [
+        "37003834-80cd-406b-940d-6a1c2f9bb53a",
+        "32e29eb5-1d23-4716-a27c-6d58a0053cca"
+      ]
+    },
+    "surge-arrester-mv": {
+      "name": "Surge Arrester - MV 11kV",
+      "specification": "11kV metal oxide surge arrester",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "04b59825-aa95-42e7-b119-b6f7da5d010d",
+        "37d9e4ac-5028-4551-ae54-388dd6a4fd44"
+      ]
+    },
+    "suspension-clamp": {
+      "name": "ABC Suspension Clamp",
+      "specification": "ABC suspension clamp for bundled conductors 25-95mm\u00b2, galvanized steel bracket with polymer insert",
+      "unit": "piece",
+      "category": "candidate",
+      "candidateIds": [
+        "b2a81098-c2e3-45c1-8c01-aa99750fa051"
+      ]
+    },
+    "threaded-rod-assembly-m20x250": {
+      "name": "Threaded Rod Assembly - M20x250",
+      "specification": "",
+      "unit": "piece",
+      "category": "components",
+      "candidateIds": [
+        "86d016cb-3ed2-44b9-9cc8-62799eaaa8a0"
+      ]
+    },
+    "threaded-rod-assembly-m20x450": {
+      "name": "Threaded Rod Assembly - M20x450",
+      "specification": "",
+      "unit": "piece",
+      "category": "components",
+      "candidateIds": [
+        "fbc23bc2-3761-420b-9f03-a07eced6869a"
+      ]
+    },
+    "wire-abc-3x50-50": {
+      "name": "ABC 3\u00d750+50 mm\u00b2 (Three Phase)",
+      "specification": "50mm\u00b2, 133A, 0.641 \u03a9/km",
+      "unit": "meter",
+      "category": "candidate",
+      "candidateIds": [
+        "R4ylNZgluzeeLAB2kLnj"
+      ]
+    },
+    "wire-acsr-fox": {
+      "name": "ACSR Fox (35mm\u00b2)",
+      "specification": "35mm\u00b2, 147A, 0.7822 \u03a9/km",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": []
+    },
+    "wire-airdac-2x25": {
+      "name": "Airdac 2\u00d725 mm\u00b2 (Single Phase)",
+      "specification": "25mm\u00b2, 89A, 1.2 \u03a9/km",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": [
+        "495d337c-6fda-434f-822a-368afd4ff808",
+        "OY5hbCu582WDl6kRUpZX"
+      ]
+    },
+    "wire-airdac-2x35": {
+      "name": "Airdac 2\u00d735 mm\u00b2 (Single Phase)",
+      "specification": "35mm\u00b2, 111A, 0.868 \u03a9/km",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": [
+        "495d337c-6fda-434f-822a-368afd4ff808",
+        "OY5hbCu582WDl6kRUpZX"
+      ]
+    },
+    "wire-airdac-2x50": {
+      "name": "Airdac 2\u00d750 mm\u00b2 (Single Phase)",
+      "specification": "50mm\u00b2, 133A, 0.641 \u03a9/km",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": [
+        "495d337c-6fda-434f-822a-368afd4ff808",
+        "OY5hbCu582WDl6kRUpZX"
+      ]
+    },
+    "wire-airdac-2x70": {
+      "name": "Airdac 2\u00d770 mm\u00b2 (Single Phase)",
+      "specification": "70mm\u00b2, 171A, 0.443 \u03a9/km",
+      "unit": "meter",
+      "category": "unresolved",
+      "candidateIds": [
+        "495d337c-6fda-434f-822a-368afd4ff808",
+        "OY5hbCu582WDl6kRUpZX"
+      ]
+    }
+  }
+}
