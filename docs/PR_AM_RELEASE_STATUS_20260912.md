@@ -5,7 +5,7 @@
 - Nexus `/forecast`: deployed portal bundle `e398009`, with the existing production TDL
   fixes preserved. Includes source snapshots, evidence review, draft report packs,
   comparisons, charts, XLSX/CSV/HTML/JSON exports and an in-app tutorial.
-- Forecast runtime `62d693b`: dedicated systemd service on Nexus EC2, persistent SQLite,
+- Forecast runtime `5b36b92`: dedicated systemd service on Nexus EC2, persistent SQLite,
   protected loopback proxy, Firebase session/revocation checks. Matt's verified account
   is configured explicitly; other users require current signed PR approval grants.
 - PR evidence API `a938350`: purchasing lines and paginated historical archives, deployed
@@ -69,3 +69,7 @@ import in its main-branch deployment workflow. Nexus retains the previous fronte
 proxy configuration; forecast database and settings are outside the release directory.
 Do not roll back receipt rules to permit bypasses on enrolled orders. Release source is
 preserved on named release branches; main-branch automation was not triggered.
+
+## Final source-capture check
+
+Hosted MAS/SMP snapshot `0c7ecc54-11cf-4156-9a3f-385ad605ab07` captured all nine sources successfully on 12 September. The portfolio aggregation needed 28 seconds; its read timeout is now 45 seconds while ordinary source requests remain at 15 seconds. The 251-test suite passes after this fix. Successful capture does not establish stock reconciliation or live forecast quantities.
