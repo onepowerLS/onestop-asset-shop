@@ -12,4 +12,4 @@ full returns retain audit history. Inconsistent stock requires reconciliation.
 The help and tutorial pages include English and French instructions.
 
 Firestore entry: `2026-09-11-receipts-and-mappings`; created inactive during coordinated
-release preparation and activated only after the application files pass deployment checks.
+release preparation and activated on 12 September after application deployment checks passed.

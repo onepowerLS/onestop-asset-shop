@@ -1,6 +1,10 @@
 # PR–AM receipt and authoritative mapping pilot — 10 September 2026
 
-Implemented locally, not deployed. No live orders, mappings or inventory were changed.
+Released 11–12 September 2026: functions, canonical rules, PR enrollment/status UI,
+AM pages, guides and announcement are deployed. No real orders have been enrolled;
+no authoritative part mappings or inventory quantities were changed. MAS country metadata
+was corrected from authoritative organisation/country references. See
+`PR_AM_RELEASE_STATUS_20260912.md` for release evidence.
 This advances the separate receipt-closeout brief; it is not a declaration that every
 edge case in that brief is complete.
 
@@ -126,4 +130,16 @@ Emulator regression checks pass for those blocks, concurrent retries and the pai
 asset/location updates. Existing discrepant inventory has not been repaired or relocated.
 The physical count and canonical inventory write-path work in AM's
 `docs/BRIEF_INVENTORY_LEVELS_DOUBLE_COUNT_20260910.md` remain necessary. The receipt
-pilot remains undeployed and no real orders have been enrolled.
+pilot is deployed; no real orders have been enrolled.
+
+
+## Guided enrollment and legacy country references (12 September)
+
+PR administrators can use **Set up AM receipt checks** on an ORDERED order. The form
+loads that order's destinations, the destination owner’s stock items and existing
+positions, then requires an exact specification attestation and approval reference.
+The server rechecks all inputs and balances; the browser cannot waive any gate.
+AM's legacy `country_id` field is resolved explicitly against country document IDs
+and stored `country_id` values; multiple matches fail closed. MAS's four PR site rows
+now have `countryCode: LS`, and the existing AM `LSO` country has `iso2: LS`.
+Site IDs, organisation ownership and stock were preserved.
