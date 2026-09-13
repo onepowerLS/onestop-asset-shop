@@ -164,8 +164,9 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Follow-ups: push/deploy AM; run `php scripts/reconcile_inventory_levels.php --all --dry-run` against prod; Phoka drum count for unverified store-vs-site; Phase 3 photos when storage confirmed.
 
 ## 2026-09-13 — Cursor — Deploy inventory reconcile + shared catalogue to EC2
-- Committed Phase 1+2 AM code + What's New marker; pushed `main` so GitHub Actions deploys to EC2 `/var/www/onestop-asset-shop`.
+- Committed Phase 1+2 AM code + What's New marker (`9b7a105`); pushed `main`; GitHub Actions Deploy to EC2 succeeded (run 34779533134, ~20:03Z).
+- Live health: `https://am.1pwrafrica.com/health.php` and `/api/v1/health` report commit `9b7a105`.
 - CI now runs `inventory_levels_site_change_test.php` and `part_definitions_test.php`.
-- Nexus: catalogue/movements rules already live via `npm run deploy:rules`; commit rules to Nexus repo so git matches production.
-- Side effects: production AM code deploy (commit SHA after push); Admin → What's New entry still needs to be added in the live app to match the marker.
-- Follow-ups: confirm `/health.php` SHA; dry-run reconciler; add live What's New row.
+- Nexus: catalogue/movements rules already live via `npm run deploy:rules`; opened PR to sync rules into Nexus `main`: https://github.com/onepowerLS/nexus-portal/pull/11
+- Side effects: production AM code on EC2 `/var/www/onestop-asset-shop` at `9b7a105` (was `5e6ca37` lineage; also shipped earlier unpushed receipt/UGP commits). Admin → What's New row still needs creating in the live app to match marker `2026-09-13-inventory-reconcile-and-catalogue.md`.
+- Follow-ups: add live What's New; dry-run `php scripts/reconcile_inventory_levels.php --all --dry-run` on EC2; merge Nexus PR #11; Phase 3 photos later.
