@@ -3,6 +3,10 @@
  * GET /api/v1/inventory — current stock position by part and site.
  *
  * Query: site_id, store_id, part_id, category, updated_since, cursor, limit
+ *
+ * Each position includes reconciliation_status:
+ *   ok | unverified | duplicate_location | sum_mismatch | unresolvable_location
+ * Consumers must not treat non-ok rows as verified stock for lender/forecast use.
  */
 require_once __DIR__ . '/_bootstrap.php';
 

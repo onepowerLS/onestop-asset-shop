@@ -35,6 +35,7 @@ Primary item catalog. Every physical item in the system lives here regardless of
 | `legacy_tag` | string | no | Original item UID/tag from pre-migration system (read-only after import) |
 | `ugp_part_id` | string | no | Stable part id from **UGP** (`ugp.1pwrafrica.com`); canonical link for assembly/inventory alignment (see `docs/UGP_AM_PART_ALIGNMENT.md`) |
 | `ugp_last_sync_at` | string | no | ISO timestamp when last synced from UGP |
+| `definition_id` | string | no | Optional link to shared `am_part_definitions` (cross-country identity; stock stays on this country asset) |
 | `source` | string | no | Migration origin (e.g. `AssetSpreadsheetDB`, `UGP`) |
 | `notes` | string | no | Free-text notes |
 | `created_at` | string | auto | ISO timestamp |
@@ -117,8 +118,28 @@ Stock tracking per item per location. Used for reorder alerts.
 | `reorder_level` | integer | Alert threshold (optional) |
 | `last_counted_at` | string | ISO timestamp |
 | `last_counted_by` | string | Firebase UID |
+| `reconciliation_status` | string | `ok` / `unverified` / `duplicate_location` / `sum_mismatch` / `unresolvable_location` (also on `/api/v1/inventory`) |
+| `reconciliation_note` | string | Human/reconciler note when quarantined |
+
+Invariant for stockable assets: `sum(quantity_on_hand)` across levels for an asset must equal `am_core_assets.quantity`, and at most one levels row per `(asset_id, canonical location_id)`. Site edits must **move** quantity (zero source + upsert dest in one commit), not copy. Unresolvable location ids (e.g. `site1`) are rejected at write.
 
 `quantity_allocated` is a stored current-state projection, not transaction history. For inventory dispatch, only an **Approved** request contributes to it. Approval, fulfillment, and cancellation update this projection in the same atomic Firestore commit that creates an immutable `am_core_transactions` event. A **Fulfilled** request must therefore have released its reservation. Do not reconstruct the audit trail from this balance field.
+
+### am_part_definitions
+
+Shared cross-country product identity (catalogue quality). Country balances stay on `am_core_assets`.
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Human-readable type name |
+| `classification` | string | `needs_classification` / `ugp_linked` / `am_only` |
+| `unit_of_measure` | string | Unit |
+| `ugp_part_id` | string | Published when classification is ugp_linked (MAS mapping remains authoritative approval path) |
+| `am_only_reason` | string | Required when `am_only` |
+| `forecast_ready` | boolean | Publish gate for forecast consumers |
+| `active` | boolean | Soft delete |
+
+Related: append-only `am_part_definition_reviews`; stewardship queue `am_catalogue_tasks` (`classify_item`, `verify_ugp_match`, `resolve_unit_spec_conflict`; photo tasks reserved).
 
 ### am_core_inventory_movements
 

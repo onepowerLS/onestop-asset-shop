@@ -179,84 +179,228 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         am_require_asset_country_mutate($countryId, $countries);
 
+        // Stockable edits: location must resolve to a canonical code before any write.
+        $targetLocRaw = '';
+        $targetLocCanonical = '';
+        $sourceLocCanonical = '';
+        if (
+            empty($errors) &&
+            in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) &&
+            $countryId !== ''
+        ) {
+            $targetLocRaw = trim((string)$data['location_id']);
+            if ($targetLocRaw === '') {
+                $targetLocRaw = (string)($asset['location_id'] ?? '');
+            }
+            $targetLocCanonical = am_canonical_location_code($targetLocRaw, $locByAnyKey, $ccode);
+            if ($targetLocCanonical === '') {
+                $errors[] = 'Location could not be resolved to a canonical site code. Choose a known site (e.g. LSO-HQ), not a legacy id like site1.';
+            } else {
+                $data['location_id'] = $targetLocCanonical;
+            }
+            $sourceLocCanonical = am_canonical_location_code((string)($asset['location_id'] ?? ''), $locByAnyKey, $ccode);
+            // If the prior asset location was a legacy unresolved id, still treat as a move
+            // when the new canonical destination differs from the raw prior value.
+            if ($sourceLocCanonical === '') {
+                $prevRaw = trim((string)($asset['location_id'] ?? ''));
+                if ($prevRaw !== '' && $prevRaw !== $targetLocCanonical) {
+                    // Keep sourceLocCanonical empty; edit path will zero raw-matched rows.
+                }
+            }
+        }
+
         if (empty($errors)) {
             $result = am_firestore_update_document('am_core_assets', $assetId, $data);
             if ($result['ok']) {
-                // For stockable classes, keep the primary inventory row aligned with edited quantity.
+                // For stockable classes, move (not copy) inventory when the site changes.
                 if (
                     in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) &&
-                    $countryId !== ''
+                    $countryId !== '' &&
+                    $targetLocCanonical !== ''
                 ) {
-                    $targetLocRaw = trim((string)$data['location_id']);
-                    if ($targetLocRaw === '') {
-                        $targetLocRaw = (string)($asset['location_id'] ?? '');
-                    }
-                    $targetLocCanonical = am_canonical_location_code($targetLocRaw, $locByAnyKey, $ccode);
-
                     $allInv = am_firestore_get_collection('am_core_inventory_levels', 5000);
-                    $targetRows = am_inventory_matching_location_rows(
-                        $assetId,
-                        $targetLocCanonical,
-                        $allInv,
-                        $locByAnyKey,
-                        $countryId
+                    $prevRawLoc = trim((string)($asset['location_id'] ?? ''));
+                    $locationChanged = (
+                        ($sourceLocCanonical !== '' && $sourceLocCanonical !== $targetLocCanonical)
+                        || ($sourceLocCanonical === '' && $prevRawLoc !== '' && $prevRawLoc !== $targetLocCanonical)
                     );
-                    $targetInv = null;
-                    if (!empty($targetRows)) {
-                        $targetInv = am_inventory_pick_keeper_row(
-                            $targetRows,
+
+                    if ($locationChanged && $sourceLocCanonical !== '') {
+                        $built = am_inventory_build_site_change_operations(
+                            $assetId,
+                            $asset,
+                            array_merge($asset, $data),
+                            $sourceLocCanonical,
                             $targetLocCanonical,
-                            $locByAnyKey,
-                            array_merge($asset, $data)
+                            $countryId,
+                            $allInv,
+                            $locByAnyKey
                         );
-                    }
-
-                    $allocTotal = 0;
-                    foreach ($targetRows as $row) {
-                        $allocTotal += (int)($row['quantity_allocated'] ?? 0);
-                    }
-                    // The asset quantity is the source of truth for on-hand stock. If an allocation
-                    // currently exceeds it (a transient bad state), clamp on-hand to at least that
-                    // allocation so available stays non-negative.
-                    $qohTarget = max((int)$data['quantity'], $allocTotal);
-
-                    if ($targetInv) {
-                        am_firestore_update_document('am_core_inventory_levels', (string)$targetInv['id'], [
-                            'location_id' => $targetLocCanonical,
-                            'quantity_on_hand' => $qohTarget,
-                            'quantity_allocated' => $allocTotal,
-                            'updated_at' => date('c'),
-                        ]);
-                        // Remove duplicate alias rows for the same canonical location.
-                        foreach ($targetRows as $dup) {
-                            $dupId = (string)($dup['id'] ?? '');
-                            if ($dupId === '' || $dupId === (string)$targetInv['id']) {
+                        if (!$built['ok']) {
+                            $errors[] = (string)($built['error'] ?? 'Could not prepare inventory site change.');
+                        } else {
+                            $commit = am_firestore_commit_operations($built['operations']);
+                            if (!$commit['ok']) {
+                                $errors[] = 'Item saved, but inventory move failed: ' . (string)($commit['error'] ?? 'unknown');
+                            }
+                        }
+                    } elseif ($locationChanged && $sourceLocCanonical === '') {
+                        // Zero legacy unresolved source rows by exact raw location_id, then upsert dest.
+                        $ops = [];
+                        $now = date('c');
+                        foreach ($allInv as $row) {
+                            if ((string)($row['asset_id'] ?? '') !== $assetId) {
                                 continue;
                             }
-                            am_firestore_delete_document('am_core_inventory_levels', $dupId);
+                            if (trim((string)($row['location_id'] ?? '')) !== $prevRawLoc) {
+                                continue;
+                            }
+                            $rid = trim((string)($row['id'] ?? ''));
+                            if ($rid === '') {
+                                continue;
+                            }
+                            $ops[] = [
+                                'mode' => 'update',
+                                'collection' => 'am_core_inventory_levels',
+                                'id' => $rid,
+                                'data' => [
+                                    'quantity_on_hand' => 0,
+                                    'quantity_allocated' => 0,
+                                    'updated_at' => $now,
+                                    'reconciliation_status' => 'unverified',
+                                ],
+                            ];
+                        }
+                        $built = am_inventory_build_site_change_operations(
+                            $assetId,
+                            $asset,
+                            array_merge($asset, $data),
+                            $targetLocCanonical, // no-op source block when equal
+                            $targetLocCanonical,
+                            $countryId,
+                            $allInv,
+                            $locByAnyKey
+                        );
+                        if ($built['ok']) {
+                            $ops = array_merge($ops, $built['operations']);
+                        }
+                        // Add Transfer from raw → canonical for audit
+                        $eventId = 'site_change_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $assetId)
+                            . '_' . substr(sha1($prevRawLoc . '|' . $targetLocCanonical . '|' . $now), 0, 12);
+                        $ops[] = [
+                            'mode' => 'create',
+                            'collection' => 'am_core_transactions',
+                            'id' => $eventId,
+                            'data' => [
+                                'transaction_type' => 'Transfer',
+                                'asset_id' => $assetId,
+                                'quantity' => (int)$data['quantity'],
+                                'from_location_id' => $prevRawLoc,
+                                'to_location_id' => $targetLocCanonical,
+                                'performed_by' => (string)($_SESSION['user_id'] ?? ''),
+                                'device_type' => 'Desktop',
+                                'notes' => 'Site changed from unresolved ' . $prevRawLoc . ' to ' . $targetLocCanonical,
+                                'transaction_date' => $now,
+                                'source_workflow' => 'asset_edit',
+                            ],
+                        ];
+                        $commit = am_firestore_commit_operations($ops);
+                        if (!$commit['ok']) {
+                            $errors[] = 'Item saved, but inventory move failed: ' . (string)($commit['error'] ?? 'unknown');
                         }
                     } else {
-                        am_firestore_create_document('am_core_inventory_levels', [
-                            'asset_id' => $assetId,
-                            'location_id' => $targetLocCanonical,
-                            'country_id' => $countryId,
-                            'quantity_on_hand' => $qohTarget,
-                            'quantity_allocated' => $allocTotal,
-                            'created_at' => date('c'),
-                            'updated_at' => date('c'),
-                        ]);
+                        $targetRows = am_inventory_matching_location_rows(
+                            $assetId,
+                            $targetLocCanonical,
+                            $allInv,
+                            $locByAnyKey,
+                            $countryId
+                        );
+                        $targetInv = null;
+                        if (!empty($targetRows)) {
+                            $targetInv = am_inventory_pick_keeper_row(
+                                $targetRows,
+                                $targetLocCanonical,
+                                $locByAnyKey,
+                                array_merge($asset, $data)
+                            );
+                        }
+
+                        $allocTotal = 0;
+                        foreach ($targetRows as $row) {
+                            $allocTotal += (int)($row['quantity_allocated'] ?? 0);
+                        }
+                        $qohTarget = max((int)$data['quantity'], $allocTotal);
+                        $ops = [];
+                        if ($targetInv) {
+                            $ops[] = [
+                                'mode' => 'update',
+                                'collection' => 'am_core_inventory_levels',
+                                'id' => (string)$targetInv['id'],
+                                'data' => [
+                                    'location_id' => $targetLocCanonical,
+                                    'quantity_on_hand' => $qohTarget,
+                                    'quantity_allocated' => $allocTotal,
+                                    'updated_at' => date('c'),
+                                ],
+                            ];
+                            foreach ($targetRows as $dup) {
+                                $dupId = (string)($dup['id'] ?? '');
+                                if ($dupId === '' || $dupId === (string)$targetInv['id']) {
+                                    continue;
+                                }
+                                $ops[] = [
+                                    'mode' => 'delete',
+                                    'collection' => 'am_core_inventory_levels',
+                                    'id' => $dupId,
+                                    'data' => [],
+                                ];
+                            }
+                        } else {
+                            $ops[] = [
+                                'mode' => 'create',
+                                'collection' => 'am_core_inventory_levels',
+                                'id' => am_firestore_random_document_id(),
+                                'data' => [
+                                    'asset_id' => $assetId,
+                                    'location_id' => $targetLocCanonical,
+                                    'country_id' => $countryId,
+                                    'quantity_on_hand' => $qohTarget,
+                                    'quantity_allocated' => $allocTotal,
+                                    'created_at' => date('c'),
+                                    'updated_at' => date('c'),
+                                ],
+                            ];
+                        }
+                        if ($ops !== []) {
+                            $commit = am_firestore_commit_operations($ops);
+                            if (!$commit['ok']) {
+                                $errors[] = 'Item saved, but inventory levels update failed: ' . (string)($commit['error'] ?? 'unknown');
+                            }
+                        }
                     }
                 }
-                $txnResult = am_log_asset_change($assetId, $asset, array_merge($asset, $data));
-                if (!$txnResult['ok']) {
-                    error_log('[AM transaction] Could not record item edit for ' . $assetId . ': ' . ($txnResult['error'] ?? 'unknown'));
-                    $_SESSION['flash_warning'] = 'The item was saved, but its transaction history entry could not be recorded.';
+
+                if (empty($errors)) {
+                    // Site-change Transfer is already in the atomic commit; skip duplicate txn.
+                    $skipTxn = ($sourceLocCanonical !== '' && $targetLocCanonical !== ''
+                        && $sourceLocCanonical !== $targetLocCanonical
+                        && in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true));
+                    if (!$skipTxn) {
+                        $txnResult = am_log_asset_change($assetId, $asset, array_merge($asset, $data));
+                        if (!$txnResult['ok']) {
+                            error_log('[AM transaction] Could not record item edit for ' . $assetId . ': ' . ($txnResult['error'] ?? 'unknown'));
+                            $_SESSION['flash_warning'] = 'The item was saved, but its transaction history entry could not be recorded.';
+                        }
+                    }
+                    $_SESSION['flash_success'] = 'Item updated successfully.';
+                    header('Location: ' . base_url('assets/view.php?id=' . urlencode($assetId)));
+                    exit;
                 }
-                $_SESSION['flash_success'] = 'Item updated successfully.';
-                header('Location: ' . base_url('assets/view.php?id=' . urlencode($assetId)));
-                exit;
+                // Asset updated but inventory failed — surface errors without redirect.
+            } else {
+                $errors[] = 'Failed to save: ' . ($result['error'] ?? 'Unknown error');
             }
-            $errors[] = 'Failed to save: ' . ($result['error'] ?? 'Unknown error');
         }
     }
 }

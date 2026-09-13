@@ -91,6 +91,25 @@ function am_inventory_read_build_positions(
 ): array {
     $deduped = am_inventory_dedupe_all_levels($levels, $locByAnyKey, $assetById);
     $sinceTs = $updatedSince !== '' ? strtotime($updatedSince) : false;
+
+    // Pre-compute reconciliation status per asset from raw (pre-dedupe) levels.
+    $rawByAsset = [];
+    foreach ($levels as $inv) {
+        $aid = (string)($inv['asset_id'] ?? '');
+        if ($aid === '') {
+            continue;
+        }
+        if (!isset($rawByAsset[$aid])) {
+            $rawByAsset[$aid] = [];
+        }
+        $rawByAsset[$aid][] = $inv;
+    }
+    $statusByAsset = [];
+    foreach ($rawByAsset as $aid => $rows) {
+        $asset = $assetById[$aid] ?? [];
+        $statusByAsset[$aid] = am_inventory_reconciliation_status_for_asset($asset, $rows, $locByAnyKey);
+    }
+
     $out = [];
     foreach ($deduped as $inv) {
         $aid = (string)($inv['asset_id'] ?? '');
@@ -124,6 +143,11 @@ function am_inventory_read_build_positions(
         $allocated = (int)($inv['quantity_allocated'] ?? 0);
         $available = $onHand - $allocated;
         $siteId = am_inventory_read_site_id($locId, $loc);
+        $recon = $statusByAsset[$aid] ?? 'ok';
+        // Row-level unresolvable location overrides asset status for this position.
+        if ($locId !== '' && am_canonical_location_code($locId, $locByAnyKey) === '' && !isset($locByAnyKey[$locId])) {
+            $recon = 'unresolvable_location';
+        }
         $out[] = [
             'part_id' => $partId,
             'part_name' => (string)($asset['name'] ?? ''),
@@ -138,6 +162,7 @@ function am_inventory_read_build_positions(
             'last_movement_at' => (string)($inv['last_counted_at'] ?? $asOf),
             'asset_id' => $aid,
             'ugp_part_id' => trim((string)($asset['ugp_part_id'] ?? '')) ?: null,
+            'reconciliation_status' => $recon,
         ];
     }
     usort($out, static function ($a, $b) {
@@ -256,7 +281,23 @@ function am_inventory_read_build_allocations(
  * @param array<string, array<string, mixed>> $categoryById
  * @return list<array<string, mixed>>
  */
-function am_inventory_read_build_parts(array $assets, array $categoryById = [], bool $unmappedOnly = false): array {
+/**
+ * @param list<array<string, mixed>> $assets
+ * @param array<string, array<string, mixed>> $categoryById
+ * @param array<string, array<string, mixed>> $definitionById
+ * @param array<string, list<array<string, mixed>>> $openTasksByAsset
+ * @return list<array<string, mixed>>
+ */
+function am_inventory_read_build_parts(
+    array $assets,
+    array $categoryById = [],
+    bool $unmappedOnly = false,
+    array $definitionById = [],
+    array $openTasksByAsset = []
+): array {
+    if (!function_exists('am_catalogue_status_for_asset')) {
+        require_once __DIR__ . '/part_definitions.php';
+    }
     $out = [];
     foreach ($assets as $asset) {
         $cls = (string)($asset['item_class'] ?? '');
@@ -271,17 +312,33 @@ function am_inventory_read_build_parts(array $assets, array $categoryById = [], 
         $cat = $categoryById[$catId] ?? [];
         $status = (string)($asset['status'] ?? '');
         $active = !in_array($status, ['Retired', 'WrittenOff', 'Missing'], true);
+        $aid = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
+        $defId = trim((string)($asset['definition_id'] ?? ''));
+        $definition = $defId !== '' ? ($definitionById[$defId] ?? null) : null;
+        if ($definition === null && $defId !== '') {
+            $definition = ['id' => $defId];
+        }
+        $catalogue = am_catalogue_status_for_asset($asset, $definition, $openTasksByAsset[$aid] ?? []);
+        // Prefer published ugp from definition when asset lacks one
+        if ($ugp === '' && !empty($catalogue['definition_id']) && $definition) {
+            $ugp = trim((string)($definition['ugp_part_id'] ?? ''));
+        }
         $out[] = [
-            'part_id' => am_inventory_read_part_id($asset),
+            'part_id' => am_inventory_read_part_id(array_merge($asset, $ugp !== '' ? ['ugp_part_id' => $ugp] : [])),
             'name' => (string)($asset['name'] ?? ''),
             'category' => (string)($cat['category_name'] ?? $cat['name'] ?? $catId),
             'unit' => (string)($asset['unit_of_measure'] ?? 'EA'),
             'active' => $active,
             'ugp_part_id' => $ugp !== '' ? $ugp : null,
-            'asset_id' => (string)($asset['asset_id'] ?? $asset['id'] ?? ''),
+            'asset_id' => $aid,
             'asset_tag' => (string)($asset['asset_tag'] ?? ''),
             'legacy_tag' => (string)($asset['legacy_tag'] ?? ''),
             'item_class' => $cls,
+            'definition_id' => $catalogue['definition_id'],
+            'classification' => $catalogue['classification'],
+            'forecast_ready' => $catalogue['forecast_ready'],
+            'catalogue_status' => $catalogue['catalogue_status'],
+            'catalogue_reason' => $catalogue['catalogue_reason'],
         ];
     }
     usort($out, static fn($a, $b) => strcasecmp((string)$a['name'], (string)$b['name']));

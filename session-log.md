@@ -151,3 +151,21 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Created live Firestore `am_core_whats_new` doc `QcXau2iopCucfBCdmcBB` (title: Inventory read API for forecast and reporting) via EC2 admin token. Users who have not dismissed it will see the login primer.
 - Added the same entry to `scripts/seed_whats_new.php` and Admin seed list so re-seeds skip it.
 - Side effects: one production Firestore write to `am_core_whats_new`. No deploy required for the popup (data-only). Seed-list code will follow on next push.
+
+## 2026-09-08 — Cursor — Forecast remaining-work instructions
+- Added `docs/FORECAST_PROGRAMME_REMAINING.md` and a pointer on Brief 01. Remaining AM work is `ugp_part_id` mapping, unmapped worklist, units, and giving the consumer key to uGridPREDICT — not an API rebuild.
+- Side effects: none (docs only).
+
+## 2026-09-13 — Cursor — Inventory double-count + catalogue definitions
+- Phase 1 (BRIEF_INVENTORY_LEVELS_DOUBLE_COUNT): `am_canonical_location_code` no longer echoes unresolved ids; site change on stockable edit moves qty (zero source + upsert dest + Transfer) in one Firestore commit; `/api/v1/inventory` exposes `reconciliation_status`; reconciler detects dups/orphans/unresolvable and quarantines orphans as `unverified` (dry-run first). Tests: `tests/inventory_levels_site_change_test.php`.
+- Phase 2 (AM_CATALOGUE_QUALITY): `am_part_definitions` / reviews / `am_catalogue_tasks`; Admin UI + Add Item shared-definition search; `/api/v1/parts` catalogue_status fields. Photos deferred (Phase 3).
+- Side effects: none from AM EC2 yet (code not pushed in this step). Nexus rules for new collections deployed separately.
+- Key files: `web/config/inventory_levels.php`, `web/assets/edit.php`, `web/assets/add.php`, `web/config/inventory_read.php`, `scripts/reconcile_inventory_levels.php`, `web/config/part_definitions.php`, `web/admin/part-definitions.php`, `web/admin/catalogue-tasks.php`, `web/api/v1/parts.php`
+- Follow-ups: push/deploy AM; run `php scripts/reconcile_inventory_levels.php --all --dry-run` against prod; Phoka drum count for unverified store-vs-site; Phase 3 photos when storage confirmed.
+
+## 2026-09-13 — Cursor — Deploy inventory reconcile + shared catalogue to EC2
+- Committed Phase 1+2 AM code + What's New marker; pushed `main` so GitHub Actions deploys to EC2 `/var/www/onestop-asset-shop`.
+- CI now runs `inventory_levels_site_change_test.php` and `part_definitions_test.php`.
+- Nexus: catalogue/movements rules already live via `npm run deploy:rules`; commit rules to Nexus repo so git matches production.
+- Side effects: production AM code deploy (commit SHA after push); Admin → What's New entry still needs to be added in the live app to match the marker.
+- Follow-ups: confirm `/health.php` SHA; dry-run reconciler; add live What's New row.

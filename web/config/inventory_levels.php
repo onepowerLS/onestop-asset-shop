@@ -22,12 +22,15 @@ function am_build_location_index(array $locations): array {
     return $locByAnyKey;
 }
 
+/**
+ * Resolve a location id/code to its canonical location_code.
+ * Returns '' when the id cannot be resolved — never echo an unresolved raw id as a key
+ * (that created parallel rows like site1 alongside LSO-HQ).
+ */
 function am_canonical_location_code(string $rawId, array $locByAnyKey, string $countryCode = ''): string {
-    if ($rawId === '') {
+    $rawId = trim($rawId);
+    if ($rawId === '' || $locByAnyKey === []) {
         return '';
-    }
-    if ($locByAnyKey === []) {
-        return $rawId;
     }
 
     $candidates = [$rawId];
@@ -40,7 +43,8 @@ function am_canonical_location_code(string $rawId, array $locByAnyKey, string $c
     foreach ($candidates as $cand) {
         if (isset($locByAnyKey[$cand])) {
             $resolved = $locByAnyKey[$cand];
-            return (string)($resolved['location_code'] ?? $cand);
+            $code = trim((string)($resolved['location_code'] ?? ''));
+            return $code !== '' ? $code : (string)$cand;
         }
     }
 
@@ -48,8 +52,9 @@ function am_canonical_location_code(string $rawId, array $locByAnyKey, string $c
     foreach ($candidates as $cand) {
         $candLower = strtolower($cand);
         foreach ($locByAnyKey as $key => $loc) {
-            if (strtolower($key) === $candLower) {
-                return (string)($loc['location_code'] ?? $key);
+            if (strtolower((string)$key) === $candLower) {
+                $code = trim((string)($loc['location_code'] ?? ''));
+                return $code !== '' ? $code : (string)$key;
             }
         }
     }
@@ -60,18 +65,30 @@ function am_canonical_location_code(string $rawId, array $locByAnyKey, string $c
         foreach ($active as $cc) {
             $cand = strtoupper($cc) . '-' . strtoupper($rawId);
             if (isset($locByAnyKey[$cand])) {
-                return (string)($locByAnyKey[$cand]['location_code'] ?? $cand);
+                $code = trim((string)($locByAnyKey[$cand]['location_code'] ?? ''));
+                return $code !== '' ? $code : $cand;
             }
             $candLower = strtolower($cand);
             foreach ($locByAnyKey as $key => $loc) {
-                if (strtolower($key) === $candLower) {
-                    return (string)($loc['location_code'] ?? $key);
+                if (strtolower((string)$key) === $candLower) {
+                    $code = trim((string)($loc['location_code'] ?? ''));
+                    return $code !== '' ? $code : (string)$key;
                 }
             }
         }
     }
 
-    return $rawId;
+    return '';
+}
+
+/** Grouping key for levels rows: canonical code, or an unresolved marker that never merges across raw ids. */
+function am_inventory_location_group_key(string $rawLocationId, array $locByAnyKey, string $countryCode = ''): string {
+    $canon = am_canonical_location_code($rawLocationId, $locByAnyKey, $countryCode);
+    if ($canon !== '') {
+        return $canon;
+    }
+    $raw = trim($rawLocationId);
+    return $raw !== '' ? ('__unresolved__:' . $raw) : '__unresolved__:empty';
 }
 
 /**
@@ -117,9 +134,11 @@ function am_inventory_merge_duplicate_rows(array $rows, array $locByAnyKey, ?arr
 
     $groups = [];
     foreach ($rows as $row) {
-        $canon = am_canonical_location_code((string)($row['location_id'] ?? ''), $locByAnyKey);
+        $rawLoc = (string)($row['location_id'] ?? '');
+        $canon = am_canonical_location_code($rawLoc, $locByAnyKey);
+        $groupLoc = $canon !== '' ? $canon : am_inventory_location_group_key($rawLoc, $locByAnyKey);
         $countryId = (string)($row['country_id'] ?? '');
-        $key = $canon . '|' . ($countryId !== '' ? $countryId : '_');
+        $key = $groupLoc . '|' . ($countryId !== '' ? $countryId : '_');
         if (!isset($groups[$key])) {
             $groups[$key] = [];
         }
@@ -128,7 +147,15 @@ function am_inventory_merge_duplicate_rows(array $rows, array $locByAnyKey, ?arr
 
     $merged = [];
     foreach ($groups as $group) {
-        $canon = am_canonical_location_code((string)($group[0]['location_id'] ?? ''), $locByAnyKey);
+        $raw0 = (string)($group[0]['location_id'] ?? '');
+        $canon = am_canonical_location_code($raw0, $locByAnyKey);
+        if ($canon === '') {
+            // Unresolvable rows: keep as-is (do not invent a key); callers flag reconciliation.
+            foreach ($group as $row) {
+                $merged[] = $row;
+            }
+            continue;
+        }
         if (count($group) === 1) {
             $row = $group[0];
             $row['location_id'] = $canon;
@@ -228,10 +255,244 @@ function am_inventory_matching_location_rows(
             continue;
         }
         $invLocCanon = am_canonical_location_code((string)($inv['location_id'] ?? ''), $locByAnyKey);
-        if ($invLocCanon !== $targetLocCanonical) {
+        if ($invLocCanon === '' || $invLocCanon !== $targetLocCanonical) {
             continue;
         }
         $rows[] = $inv;
     }
     return $rows;
+}
+
+/**
+ * Pure balance math for a site change: move on-hand from source to destination.
+ * Source ends at 0 on-hand (allocation released); destination receives the moved qty.
+ *
+ * @return array{source_on_hand:int, source_allocated:int, destination_on_hand:int}
+ */
+function am_inventory_site_change_balances(
+    int $sourceOnHand,
+    int $sourceAllocated,
+    int $destinationOnHand,
+    int $movedQuantity
+): array {
+    $moved = max(0, $movedQuantity);
+    return [
+        'source_on_hand' => 0,
+        'source_allocated' => 0,
+        'destination_on_hand' => max(0, $destinationOnHand) + $moved,
+    ];
+}
+
+/**
+ * Detect duplicate (asset, canonical location) pairs among raw levels rows.
+ *
+ * @param list<array<string, mixed>> $levelsForAsset
+ * @return list<string> canonical location codes that appear more than once
+ */
+function am_inventory_duplicate_location_codes(array $levelsForAsset, array $locByAnyKey): array {
+    $counts = [];
+    foreach ($levelsForAsset as $row) {
+        $canon = am_canonical_location_code((string)($row['location_id'] ?? ''), $locByAnyKey);
+        if ($canon === '') {
+            continue;
+        }
+        $counts[$canon] = ($counts[$canon] ?? 0) + 1;
+    }
+    $dups = [];
+    foreach ($counts as $code => $n) {
+        if ($n > 1) {
+            $dups[] = $code;
+        }
+    }
+    return $dups;
+}
+
+/**
+ * Reconciliation status for one stockable asset across its levels rows.
+ *
+ * @param array<string, mixed> $asset
+ * @param list<array<string, mixed>> $levelsForAsset raw (pre-dedupe) rows for this asset
+ * @return 'ok'|'unverified'|'duplicate_location'|'sum_mismatch'|'unresolvable_location'
+ */
+function am_inventory_reconciliation_status_for_asset(array $asset, array $levelsForAsset, array $locByAnyKey): string {
+    $hasUnresolved = false;
+    $sum = 0;
+    foreach ($levelsForAsset as $row) {
+        $raw = trim((string)($row['location_id'] ?? ''));
+        $canon = am_canonical_location_code($raw, $locByAnyKey);
+        if ($raw !== '' && $canon === '') {
+            $hasUnresolved = true;
+        }
+        $sum += (int)($row['quantity_on_hand'] ?? 0);
+    }
+    if ($hasUnresolved) {
+        return 'unresolvable_location';
+    }
+    if (am_inventory_duplicate_location_codes($levelsForAsset, $locByAnyKey) !== []) {
+        return 'duplicate_location';
+    }
+    $assetQty = (int)($asset['quantity'] ?? 0);
+    if ($levelsForAsset !== [] && $sum !== $assetQty) {
+        return 'sum_mismatch';
+    }
+    $assetLoc = trim((string)($asset['location_id'] ?? ''));
+    if ($assetLoc !== '' && am_canonical_location_code($assetLoc, $locByAnyKey) === '') {
+        return 'unresolvable_location';
+    }
+    // Orphan full-qty rows at sites other than the asset's current location → unverified
+    // until a human drum count decides store vs site (brief: do not invent the split).
+    $assetCanon = am_canonical_location_code($assetLoc, $locByAnyKey);
+    if ($assetCanon !== '' && $assetQty > 0) {
+        foreach ($levelsForAsset as $row) {
+            $rowCanon = am_canonical_location_code((string)($row['location_id'] ?? ''), $locByAnyKey);
+            $qoh = (int)($row['quantity_on_hand'] ?? 0);
+            if ($rowCanon !== '' && $rowCanon !== $assetCanon && $qoh >= $assetQty) {
+                return 'unverified';
+            }
+        }
+    }
+    return 'ok';
+}
+
+/**
+ * Build Firestore commit ops for a stockable site change: zero source rows, upsert dest,
+ * create Transfer + movement ledger. Caller must already have validated canonical locations.
+ *
+ * @param list<array<string, mixed>> $allInventoryLevels
+ * @return array{ok:bool, error:?string, operations:list<array<string,mixed>>}
+ */
+function am_inventory_build_site_change_operations(
+    string $assetId,
+    array $assetBefore,
+    array $assetAfter,
+    string $sourceCanon,
+    string $destCanon,
+    string $countryId,
+    array $allInventoryLevels,
+    array $locByAnyKey
+): array {
+    require_once __DIR__ . '/inventory_movements.php';
+    if ($sourceCanon === '' || $destCanon === '') {
+        return ['ok' => false, 'error' => 'Source and destination locations must resolve to canonical codes.', 'operations' => []];
+    }
+
+    $qty = max(0, (int)($assetAfter['quantity'] ?? $assetBefore['quantity'] ?? 0));
+    $operations = [];
+    $now = date('c');
+
+    if ($sourceCanon !== $destCanon) {
+        $sourceRows = am_inventory_matching_location_rows($assetId, $sourceCanon, $allInventoryLevels, $locByAnyKey, $countryId);
+        foreach ($sourceRows as $row) {
+            $rid = trim((string)($row['id'] ?? ''));
+            if ($rid === '') {
+                continue;
+            }
+            $operations[] = [
+                'mode' => 'update',
+                'collection' => 'am_core_inventory_levels',
+                'id' => $rid,
+                'data' => [
+                    'location_id' => $sourceCanon,
+                    'quantity_on_hand' => 0,
+                    'quantity_allocated' => 0,
+                    'updated_at' => $now,
+                    'reconciliation_status' => 'ok',
+                ],
+            ];
+        }
+    }
+
+    $destRows = am_inventory_matching_location_rows($assetId, $destCanon, $allInventoryLevels, $locByAnyKey, $countryId);
+    $allocTotal = 0;
+    foreach ($destRows as $row) {
+        $allocTotal += (int)($row['quantity_allocated'] ?? 0);
+    }
+    $qohTarget = max($qty, $allocTotal);
+    $keeper = !empty($destRows)
+        ? am_inventory_pick_keeper_row($destRows, $destCanon, $locByAnyKey, array_merge($assetBefore, $assetAfter))
+        : null;
+
+    if ($keeper && !empty($keeper['id'])) {
+        $operations[] = [
+            'mode' => 'update',
+            'collection' => 'am_core_inventory_levels',
+            'id' => (string)$keeper['id'],
+            'data' => [
+                'location_id' => $destCanon,
+                'quantity_on_hand' => $qohTarget,
+                'quantity_allocated' => $allocTotal,
+                'country_id' => $countryId,
+                'updated_at' => $now,
+                'reconciliation_status' => 'ok',
+            ],
+        ];
+        foreach ($destRows as $dup) {
+            $dupId = trim((string)($dup['id'] ?? ''));
+            if ($dupId === '' || $dupId === (string)$keeper['id']) {
+                continue;
+            }
+            $operations[] = [
+                'mode' => 'delete',
+                'collection' => 'am_core_inventory_levels',
+                'id' => $dupId,
+                'data' => [],
+            ];
+        }
+    } else {
+        $newId = function_exists('am_firestore_random_document_id')
+            ? am_firestore_random_document_id()
+            : bin2hex(random_bytes(10));
+        $operations[] = [
+            'mode' => 'create',
+            'collection' => 'am_core_inventory_levels',
+            'id' => $newId,
+            'data' => [
+                'asset_id' => $assetId,
+                'location_id' => $destCanon,
+                'country_id' => $countryId,
+                'quantity_on_hand' => $qohTarget,
+                'quantity_allocated' => $allocTotal,
+                'created_at' => $now,
+                'updated_at' => $now,
+                'reconciliation_status' => 'ok',
+            ],
+        ];
+    }
+
+    if ($sourceCanon !== $destCanon && $qty > 0) {
+        $eventId = 'site_change_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $assetId)
+            . '_' . substr(sha1($sourceCanon . '|' . $destCanon . '|' . $now), 0, 12);
+        $txn = [
+            'transaction_type' => 'Transfer',
+            'asset_id' => $assetId,
+            'quantity' => $qty,
+            'from_location_id' => $sourceCanon,
+            'to_location_id' => $destCanon,
+            'performed_by' => (string)($_SESSION['user_id'] ?? ''),
+            'device_type' => 'Desktop',
+            'notes' => 'Site changed from ' . $sourceCanon . ' to ' . $destCanon,
+            'transaction_date' => $now,
+            'quantity_before' => $qty,
+            'quantity_after' => $qty,
+            'source_workflow' => 'asset_edit',
+        ];
+        $operations[] = [
+            'mode' => 'create',
+            'collection' => 'am_core_transactions',
+            'id' => $eventId,
+            'data' => $txn,
+        ];
+        if (function_exists('am_inventory_movement_from_transaction') && defined('AM_INVENTORY_MOVEMENTS_COLLECTION')) {
+            $tx = $txn;
+            $tx['id'] = $eventId;
+            $operations[] = [
+                'mode' => 'create',
+                'collection' => AM_INVENTORY_MOVEMENTS_COLLECTION,
+                'id' => 'mv_' . $eventId,
+                'data' => am_inventory_movement_from_transaction($tx),
+            ];
+        }
+    }
+
+    return ['ok' => true, 'error' => null, 'operations' => $operations];
 }

@@ -289,16 +289,24 @@ function am_firestore_commit_operations(array $operations, ?string $idTokenOverr
         $collection = trim((string)($operation['collection'] ?? ''));
         $documentId = trim((string)($operation['id'] ?? ''));
         $data = $operation['data'] ?? null;
-        if (!in_array($mode, ['create', 'update'], true)
-            || $collection === ''
-            || $documentId === ''
-            || !is_array($data)
-            || $data === []) {
+        if ($collection === '' || $documentId === '') {
             return ['ok' => false, 'error' => 'Invalid Firestore commit operation'];
         }
 
         $name = 'projects/' . am_firestore_project_id()
             . '/databases/(default)/documents/' . $collection . '/' . $documentId;
+
+        if ($mode === 'delete') {
+            $writes[] = ['delete' => $name];
+            continue;
+        }
+
+        if (!in_array($mode, ['create', 'update'], true)
+            || !is_array($data)
+            || $data === []) {
+            return ['ok' => false, 'error' => 'Invalid Firestore commit operation'];
+        }
+
         $write = [
             'update' => [
                 'name' => $name,
@@ -331,13 +339,16 @@ function am_firestore_commit_operations(array $operations, ?string $idTokenOverr
     // allowed to weaken the atomic inventory/event invariant.
     if (function_exists('am_mutation_log_record')) {
         foreach ($operations as $operation) {
+            if ((string)($operation['mode'] ?? '') === 'delete') {
+                continue;
+            }
             am_mutation_log_record(
                 (string)$operation['mode'],
                 (string)$operation['collection'],
                 (string)$operation['id'],
-                (array)$operation['data'],
+                (array)($operation['data'] ?? []),
                 $idTokenOverride,
-                array_keys((array)$operation['data'])
+                array_keys((array)($operation['data'] ?? []))
             );
         }
     }

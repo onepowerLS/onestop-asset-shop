@@ -1,5 +1,7 @@
 # Brief 01 — Asset Management: inventory read API
 
+**Agents starting 8 Sep 2026:** read [`FORECAST_PROGRAMME_REMAINING.md`](FORECAST_PROGRAMME_REMAINING.md) first. The inventory API is live; remaining work is mapping, units, and the consumer key — not a rebuild.
+
 **Target repo**: `AI Projects/1PWR AM` (`onepowerLS/onestop-asset-shop`)
 **Live at**: am.1pwrafrica.com, EC2 `16.28.64.221` · **Stack**: PHP + Firestore
 **Read first**: `00_PROGRAMME_BRIEF.md`, then this repo's `CROSS_REPO_API_CONTRACT.md` and

@@ -6,6 +6,8 @@ require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/locale.php';
 require_once __DIR__ . '/../config/transactions.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
+require_once __DIR__ . '/../config/part_definitions.php';
 require_login();
 am_ensure_country_scope_from_session();
 am_require_can_mutate();
@@ -49,6 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $transmissionType = trim($_POST['transmission_type'] ?? '');
     $fuelType = trim($_POST['fuel_type'] ?? '');
     $driveType = trim($_POST['drive_type'] ?? '');
+    $definitionId = trim((string)($_POST['definition_id'] ?? ''));
+    $createNewDefinition = !empty($_POST['create_new_definition']);
+    $linkedDefinition = null;
+    $orgId = '';
+    $assetTag = '';
 
     if ($itemClass === '' || !in_array($itemClass, ['FixedAsset', 'Material', 'Consumable', 'Inventory'])) {
         $errors[] = 'Please select a valid item classification.';
@@ -96,6 +103,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $orgId = am_resolve_org_id_for_country($countryCode);
 
+        $locByAnyKey = am_build_location_index($locations);
+        $canonicalLoc = '';
+        if (in_array($itemClass, ['Material', 'Consumable', 'Inventory'], true) && $locationId !== '') {
+            $canonicalLoc = am_canonical_location_code($locationId, $locByAnyKey, $countryCode);
+            if ($canonicalLoc === '') {
+                $errors[] = 'Location could not be resolved to a canonical site code.';
+            } else {
+                $locationId = $canonicalLoc;
+            }
+        }
+
+        $linkedDefinition = null;
+        if ($definitionId !== '' && empty($errors)) {
+            $linkedDefinition = am_firestore_get_document(AM_PART_DEFINITIONS_COLLECTION, $definitionId);
+            if (!$linkedDefinition) {
+                $errors[] = 'Selected part definition was not found.';
+                $definitionId = '';
+            }
+        }
+    }
+
+    if (empty($errors)) {
         $data = [
             'name' => $name,
             'description' => $description,
@@ -130,6 +159,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'fuel_type'          => trim($_POST['fuel_type'] ?? ''),
             'drive_type'         => trim($_POST['drive_type'] ?? ''),
         ];
+        if ($definitionId !== '') {
+            $data['definition_id'] = $definitionId;
+            if ($linkedDefinition && ($linkedDefinition['classification'] ?? '') === 'ugp_linked') {
+                $ugp = trim((string)($linkedDefinition['ugp_part_id'] ?? ''));
+                if ($ugp !== '') {
+                    $data['ugp_part_id'] = $ugp;
+                }
+            }
+        }
 
         $result = am_firestore_create_document('am_core_assets', $data);
         if ($result['ok']) {
@@ -141,27 +179,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $locationId !== '' &&
                 $countryId !== ''
             ) {
-                $locByAnyKey = [];
-                foreach ($locations as $loc) {
-                    $lid = (string)($loc['location_id'] ?? $loc['id'] ?? '');
-                    $lcode = (string)($loc['location_code'] ?? '');
-                    if ($lid !== '') {
-                        $locByAnyKey[$lid] = $loc;
-                    }
-                    if ($lcode !== '' && $lcode !== $lid) {
-                        $locByAnyKey[$lcode] = $loc;
-                    }
-                }
-                $resolved = $locByAnyKey[$locationId] ?? [];
-                $canonicalLoc = (string)($resolved['location_code'] ?? $locationId);
                 am_firestore_create_document('am_core_inventory_levels', [
                     'asset_id' => $newAssetId,
-                    'location_id' => $canonicalLoc,
+                    'location_id' => $locationId,
                     'country_id' => $countryId,
                     'quantity_on_hand' => max(0, $quantity),
                     'quantity_allocated' => 0,
                     'created_at' => date('c'),
                     'updated_at' => date('c'),
+                    'reconciliation_status' => 'ok',
                 ]);
             }
             if ($newAssetId !== '') {
@@ -173,6 +199,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'status_after' => 'Available',
                     'notes' => 'Opening stock recorded when the catalog item was created.',
                 ]);
+                // Missing shared definition → stewardship task (never block receipt/create).
+                am_catalogue_maybe_create_classify_task(array_merge($data, ['id' => $newAssetId]));
+                if ($createNewDefinition && $definitionId === '') {
+                    am_catalogue_task_create([
+                        'task_type' => 'classify_item',
+                        'reason' => 'Operator requested a new shared definition for: ' . $name,
+                        'asset_id' => $newAssetId,
+                        'country_id' => $countryId,
+                        'site_impact' => $locationId,
+                    ]);
+                }
                 if (!$txnResult['ok']) {
                     error_log('[AM transaction] Could not record opening stock for ' . $newAssetId . ': ' . ($txnResult['error'] ?? 'unknown'));
                 }
@@ -196,6 +233,11 @@ $itemClassOptions = [
     'Inventory' => ['label' => am_ui('class_inventory'), 'icon' => 'fa-boxes-stacked', 'color' => 'success',
         'hint' => am_ui('hint_inventory')],
 ];
+
+$allDefinitions = am_firestore_get_collection(AM_PART_DEFINITIONS_COLLECTION, 2000);
+$defSearchQ = trim((string)($_GET['def_q'] ?? $_POST['def_q'] ?? ''));
+$definitionMatches = $defSearchQ !== '' ? am_part_definition_search($allDefinitions, $defSearchQ, 15) : [];
+$selectedDefinitionId = trim((string)($_POST['definition_id'] ?? $_GET['definition_id'] ?? ''));
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -223,6 +265,54 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
+    <div class="card border-0 shadow mb-4">
+        <div class="card-header bg-light">
+            <strong>Shared catalogue first</strong>
+            <span class="text-muted small ms-2">Select a verified definition when one exists. Creating a country item without a definition opens a classify task.</span>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-2 mb-3">
+                <?php if ($preselectedClass !== ''): ?>
+                <input type="hidden" name="item_class" value="<?php echo htmlspecialchars($preselectedClass); ?>">
+                <?php endif; ?>
+                <div class="col-md-8">
+                    <input type="search" name="def_q" value="<?php echo htmlspecialchars($defSearchQ); ?>" class="form-control" placeholder="Search shared definitions by name, manufacturer, model, UGP id…">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-outline-primary">Search definitions</button>
+                    <a href="<?php echo base_url('admin/part-definitions.php'); ?>" class="btn btn-link btn-sm">Manage definitions</a>
+                </div>
+            </form>
+            <?php if ($definitionMatches !== []): ?>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th></th><th>Name</th><th>Class</th><th>Unit</th><th>UGP</th><th>Forecast</th></tr></thead>
+                    <tbody>
+                        <?php foreach ($definitionMatches as $d):
+                            $did = (string)($d['id'] ?? '');
+                        ?>
+                        <tr>
+                            <td>
+                                <a class="btn btn-sm btn-primary" href="<?php echo htmlspecialchars(base_url('assets/add.php?definition_id=' . urlencode($did) . ($preselectedClass ? '&item_class=' . urlencode($preselectedClass) : '') . ($defSearchQ ? '&def_q=' . urlencode($defSearchQ) : ''))); ?>">Use</a>
+                            </td>
+                            <td><?php echo htmlspecialchars((string)($d['name'] ?? '')); ?></td>
+                            <td><code><?php echo htmlspecialchars((string)($d['classification'] ?? '')); ?></code></td>
+                            <td><?php echo htmlspecialchars((string)($d['unit_of_measure'] ?? '')); ?></td>
+                            <td><?php echo htmlspecialchars((string)($d['ugp_part_id'] ?? '—')); ?></td>
+                            <td><?php echo !empty($d['forecast_ready']) ? 'yes' : 'no'; ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php elseif ($defSearchQ !== ''): ?>
+            <p class="text-muted mb-0">No matching definitions. Continue below to create a country item (a classify task will be opened), or <a href="<?php echo base_url('admin/part-definitions.php'); ?>">create a definition</a> explicitly.</p>
+            <?php endif; ?>
+            <?php if ($selectedDefinitionId !== ''): ?>
+            <div class="alert alert-info mb-0 mt-2">Selected definition id: <code><?php echo htmlspecialchars($selectedDefinitionId); ?></code> — it will be linked on save.</div>
+            <?php endif; ?>
+        </div>
+    </div>
     <!-- Search before you add -->
     <div class="card border-0 shadow mb-4" id="catalogSearchCard">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -266,6 +356,11 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <form method="POST" action="" id="addItemForm">
+        <input type="hidden" name="definition_id" value="<?php echo htmlspecialchars($selectedDefinitionId); ?>">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="create_new_definition" value="1" id="createNewDef">
+            <label class="form-check-label" for="createNewDef">Request a new shared definition (opens a catalogue task; does not auto-merge country items)</label>
+        </div>
         <!-- Step 1: Classification -->
         <div class="card border-0 shadow mb-4">
             <div class="card-header"><h2 class="fs-5 fw-bold mb-0">1. Item Classification</h2></div>

@@ -357,6 +357,16 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/part-definitions.php'); ?>">
+                                <span class="sidebar-text">Part definitions</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo base_url('admin/catalogue-tasks.php'); ?>">
+                                <span class="sidebar-text">Catalogue tasks</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="<?php echo base_url('admin/qr-labels.php'); ?>">
                                 <span class="sidebar-text"><?php echo htmlspecialchars(am_ui('sidebar_qr_labels')); ?></span>
                             </a>
