@@ -1,0 +1,240 @@
+{
+  "capturedAt": "2026-09-14",
+  "basis": "Purchasing corroboration and catalogue specifications; no verified PR-to-AM receipt links. Opening stock dates excluded.",
+  "entries": [
+    {
+      "partId": "cable-tie-200mm",
+      "assetId": "9Y6l1EPOkmkHdFMnQbU8",
+      "identity": {
+        "name": "Cable ties",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "Black cable ties T120S PKT"
+      },
+      "band": "difference",
+      "reason": "AM names T120S. Supplier quote specifies T120SBK, 278 \u00d7 8 mm; UGP requires 200 \u00d7 4.8 mm.",
+      "check": "Find the 200 \u00d7 4.8 mm UV-stable variant; do not publish T120S as identical.",
+      "source": "PR 260409-0022-SMP-LS \u00b7 Herholdt BFN-Q422193 \u00b7 9 April 2026 \u00b7 page 1 \u00b7 HEL450 \u00b7 quoted 10 packs of 100",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "connector-ipc-16-35",
+      "assetId": "b65ee7d5-c240-496c-9fb9-350c8d9f2cae",
+      "identity": {
+        "name": "TTD 151",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "IPC 25-95/6 -35 Black TTD151-F"
+      },
+      "band": "candidate",
+      "reason": "AM model TTD151 is corroborated by a quote for TTD151F, main 25\u201395 / tap 6\u201335 mm\u00b2.",
+      "check": "RET must clarify whether UGP 16\u201335 mm\u00b2 refers to the main or tap conductor and verify both ranges.",
+      "source": "PR 260518-0075-SMP-LS \u00b7 TJ 01QTE10826 \u00b7 18 May 2026 \u00b7 page 1 \u00b7 1022125 \u00b7 quoted 80",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "connector-ipc-16-35",
+      "assetId": "b076aca5-20fa-4e13-950d-ac6c95973be0",
+      "identity": {
+        "name": "TTD 201",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "IPC 25-95/25-95 Black TTD 201"
+      },
+      "band": "candidate",
+      "reason": "AM model TTD201 also appears in the quotation, rated 25\u201395 / 25\u201395 mm\u00b2.",
+      "check": "Check both conductor ranges: 16 mm\u00b2 is outside the quoted minimum.",
+      "source": "PR 260409-0022-SMP-LS \u00b7 Herholdt BFN-Q422193 \u00b7 page 1 \u00b7 IPC012 \u00b7 quoted 205 EA",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "earthing-rod",
+      "assetId": "PfEqOBvaaCN5an9jbxzA",
+      "identity": {
+        "name": "1.5m Earth Spike",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "Earth spike M16x1.5m"
+      },
+      "band": "candidate",
+      "reason": "AM M16 \u00d7 1.5 m matches the UGP diameter and length.",
+      "check": "Confirm solid copper construction; dimensions alone do not establish material.",
+      "source": "AM catalogue, captured 14 September 2026",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "earthing-rod",
+      "assetId": "c94bb151-a093-4762-b9b6-2645df585bf8",
+      "identity": {
+        "name": "Earth Rod",
+        "unit": "PCS",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "Earth Rod M16*1.2m"
+      },
+      "band": "difference",
+      "reason": "AM rod is 1.2 m; UGP requires 1.5 m.",
+      "check": "Find the 1.5 m variant and confirm solid copper construction.",
+      "source": "AM catalogue, captured 14 September 2026",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "earthing-clamp",
+      "assetId": "lKph3eLgS9wnxkJyTomK",
+      "identity": {
+        "name": "Earth Spike Clamp",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": ""
+      },
+      "band": "candidate",
+      "reason": "A supplier quote identifies an M16 earth spike clamp; AM has a generic earth spike clamp entry.",
+      "check": "Confirm this AM item is the quoted M16 clamp and meets the UGP material requirement.",
+      "source": "PR 260415-0029-SMP-LS \u00b7 Herholdt BFN-Q423757 \u00b7 14 April 2026 \u00b7 page 1 \u00b7 EAR026 \u00b7 quoted 30 EA",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "hook-bolt-m16",
+      "assetId": "e3dcd351-627a-490c-8c34-3f42354cd1a2",
+      "identity": {
+        "name": "M16 Pigtail Bolt",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "M16 x 380mm"
+      },
+      "band": "difference",
+      "reason": "AM pigtail bolt is M16 \u00d7 380 mm; UGP requires 200 mm length.",
+      "check": "Locate the 200 mm variant; do not approve on thread diameter alone.",
+      "source": "AM catalogue, captured 14 September 2026",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "meter-enclosure-1way",
+      "assetId": "95b3c2ce-1932-4265-9327-99098377622c",
+      "identity": {
+        "name": "CB44-Single Meter Eclosure",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "CB44-Single Meter Eclosure (235 X 105 X 120)"
+      },
+      "band": "candidate",
+      "reason": "AM CB44 model is corroborated by a supplier quote for CB-44 box with slide lid.",
+      "check": "Confirm the required IP rating and complete enclosure configuration. The quote does not establish IP65.",
+      "source": "PR 260428-0044-SMP-LS \u00b7 ALLBRO 96016 \u00b7 22 April 2026 \u00b7 page 1 \u00b7 040-645 \u00b7 quoted 50",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "meter-enclosure-1way",
+      "assetId": "nMokhC9gB6aEAFKGWcIk",
+      "identity": {
+        "name": "Single Channel Pole Box",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "CB-44 Box Slide Lid"
+      },
+      "band": "candidate",
+      "reason": "AM description explicitly names CB-44 box with slide lid, matching the quoted model.",
+      "check": "Confirm the required IP rating and complete enclosure configuration.",
+      "source": "PR 260428-0044-SMP-LS \u00b7 ALLBRO 96016 \u00b7 22 April 2026 \u00b7 page 1 \u00b7 040-645 \u00b7 quoted 50",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "stay-thimble",
+      "assetId": "2454de40-c366-4861-a367-e0886b9021d8",
+      "identity": {
+        "name": "Stay Thimble",
+        "unit": "PCS",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "Stay Thimble 16mm galvanised steel"
+      },
+      "band": "strong",
+      "reason": "AM explicitly describes a galvanized steel stay thimble, consistent with the UGP description.",
+      "check": "Confirm the 16 mm size suits the specified stay assembly and that the current UGP reference has no additional constraints.",
+      "source": "AM catalogue, captured 14 September 2026",
+      "decision": "same_part"
+    },
+    {
+      "partId": "stay-wire-3x3.35",
+      "assetId": "37003834-80cd-406b-940d-6a1c2f9bb53a",
+      "identity": {
+        "name": "Stay Wire 3/3.35 (LV)",
+        "unit": "M",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "Stay wire Galvanized 3/3.35 LV"
+      },
+      "band": "difference",
+      "reason": "AM specifies 3/3.35 and the supplier quote specifies 3/3.35. UGP ID says 3x3.35 but its specification says 7-strand.",
+      "check": "RET must resolve the conflicting UGP strand count before any canonical publication.",
+      "source": "PR 260409-0022-SMP-LS \u00b7 Herholdt BFN-Q422193 \u00b7 page 1 \u00b7 STA200 \u00b7 quoted 1500 EA; coil/unit conversion unverified",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "stay-wire-3x3.35",
+      "assetId": "32e29eb5-1d23-4716-a27c-6d58a0053cca",
+      "identity": {
+        "name": "Stay wire Galv",
+        "unit": "METERS",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "7/3.35mm1100MPA1500M Drum+7x100m coils"
+      },
+      "band": "difference",
+      "reason": "AM specifies 7/3.35. UGP ID says 3x3.35 while its specification says 7-strand.",
+      "check": "RET must resolve the conflicting UGP strand count before choosing the 3- or 7-strand AM entry.",
+      "source": "AM catalogue, captured 14 September 2026",
+      "decision": "need_specification"
+    },
+    {
+      "partId": "suspension-clamp",
+      "assetId": "b2a81098-c2e3-45c1-8c01-aa99750fa051",
+      "identity": {
+        "name": "Suspension Clamp",
+        "unit": "EA",
+        "ugpPartId": "",
+        "definitionId": "",
+        "manufacturer": "",
+        "model": "",
+        "description": "LV Suspension Clamp    (35-55MM Insulated ABC)"
+      },
+      "band": "difference",
+      "reason": "AM and Herholdt quote specify 35\u201355 mm\u00b2. UGP requires 25\u201395 mm\u00b2; a separate TJ quote contains that wider range.",
+      "check": "Find the AM record for the wider-range clamp or verify manufacturer coverage; do not merge different ranges.",
+      "source": "PR 260409-0022-SMP-LS \u00b7 BFN-Q422193 p1 HT011; PR 260409-0020-SMP-LS \u00b7 TJ 03QTE585 p1 1002156",
+      "decision": "need_specification"
+    }
+  ]
+}

@@ -16,3 +16,13 @@ try {
  } else echo "GD image re-encoding test requires production-compatible GD runtime.\n";
 } finally {unlink($in);unlink($out);}
 echo "PASS: workshop identity/ranking and image validation\n";
+
+$evidence=json_decode(file_get_contents(__DIR__.'/../web/data/mas-specification-evidence.json'),true)['entries'];
+foreach($evidence as $e) {
+ $a=['id'=>$e['assetId']];
+ foreach(['name'=>'name','unit'=>'unit_of_measure','ugpPartId'=>'ugp_part_id','definitionId'=>'definition_id','manufacturer'=>'manufacturer','model'=>'model','description'=>'description'] as $k=>$v) $a[$v]=$e['identity'][$k];
+ check(am_workshop_evidence($a,$e['partId'])===$e);
+ check(am_workshop_rank($a,$e['partId'],['name'=>'test'])===['strong'=>800,'candidate'=>650,'difference'=>100][$e['band']]);
+ $a['description'].=' changed';check(am_workshop_evidence($a,$e['partId'])===null);
+}
+echo "PASS: specification evidence ranking and stale identity rejection\n";

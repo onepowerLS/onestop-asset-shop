@@ -83,3 +83,16 @@ access redirects to Nexus preserving the selected part; anonymous callable invoc
 403. The AM What's New entry is active. No real photos, mappings or catalogue approvals
 were submitted during validation. Authenticated write paths were tested in the emulator,
 not by impersonating a production approver.
+
+
+## Specification-assisted review — 14 September 2026
+
+The workshop now ranks and explains 13 captured candidate assessments across nine UGP requirements. One is a strong specification candidate (galvanized stay thimble); six are possible matches needing a targeted check; six expose differences or ambiguity. These are evidence bands, not calibrated probabilities. The remaining requirements retain their existing candidate search.
+
+Each assessment in `web/data/mas-specification-evidence.json` records the exact AM identity examined, reasoning, outstanding question, and a source reference. Supplier quotations provide purchasing corroboration only; they are not linked receipts. No attachment download tokens, prices, banking information or contact details are included. Changed AM identity fields automatically invalidate the assessment. A future refresh must review the new identity and source documents before replacing it.
+
+“Prepare review of this item” selects one displayed item and drafts its decision and evidence. It asks before replacing an existing note, clears all attestations, and moves focus to the decision step. It does not save or publish. Strong candidates still require current UGP, RET and AM confirmation. Possible matches and discrepancies default to specification follow-up.
+
+The read-only history assessment found 14 StockIngestion events, all explicitly opening stock on catalogue creation, and no structured order receipts. Normalized receipt movements can include opening stock or stocktakes; those dates cannot substantiate procurement delivery. No automatic timing or current-balance match was asserted. Supplier quotations revealed richer model and dimension information, including a cable-tie mismatch and conflicting UGP stay-wire strand counts.
+
+Validation: PHP identity/evidence regression checks cover all 13 entries and reject changed descriptions; browser tests cover draft selection, discrepancy decision, unchecked attestations and mobile overflow. No production review, stock update or canonical approval was performed by these tests.
