@@ -1,0 +1,64 @@
+# RET–AM reconciliation workshop — MAS pilot
+
+Entry: `/admin/reconciliation.php`, also linked from AM's sidebar, help/tutorial,
+part definitions, and Nexus Forecast's selected-part review. An AM approver hosts
+with a named RET participant. The participant name is an attestation recorded by
+that signed-in approver, not a separate authenticated RET signature.
+
+## What users can complete
+
+Review the 36 MAS requirements against live accessible Lesotho AM stock records.
+The dated candidate set ranks likely choices but does not limit inventory search.
+Select up to ten identical stock records; check the current UGP specification and
+both teams' evidence before publishing. The trusted `saveAmReconciliation` callable
+atomically creates/reuses `am_part_definitions/ugp-{UGP ID}`, publishes the UGP name,
+description and stable number on selected assets, preserves old names as searchable
+aliases, attaches approved photos to the shared definition, and writes an immutable
+event. Quantities, locations, ownership, manufacturers and models are not modified.
+UGP already uses these identifiers/descriptions, so no UGP catalogue rewrite is needed.
+
+A different existing mapping or definition is refused. Technical alternatives,
+assembly components, missing photographs/specifications and missing items create
+named follow-up tasks. These do not certify an alternative or define an assembly
+conversion automatically. Rejections record evidence without changing inventory.
+No notifications or financial incentives are sent. The follow-up owner must agree
+with the team. Later engineering changes require steward-led reconciliation; this
+pilot cannot overwrite approved canonical identities through an ordinary asset edit.
+
+## Reference photographs
+
+`/assets/reference-photo.php?asset=...` supports JPEG, PNG and WebP up to 5 MB.
+An AM approver uploads and approves the reference in one action. All authorized AM
+viewers may view approved reference images; stock records retain their country scope.
+`?definition=...` provides a shared gallery without exposing another country's stock.
+Photos submitted during the workshop attach to the canonical definition on publication.
+Photos submitted after publication use that definition immediately. Max five useful
+reference views per item/definition; identical normalized images are rejected.
+
+File data is re-encoded to JPEG at max 1600 pixels, strips EXIF/GPS, and is stored
+outside the webroot in `AM_REFERENCE_PHOTO_DIR` (default `/var/lib/am-reference-photos`).
+The PHP worker must own that directory, mode 0700; files mode 0600. Images are delivered
+through authenticated PHP with no-store and nosniff headers. Metadata is in am_part_media.
+No executable/SVG upload, arbitrary path or publicly accessible file URL is accepted.
+If storage or metadata save fails, report the failure and clean up the new file.
+
+Operations: include the photo directory AND Firestore media metadata in the AM backup
+policy. Keep the photo directory outside release checkouts, retain it across code rollbacks,
+and never delete production photos as part of deployment. The current implementation
+provides no self-service deletion/replacement; a steward must review corrections. For
+phone HEIC files, choose/convert JPEG before upload. Contributor credit is captured on
+media records. Weekly recognition should count useful first reference sets, not file volume.
+
+## Validation and release scope
+
+Local PHP checks cover ranking, identity fields, image decoding/re-encoding and existing
+AM authorization/inventory regressions. The isolated browser harness checks tiled selection,
+publication versus follow-up controls and narrow screens without live data writes.
+Firestore emulator tests cover joint attestations, stale evidence, scope, unit conflict,
+atomic publication/aliases/photos, idempotent retries, dimension-bearing IDs, assigned
+exceptions and direct-client bypass rejection. Existing receipt emulator tests also pass.
+
+Deployment: restore canonical Nexus rules first, deploy only the new PR callable through
+`npm run deploy:functions -- --functions=saveAmReconciliation`, then publish AM and the
+Nexus link. Do not use a broad functions deployment or trigger the legacy vehicle import.
+No actual canonical decisions or photographs are fabricated as a deployment check.

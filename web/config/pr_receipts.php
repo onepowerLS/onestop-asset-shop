@@ -2,7 +2,7 @@
 /** Trusted callables verify the signed Nexus AM claim independently of this session. */
 require_once __DIR__ . '/firestore.php';
 function am_call_receipt_function(string $name, array $data): array {
-    if (!in_array($name, ['recordAmOrderReceipt', 'reverseAmOrderReceipt', 'confirmAmUgpMapping'], true)) {
+    if (!in_array($name, ['recordAmOrderReceipt', 'reverseAmOrderReceipt', 'confirmAmUgpMapping', 'saveAmReconciliation'], true)) {
         return ['ok' => false, 'message' => 'Unsupported operation'];
     }
     am_firestore_refresh_session_token_from_refresh_token();

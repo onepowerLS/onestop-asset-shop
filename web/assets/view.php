@@ -155,7 +155,12 @@ if (am_is_manager_role()) {
 }
 
 ?>
+<p><a class="btn btn-outline-primary" href="reference-photo.php?asset=<?=rawurlencode((string)($asset['id']??$asset['asset_id']??''))?>">Shared reference photos</a></p>
 
+
+<?php if (!empty($asset['canonical_part_number'])): ?>
+<div class="alert alert-info"><strong>Shared part: <?=htmlspecialchars($asset['canonical_part_number'])?></strong><p>This name and description are maintained in the shared catalogue.</p><?php if(!empty($asset['catalogue_aliases'])):?><details><summary>Previous AM names (searchable aliases)</summary><?=htmlspecialchars(implode('; ', $asset['catalogue_aliases']))?></details><?php endif?></div>
+<?php endif?>
 <div class="py-4">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
         <div>

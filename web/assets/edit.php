@@ -54,6 +54,14 @@ $departmentOptions = am_get_allocation_departments(
 );
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!empty($asset['canonical_part_number'])) {
+        foreach (['name','description','unit_of_measure','manufacturer','model'] as $field) {
+            if (isset($_POST[$field]) && trim((string)$_POST[$field]) !== trim((string)($asset[$field] ?? ''))) {
+                $errors[] = 'This identity is shared with UGP. Record a specification follow-up in the RET–AM workshop instead of changing it on a stock record.';
+                break;
+            }
+        }
+    }
     $itemClass = trim($_POST['item_class'] ?? '');
     $name = trim($_POST['name'] ?? '');
     $countryId = trim($_POST['country_id'] ?? '');

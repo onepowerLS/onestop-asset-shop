@@ -26,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'unit_of_measure' => trim((string)($_POST['unit_of_measure'] ?? 'EA')),
             'classification' => trim((string)($_POST['classification'] ?? 'needs_classification')),
             'am_only_reason' => trim((string)($_POST['am_only_reason'] ?? '')),
-            'ugp_part_id' => trim((string)($_POST['ugp_part_id'] ?? '')),
-            'forecast_ready' => !empty($_POST['forecast_ready']),
+            'ugp_part_id' => '',
+            'forecast_ready' => false,
             'active' => true,
         ]);
         if ($res['ok']) {
@@ -48,7 +48,7 @@ if ($q !== '') {
 include __DIR__ . '/../includes/header.php';
 ?>
 <div class="py-4">
-    <h1 class="h2">Part definitions</h1>
+    <h1 class="h2">Part definitions</h1><p><a class="btn btn-primary" href="reconciliation.php">Open RET–AM reconciliation workshop</a></p>
     <p class="text-muted">Shared product identity reused across countries. Country stock stays on catalog items. UGP approval still uses the MAS mapping workflow.</p>
     <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
@@ -69,7 +69,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="col-md-3">
                     <label class="form-label">Classification</label>
                     <select name="classification" class="form-select" id="defClass">
-                        <?php foreach (am_part_definition_classifications() as $c): ?>
+                        <?php foreach (['needs_classification', 'am_only'] as $c): ?>
                         <option value="<?php echo htmlspecialchars($c); ?>"><?php echo htmlspecialchars($c); ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -84,7 +84,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">UGP part id (only if already approved)</label>
-                    <input name="ugp_part_id" class="form-control" placeholder="kebab-case id">
+                    <p>Publish verified UGP identity in the joint workshop.</p>
                 </div>
                 <div class="col-12">
                     <label class="form-label">Description / technical specification</label>
@@ -96,7 +96,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="col-md-6 d-flex align-items-end">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="forecast_ready" value="1" id="fr">
+                        <input class="form-check-input" type="checkbox" disabled id="fr">
                         <label class="form-check-label" for="fr">Forecast-ready (requires classification + unit; UGP link when ugp_linked)</label>
                     </div>
                 </div>
@@ -133,7 +133,7 @@ include __DIR__ . '/../includes/header.php';
                     <tr><td colspan="6" class="text-muted">No definitions yet.</td></tr>
                     <?php else: foreach ($defs as $d): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars((string)($d['name'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars((string)($d['name'] ?? '')); ?><?php if(!empty($d['canonical_approved'])):?><br><a href="../assets/reference-photo.php?definition=<?=rawurlencode($d['id'])?>">Shared photos</a><?php endif?></td>
                         <td><code><?php echo htmlspecialchars((string)($d['classification'] ?? '')); ?></code></td>
                         <td><?php echo htmlspecialchars((string)($d['unit_of_measure'] ?? '')); ?></td>
                         <td><?php echo htmlspecialchars((string)($d['ugp_part_id'] ?? '—')); ?></td>

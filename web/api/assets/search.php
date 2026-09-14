@@ -107,6 +107,8 @@ foreach ($assets as $asset) {
 
     $blobParts = [
         (string)($asset['name'] ?? ''),
+            implode(' ', (array)($asset['catalogue_aliases'] ?? [])),
+            (string)($asset['canonical_part_number'] ?? ''),
         (string)($asset['asset_tag'] ?? ''),
         (string)($asset['legacy_tag'] ?? ''),
         (string)($asset['qr_code_id'] ?? ''),

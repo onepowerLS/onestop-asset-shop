@@ -113,6 +113,8 @@ foreach ($assetsRaw as $asset) {
         $loc = $locationById[$locationId] ?? [];
         $blobParts = [
             (string)($asset['name'] ?? ''),
+            implode(' ', (array)($asset['catalogue_aliases'] ?? [])),
+            (string)($asset['canonical_part_number'] ?? ''),
             (string)($asset['description'] ?? ''),
             (string)($asset['serial_number'] ?? ''),
             (string)($asset['qr_code_id'] ?? ''),
