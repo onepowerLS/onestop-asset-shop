@@ -62,3 +62,17 @@ Deployment: restore canonical Nexus rules first, deploy only the new PR callable
 `npm run deploy:functions -- --functions=saveAmReconciliation`, then publish AM and the
 Nexus link. Do not use a broad functions deployment or trigger the legacy vehicle import.
 No actual canonical decisions or photographs are fabricated as a deployment check.
+
+## Deployed 14 September 2026
+
+AM frontend/server source: `70c6dff`; Nexus frontend: `df9f6c0`; new PR callable source:
+`f80e7e3`. All are pushed (AM/Nexus main; PR release/pr-am-pilot-20260912). AM deployment
+was a clean fast-forward with the legacy import deliberately not executed. Photo storage
+is provisioned as 0700 apache:apache and the PHP worker has write access. Production
+PHP image validation/re-encoding and AM security/read API regression checks passed.
+Nexus bundle hash matches the local build and live rules exactly match the canonical source.
+There are 80 functions; sign-in and receipt functions remain present. Anonymous workshop
+access redirects to Nexus preserving the selected part; anonymous callable invocation is
+403. The AM What's New entry is active. No real photos, mappings or catalogue approvals
+were submitted during validation. Authenticated write paths were tested in the emulator,
+not by impersonating a production approver.
