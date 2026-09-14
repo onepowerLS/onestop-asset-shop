@@ -170,3 +170,10 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Nexus: catalogue/movements rules already live via `npm run deploy:rules`; opened PR to sync rules into Nexus `main`: https://github.com/onepowerLS/nexus-portal/pull/11
 - Side effects: production AM code on EC2 `/var/www/onestop-asset-shop` at `9b7a105` (was `5e6ca37` lineage; also shipped earlier unpushed receipt/UGP commits). Admin → What's New row still needs creating in the live app to match marker `2026-09-13-inventory-reconcile-and-catalogue.md`.
 - Follow-ups: add live What's New; dry-run `php scripts/reconcile_inventory_levels.php --all --dry-run` on EC2; merge Nexus PR #11; Phase 3 photos later.
+
+## 2026-09-14 — Cursor — Fix reference photo upload 2 MB PHP cap
+- Symptom: Metro could not upload Suspension Clamp reference photo; UI said 5 MB but PHP-FPM `upload_max_filesize` was still 2M (default). Generic error masked the real cause.
+- Fix (live): installed `/etc/php.d/99-am-uploads.ini` (`10M`/`12M`) and **restarted php-fpm** (httpd reload alone left workers on 2M). Verified via temporary probe: `upload=10M post=12M`.
+- App: clearer upload error messages; browser-side JPEG compress ≤1600px before POST; documented drop-in in `deployment/99-am-uploads.ini` and `docs/RET_AM_WORKSHOP.md`.
+- Side effects: production PHP-FPM upload limits raised on EC2 `16.28.64.221`; AM code deploy follows push to `main`.
+- Follow-ups: Metro retries Suspension Clamp (and other class photos); hard-refresh if old page cached.

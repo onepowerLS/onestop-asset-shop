@@ -27,13 +27,20 @@ pilot cannot overwrite approved canonical identities through an ordinary asset e
 
 ## Reference photographs
 
-`/assets/reference-photo.php?asset=...` supports JPEG, PNG and WebP up to 5 MB.
-An AM approver uploads and approves the reference in one action. All authorized AM
-viewers may view approved reference images; stock records retain their country scope.
-`?definition=...` provides a shared gallery without exposing another country's stock.
-Photos submitted during the workshop attach to the canonical definition on publication.
-Photos submitted after publication use that definition immediately. Max five useful
-reference views per item/definition; identical normalized images are rejected.
+`/assets/reference-photo.php?asset=...` supports JPEG, PNG and WebP up to 5 MB
+(after browser-side compression). An AM approver uploads and approves the reference
+in one action. All authorized AM viewers may view approved reference images; stock
+records retain their country scope. `?definition=...` provides a shared gallery
+without exposing another country's stock. Photos submitted during the workshop
+attach to the canonical definition on publication. Photos submitted after
+publication use that definition immediately. Max five useful reference views per
+item/definition; identical normalized images are rejected.
+
+Phone cameras often produce files larger than PHP's default `upload_max_filesize`
+(2M). Production must use `deployment/99-am-uploads.ini` (`10M` / `12M`) under
+`/etc/php.d/` and **restart php-fpm** (httpd reload alone is not enough). The
+upload form compresses to JPEG ≤1600px before POST so typical phone photos stay
+under the app's 5 MB cap.
 
 File data is re-encoded to JPEG at max 1600 pixels, strips EXIF/GPS, and is stored
 outside the webroot in `AM_REFERENCE_PHOTO_DIR` (default `/var/lib/am-reference-photos`).
