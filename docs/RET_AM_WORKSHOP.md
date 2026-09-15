@@ -96,3 +96,27 @@ Each assessment in `web/data/mas-specification-evidence.json` records the exact 
 The read-only history assessment found 14 StockIngestion events, all explicitly opening stock on catalogue creation, and no structured order receipts. Normalized receipt movements can include opening stock or stocktakes; those dates cannot substantiate procurement delivery. No automatic timing or current-balance match was asserted. Supplier quotations revealed richer model and dimension information, including a cable-tie mismatch and conflicting UGP stay-wire strand counts.
 
 Validation: PHP identity/evidence regression checks cover all 13 entries and reject changed descriptions; browser tests cover draft selection, discrepancy decision, unchecked attestations and mobile overflow. No production review, stock update or canonical approval was performed by these tests.
+
+
+## Candidate and requirement navigation — 15 September 2026
+
+All accessible AM candidates can now be browsed in stable pages of 12, including
+search results. Page links retain the requirement and search term. Previous/next
+UGP requirement controls are separate and display the position in the 36-part
+pilot. Navigating away from modified selections/notes asks before discarding them;
+page changes are not saves. Save each agreed review before changing pages.
+
+Photo links retain a validated pilot part ID, search term and candidate page.
+Successful upload confirms that the photo was saved and provides a return link.
+The page explains that returning to the existing tab preserves unsaved selections,
+and that photo approval does not establish an approved canonical mapping.
+
+Lefa's supplied workbook is reference evidence, not an approval import. Its local
+names do not identify AM records uniquely; complete-kit/component ambiguities
+still require RET review. No workbook quantities or proposed names were written
+to inventory or the canonical definitions by this navigation change.
+
+Validation: PHP paging checks cover first, final, empty and out-of-range pages;
+browser tests traverse 25 synthetic candidates over three pages, retain filters,
+exercise unsaved-change cancellation, and verify separate requirement navigation
+and mobile layout. Existing workshop smoke tests also pass. No test writes to live data.

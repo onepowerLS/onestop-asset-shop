@@ -23,3 +23,13 @@ function am_workshop_evidence(array $a, string $partId): ?array {
     }
     return null;
 }
+
+/** Stable pages keep every accessible candidate reachable without rendering thousands of tiles. */
+function am_workshop_page(array $items, int $requested): array {
+    $pages = max(1, (int)ceil(count($items) / 12));
+    $page = max(1, min($pages, $requested));
+    return ['page'=>$page, 'pages'=>$pages, 'offset'=>($page-1)*12, 'items'=>array_slice($items, ($page-1)*12, 12)];
+}
+function am_workshop_url(string $part, string $query = '', int $page = 1): string {
+    return 'reconciliation.php?' . http_build_query(['part'=>$part, 'q'=>$query, 'page'=>max(1,$page)], '', '&', PHP_QUERY_RFC3986);
+}

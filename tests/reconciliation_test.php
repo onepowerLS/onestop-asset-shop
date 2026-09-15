@@ -26,3 +26,10 @@ foreach($evidence as $e) {
  $a['description'].=' changed';check(am_workshop_evidence($a,$e['partId'])===null);
 }
 echo "PASS: specification evidence ranking and stale identity rejection\n";
+
+$items=range(1,25);$one=am_workshop_page($items,1);$two=am_workshop_page($items,2);$three=am_workshop_page($items,3);
+check(array_merge($one['items'],$two['items'],$three['items'])===$items);
+check(am_workshop_page($items,999)['page']===3);check(am_workshop_page($items,-2)['page']===1);
+check(am_workshop_page([],1)['items']===[]);
+check(am_workshop_url('stay-wire-3x3.35','a & b',2)==='reconciliation.php?part=stay-wire-3x3.35&q=a%20%26%20b&page=2');
+echo "PASS: all candidates reachable and query preserved across pages\n";

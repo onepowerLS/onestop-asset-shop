@@ -27,6 +27,11 @@ if (isset($_GET['definition'])) {
     foreach($photos as $photo) echo '<figure><img style="max-width:100%;max-height:360px" src="reference-photo.php?id='.rawurlencode($photo['id']).'" alt="'.am_workshop_h($photo['caption']).'"><figcaption>'.am_workshop_h($photo['caption']).'</figcaption></figure>';
     include __DIR__.'/../includes/footer.php'; exit;
 }
+$reviewPart=(string)($_GET['part']??'');
+$reviewParts=json_decode(file_get_contents(__DIR__.'/../data/mas-mapping-review.json'),true)['parts'];
+if(!isset($reviewParts[$reviewPart])) $reviewPart='';
+$reviewQuery=substr((string)($_GET['q']??''),0,300);
+$reviewPage=max(1,(int)($_GET['page']??1));
 $assetId=(string)($_GET['asset']??'');
 if (!preg_match('/^[a-zA-Z0-9_-]{1,150}$/D',$assetId)) { http_response_code(404); exit('Item not found'); }
 $asset=am_firestore_get_document('am_core_assets',$assetId);if(!$asset){http_response_code(404);exit('Item not found');}
@@ -58,11 +63,14 @@ if($_SERVER['REQUEST_METHOD']==='POST') {
           'asset_id'=>$assetId,'definition_id'=>$asset['definition_id']??null,'caption'=>$caption,'approved'=>true,
           'contributor_uid'=>$_SESSION['user_id']??'','created_at'=>date('c'),'content_type'=>'image/jpeg']),$id);
         if(empty($result['ok'])) throw new RuntimeException('The photo record could not be saved. Please retry.');
-        header('Location: reference-photo.php?asset='.rawurlencode($assetId));exit;
+        $_SESSION['am_photo_saved_asset']=$assetId;
+        header('Location: reference-photo.php?'.http_build_query(['asset'=>$assetId,'part'=>$reviewPart,'page'=>$reviewPage,'q'=>$reviewQuery]));exit;
     } catch(Throwable $e) {if($file!=='' && is_file($file)) unlink($file);$error=$e->getMessage();}
 }
 $page_title='Shared reference photos';include __DIR__.'/../includes/header.php';
 ?>
+<?php if(($_SESSION['am_photo_saved_asset']??'')===$assetId):unset($_SESSION['am_photo_saved_asset']);?><p class="alert alert-success" role="status">Photo saved. Next, return to the review and confirm the mapping with RET.</p><?php endif?>
+<?php if($reviewPart!==''):?><p><a class="btn btn-primary" href="../admin/<?=am_workshop_h(am_workshop_url($reviewPart,$reviewQuery,$reviewPage))?>">Return to review: <?=am_workshop_h($reviewParts[$reviewPart]['name'])?></a></p><p>If your original review tab is still open, switch back to it to keep unsaved selections. Refresh it to display the new photo only after saving or recording your notes. Uploading a photo does not complete the mapping.</p><?php else:?><p><a href="../admin/reconciliation.php">Open RET–AM workshop to review a mapping</a></p><?php endif?>
 <h1>Shared reference photos</h1><h2><?=am_workshop_h($asset['name']??'')?></h2>
 <p>Capture a clear overall view and, where useful, a close-up of the rating or model marking. Once this item has a shared definition, its approved photos can be reused in every country. They identify a part type; they are not proof of stock or receipt.</p>
 <?php if($error):?><div role="alert" class="alert alert-danger"><?=am_workshop_h($error)?></div><?php endif?>

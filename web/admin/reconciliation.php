@@ -48,8 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $message = $_SESSION['flash_workshop'] ?? ''; unset($_SESSION['flash_workshop']);
 $q = trim((string)($_GET['q'] ?? ''));
 $filtered = array_values(array_filter($assets, fn($a) => $q === '' || str_contains(strtolower(implode(' ', [$a['name'] ?? '', $a['description'] ?? '', $a['asset_tag'] ?? '', $a['manufacturer'] ?? '', $a['model'] ?? '', implode(' ',(array)($a['catalogue_aliases']??[])), $a['canonical_part_number']??''])), strtolower($q))));
-usort($filtered, fn($a, $b) => am_workshop_rank($b, $partId, $part) <=> am_workshop_rank($a, $partId, $part));
-$shown = array_slice($filtered, 0, $q === '' ? 12 : 60); $eventId = $error !== '' && !empty($sessionReview) ? (string)$_POST['event_id'] : bin2hex(random_bytes(16)); $identities = [];
+usort($filtered, fn($a, $b) => (am_workshop_rank($b, $partId, $part) <=> am_workshop_rank($a, $partId, $part)) ?: strcmp($a['id'] ?? $a['asset_id'], $b['id'] ?? $b['asset_id']));
+$paging = am_workshop_page($filtered, (int)($_GET['page'] ?? 1)); $shown = $paging['items']; $eventId = $error !== '' && !empty($sessionReview) ? (string)$_POST['event_id'] : bin2hex(random_bytes(16)); $identities = [];
 foreach ($shown as $a) $identities[$a['id'] ?? $a['asset_id']] = am_workshop_identity($a);
 if (!isset($_SESSION['am_workshop_forms'][$eventId])) $_SESSION['am_workshop_forms'][$eventId] = ['at' => time(), 'part' => $partId, 'identities' => $identities];
 while (count($_SESSION['am_workshop_forms']) > 8) array_shift($_SESSION['am_workshop_forms']);
