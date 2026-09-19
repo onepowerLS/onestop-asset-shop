@@ -1,0 +1,223 @@
+{
+  "version": "2026-09-17",
+  "source": "Metro workbook 16 September and live AM reconciliation 17 September; catalogue identity, not stock availability.",
+  "exceptions": {
+    "suspension-clamp": {
+      "owner": "RET",
+      "question": "AM candidate35\u201355mm\u00b2 versus UGP25\u201395mm\u00b2. Confirm required working cable and approve a narrower-range alternative, or identify full-range stock.",
+      "decision": "need_specification"
+    },
+    "hook-bolt-m16": {
+      "owner": "RET",
+      "question": "AM M16\u00d7380mm versus required M16\u00d7200mm. Confirm design length; do not rename380 to200.",
+      "decision": "need_specification"
+    },
+    "wire-abc-3x50-50": {
+      "owner": "AM",
+      "question": "Located ABC record is single-phase, requirement is3\u00d750+50 three-phase. Locate the matching reel/product label or establish no matching catalogue entry.",
+      "decision": "need_specification"
+    },
+    "wire-acsr-fox": {
+      "owner": "RET",
+      "question": "Workbook proposes Squirrel; UGP requires Fox35. Different conductor sizes. Select the actual design specification before matching.",
+      "decision": "need_specification"
+    },
+    "wire-airdac-2x25": {
+      "owner": "RET",
+      "question": "Workbook identifies8mm and10mm CNE Airdac, not2\u00d725. Confirm intended conductor construction and size.",
+      "decision": "need_specification"
+    },
+    "wire-airdac-2x35": {
+      "owner": "RET",
+      "question": "Available8mm/10mm CNE references do not establish2\u00d735 equivalence.",
+      "decision": "need_specification"
+    },
+    "wire-airdac-2x50": {
+      "owner": "RET",
+      "question": "Available8mm/10mm CNE references do not establish2\u00d750 equivalence.",
+      "decision": "need_specification"
+    },
+    "wire-airdac-2x70": {
+      "owner": "RET",
+      "question": "Available8mm/10mm CNE references do not establish2\u00d770 equivalence.",
+      "decision": "need_specification"
+    },
+    "crows-foot-earthing-system": {
+      "owner": "RET + AM",
+      "question": "Workbook refers to10mm green/yellow wire. A complete crow-foot earthing assembly requires rods, conductors and bonding quantities; establish the assembly recipe.",
+      "decision": "component"
+    },
+    "earthing-wire-16mm": {
+      "owner": "RET",
+      "question": "Workbook says70mm\u00b2 available and10mm\u00b2 used; neither is required16mm\u00b2. Confirm design or locate exact stock.",
+      "decision": "need_specification"
+    },
+    "earthing-kit-mv-sparkgap": {
+      "owner": "RET + AM",
+      "question": "Workbook calls it surge arrestor, but a spark-gap earthing kit is an assembly; identify required components and quantities.",
+      "decision": "component"
+    },
+    "neutral-earth-bond-clamp": {
+      "owner": "RET",
+      "question": "PG clamp is AL-AL16\u2013120mm\u00b2; UGP specifies a bronze neutral/earth bond clamp. Confirm conductor/material compatibility.",
+      "decision": "need_specification"
+    },
+    "cable-tie-200mm": {
+      "owner": "AM",
+      "question": "Photo caption identifies390\u00d74.6mm T50L, requirement4.8\u00d7200mm. Locate exact size or request RET substitution.",
+      "decision": "need_specification"
+    },
+    "cross-arm-mv-2.5m": {
+      "owner": "RET + AM",
+      "question": "Cross-arm photo says2.4m versus required2.5m and was attached to a surge-arrester record. Identify the correct AM record and dimension.",
+      "decision": "need_specification"
+    },
+    "flat-bracing-strap": {
+      "owner": "AM",
+      "question": "Brazing Strap candidate lacks required910\u00d750\u00d76mm dimensions. Supply dimensions or labelled drawing.",
+      "decision": "need_specification"
+    },
+    "line-post-insulator-assembly": {
+      "owner": "RET + AM",
+      "question": "Separate19\u201324kV insulator and M20 spindle were each published as a complete11kV assembly. Specify approved insulator plus hardware quantities; do not count components as complete kits.",
+      "decision": "component"
+    },
+    "long-rod-insulator-assembly": {
+      "owner": "RET + AM",
+      "question": "Separate insulator candidates exist; complete11kV assembly includes70kN D-shackle and thimble clevis. Confirm component recipe and ratings.",
+      "decision": "component"
+    },
+    "meter-enclosure-1way": {
+      "owner": "AM",
+      "question": "CB44 procurement evidence supports a candidate, but IP65 and exact enclosure/master identity need confirmation. Do not map every serialized meter record.",
+      "decision": "need_specification"
+    },
+    "meter-inhouse-1mtr": {
+      "owner": "AM",
+      "question": "Identify the1MTR product master, distinct from serialized deployed meters. The team selected house wire in one review; that is not a meter.",
+      "decision": "need_specification"
+    },
+    "pole-wooden-10m": {
+      "owner": "AM",
+      "question": "No verified10m CCA Class2 pole record identified. A pole-top make-off had been wrongly selected; locate the actual pole stock/master.",
+      "decision": "need_specification"
+    },
+    "pole-wooden-9m": {
+      "owner": "AM",
+      "question": "No verified9m CCA Class3 pole record identified. Locate stock/master and treatment/class evidence.",
+      "decision": "need_specification"
+    },
+    "neutral-arrestor-lv": {
+      "owner": "RET",
+      "question": "Record named LV neutral arrester describes6kV10kA. Confirm manufacturer/model and suitability for intended neutral application; do not infer from name.",
+      "decision": "need_specification"
+    },
+    "surge-arrester-mv": {
+      "owner": "RET",
+      "question": "AM describes12kV10kA, design label11kV. Confirm device rating is suitable for system grounding/voltage; correct cross-arm photo attachment separately.",
+      "decision": "need_specification"
+    },
+    "mv-stay-kit": {
+      "owner": "RET + AM",
+      "question": "UGP specifies7/4.0 wire; worksheet kit uses separately stored parts and AM7/3.35 wire. Resolve wire specification and quantities per complete kit.",
+      "decision": "component"
+    },
+    "stay-anchor": {
+      "owner": "RET",
+      "question": "UGP screw anchor1200mm versus candidateM12\u00d71.5m non-adjustable rod/plate. Confirm anchor design.",
+      "decision": "need_specification"
+    },
+    "stay-clamp": {
+      "owner": "AM",
+      "question": "Candidate U-bolt description refers to solar torque-tube cross-member, not proven stay-wire clamp. Find actual stay-wire clamp or labelled photo.",
+      "decision": "need_specification"
+    },
+    "stay-wire-3x3.35": {
+      "owner": "RET",
+      "question": "UGP ID says3\u00d73.35 but displayed name says7/3.35; AM has both constructions. Correct engineering source before selecting either.",
+      "decision": "need_specification"
+    }
+  },
+  "blockedPairs": [
+    {
+      "partId": "line-post-insulator-assembly",
+      "assetId": "K6z8nNHKL6DSYcUZ5whD",
+      "reason": "19-24kV insulator alone is not a complete 11kV insulator/spindle/hardware assembly."
+    },
+    {
+      "partId": "pole-wooden-10m",
+      "assetId": "4c20a580-71ef-4f56-9166-a239099847f4",
+      "reason": "LV pole-top make-off is not a 10m wooden pole."
+    },
+    {
+      "partId": "hook-bolt-m16",
+      "assetId": "e3dcd351-627a-490c-8c34-3f42354cd1a2",
+      "reason": "M16 x380mm does not equal required M16 x200mm; RET substitution decision required."
+    },
+    {
+      "partId": "abc-dead-end-clamp",
+      "assetId": "lKph3eLgS9wnxkJyTomK",
+      "reason": "Earth rod-to-wire clamp is not ABC dead-end clamp; publish correct earthing-clamp identity instead."
+    },
+    {
+      "partId": "line-post-insulator-assembly",
+      "assetId": "bcf61a12-866b-4dc3-ab9e-b9ad08b0ab89",
+      "reason": "Spindle is a component, not a complete insulator assembly."
+    },
+    {
+      "partId": "abc-dead-end-clamp",
+      "assetId": "6ef7f43a-4c92-4b95-ab3f-b5593f2c98eb",
+      "reason": "PG parallel-groove clamp is not ABC dead-end strain clamp."
+    },
+    {
+      "partId": "fuse-mv-dropout",
+      "assetId": "7qO0wTOIhYNNSZcmbppS",
+      "reason": "5A fuse link is not a complete dropout cutout."
+    },
+    {
+      "partId": "line-post-insulator-assembly",
+      "assetId": "1f3da631-afa8-4369-bf54-ecccb97a423d",
+      "reason": "MV stay insulator is not a line-post insulator assembly."
+    },
+    {
+      "partId": "earthing-rod",
+      "assetId": "86d016cb-3ed2-44b9-9cc8-62799eaaa8a0",
+      "reason": "M20x250 threaded rod is not copper1.5m earth rod; publish correct rod assembly identity instead."
+    },
+    {
+      "partId": "abc-dead-end-clamp",
+      "assetId": "BbIgT0jJKDE94GBFhwaK",
+      "reason": "4-10 and10-16 Airdac clamps do not satisfy ABC25-95 dead-end clamp."
+    },
+    {
+      "partId": "abc-dead-end-clamp",
+      "assetId": "XHHpzAqaVHRn55snsDD0",
+      "reason": "4-10 and10-16 Airdac clamps do not satisfy ABC25-95 dead-end clamp."
+    },
+    {
+      "partId": "cross-arm-mv-2.5m",
+      "assetId": "04b59825-aa95-42e7-b119-b6f7da5d010d",
+      "reason": "MV surge arrester is not a 2.5m steel cross-arm."
+    },
+    {
+      "partId": "line-post-insulator-assembly",
+      "assetId": "hIvBQc9RA9B8FdG8t9sf",
+      "reason": "Long-rod suspension insulator is not a line-post assembly."
+    },
+    {
+      "partId": "suspension-clamp",
+      "assetId": "b2a81098-c2e3-45c1-8c01-aa99750fa051",
+      "reason": "AM candidate35\u201355mm\u00b2 versus UGP25\u201395mm\u00b2. Confirm required working cable and approve a narrower-range alternative, or identify full-range stock."
+    },
+    {
+      "partId": "cable-tie-200mm",
+      "assetId": "9Y6l1EPOkmkHdFMnQbU8",
+      "reason": "Photo caption identifies390\u00d74.6mm T50L, requirement4.8\u00d7200mm. Locate exact size or request RET substitution."
+    },
+    {
+      "partId": "neutral-earth-bond-clamp",
+      "assetId": "6ef7f43a-4c92-4b95-ab3f-b5593f2c98eb",
+      "reason": "PG clamp is AL-AL16\u2013120mm\u00b2; UGP specifies a bronze neutral/earth bond clamp. Confirm conductor/material compatibility."
+    }
+  ]
+}

@@ -33,3 +33,14 @@ check(am_workshop_page($items,999)['page']===3);check(am_workshop_page($items,-2
 check(am_workshop_page([],1)['items']===[]);
 check(am_workshop_url('stay-wire-3x3.35','a & b',2)==='reconciliation.php?part=stay-wire-3x3.35&q=a%20%26%20b&page=2');
 echo "PASS: all candidates reachable and query preserved across pages\n";
+
+$defs=[['id'=>'ugp-a','ugp_part_id'=>'a','canonical_approved'=>true,'active'=>true],['id'=>'ugp-orphan','ugp_part_id'=>'orphan','canonical_approved'=>true,'active'=>true]];
+check(am_workshop_linked_parts([['id'=>'one','ugp_part_id'=>'a','definition_id'=>'ugp-a']],$defs)===['a']);
+check(am_workshop_linked_parts([],$defs)===[]);
+check(am_workshop_block('abc-dead-end-clamp','lKph3eLgS9wnxkJyTomK')!==null);
+check(am_workshop_block('earthing-clamp','lKph3eLgS9wnxkJyTomK')===null);
+check(count(am_workshop_exceptions()['exceptions'])===27);
+$original=am_workshop_original(['id'=>'x','name'=>'Canonical'],[['created_at'=>'2026-09-17','before'=>[['assetId'=>'x','name'=>'Original','description'=>'actual 380mm']]]]);
+check($original['description']==='actual 380mm');
+check(am_workshop_original(['id'=>'x','original_catalogue_identity'=>['description'=>'preserved']],[])['description']==='preserved');
+echo "PASS: actual-link progress, exception guidance, blocked mismatches and original identity recovery\n";

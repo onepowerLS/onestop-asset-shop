@@ -33,13 +33,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $expected = array_intersect_key($sessionReview['identities'], array_flip($selected));
             $result = am_call_receipt_function('saveAmReconciliation', [
                 'eventId' => $eventId, 'ugpPartId' => $partId, 'assetIds' => $selected, 'expectedAssets' => (object)$expected,
+                'confirmedPartId' => (string)($_POST['confirmed_part_id'] ?? ''),
                 'decision' => (string)($_POST['decision'] ?? ''), 'evidence' => (string)($_POST['evidence'] ?? ''),
                 'retParticipant' => (string)($_POST['ret_participant'] ?? ''), 'ownerName' => (string)($_POST['owner_name'] ?? ''),
                 'dueDate' => (string)($_POST['due_date'] ?? ''), 'retVerified' => isset($_POST['ret_verified']),
                 'amVerified' => isset($_POST['am_verified']), 'currentSpecificationVerified' => isset($_POST['current_specification_verified'])]);
             if ($result['ok']) {
                 $_SESSION['am_workshop_ret'] = trim((string)($_POST['ret_participant'] ?? ''));
-                $_SESSION['flash_workshop'] = !empty($result['result']['published']) ? 'Published: selected AM items now use the shared UGP number and description. Old names remain aliases. Stock quantities were not changed.' : 'Decision saved. Follow-up tasks appear in Catalogue tasks. No notification was sent; agree the assignment with the named owner.';
+                $_SESSION['flash_workshop'] = !empty($result['result']['published']) ? 'Published: selected AM items now use the shared UGP name and number. Original AM descriptions are preserved; the canonical specification is in the shared definition. Stock quantities were not changed.' : 'Decision saved. Follow-up tasks appear in Catalogue tasks. No notification was sent; agree the assignment with the named owner.';
                 header('Location: reconciliation.php?part=' . rawurlencode($partId)); exit;
             } else $error = $result['message'];
         }
@@ -55,8 +56,11 @@ if (!isset($_SESSION['am_workshop_forms'][$eventId])) $_SESSION['am_workshop_for
 while (count($_SESSION['am_workshop_forms']) > 8) array_shift($_SESSION['am_workshop_forms']);
 $media = am_firestore_get_collection('am_part_media', 1000);
 $definitions = am_firestore_get_collection('am_part_definitions', 1000);
-$approved = array_column(array_filter($definitions, fn($d) => !empty($d['canonical_approved'])), 'ugp_part_id');
-$history = array_values(array_filter(am_firestore_get_collection('am_core_mapping_reviews', 1000), fn($r) => ($r['partId'] ?? '') === $partId));
+$approved = am_workshop_linked_parts($assets, $definitions);
+$exceptionGuide = am_workshop_exceptions()['exceptions'];
+$pendingIds = array_values(array_diff($ids, $approved));
+$allReviews = am_firestore_get_collection('am_core_mapping_reviews', 1000);
+$history = array_values(array_filter($allReviews, fn($r) => ($r['partId'] ?? '') === $partId));
 usort($history, fn($a,$b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
 $page_title = 'RET–AM reconciliation workshop';
 include __DIR__ . '/../includes/header.php';

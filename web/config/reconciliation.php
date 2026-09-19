@@ -33,3 +33,23 @@ function am_workshop_page(array $items, int $requested): array {
 function am_workshop_url(string $part, string $query = '', int $page = 1): string {
     return 'reconciliation.php?' . http_build_query(['part'=>$part, 'q'=>$query, 'page'=>max(1,$page)], '', '&', PHP_QUERY_RFC3986);
 }
+
+/** Guidance is a review queue, not a stock assertion or automatic approval. */
+function am_workshop_exceptions(): array {
+    static $data; return $data ??= json_decode(file_get_contents(__DIR__.'/../data/mas-reconciliation-exceptions.json'), true);
+}
+function am_workshop_block(string $partId, string $assetId): ?string {
+    foreach (am_workshop_exceptions()['blockedPairs'] as $row) if ($row['partId'] === $partId && $row['assetId'] === $assetId) return $row['reason'];
+    return null;
+}
+function am_workshop_linked_parts(array $assets, array $definitions): array {
+    $valid=[]; foreach($definitions as $d) if(!empty($d['canonical_approved']) && !empty($d['active']) && !empty($d['ugp_part_id'])) $valid[$d['id']]=$d['ugp_part_id'];
+    $parts=[]; foreach($assets as $a) if(!empty($a['ugp_part_id']) && ($valid[$a['definition_id']??'']??null)===$a['ugp_part_id'] && !am_workshop_block($a['ugp_part_id'],$a['id']??$a['asset_id']??'')) $parts[]=$a['ugp_part_id'];
+    return array_values(array_unique($parts));
+}
+function am_workshop_original(array $asset, array $reviews): array {
+    if(!empty($asset['original_catalogue_identity'])) return $asset['original_catalogue_identity'];
+    usort($reviews,fn($a,$b)=>strcmp($a['created_at']??$a['at']??'', $b['created_at']??$b['at']??''));
+    foreach($reviews as $review) foreach(is_array($review['before']??null)?$review['before']:[] as $before) if(is_array($before) && ($before['assetId']??'')===($asset['id']??$asset['asset_id']??'')) return $before;
+    return $asset;
+}
