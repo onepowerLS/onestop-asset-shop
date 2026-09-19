@@ -56,7 +56,7 @@ if (function_exists('is_logged_in') && is_logged_in() && !empty($_SESSION['am_fi
     
     <!-- Base CSS (Volt SCSS is source-only on npm; dist/css/volt.min.css is not published — Bootstrap + am-layout) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="<?php echo base_url('assets/css/am-layout.css'); ?>" rel="stylesheet">
+    <link href="<?php echo base_url('assets/css/am-layout.css'); ?>?v=<?php echo rawurlencode($am_build['short']); ?>" rel="stylesheet">
     
     <!-- DataTables -->
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">

@@ -192,3 +192,10 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Side effects: pushed `fc0f432` to `main`; Deploy to EC2 succeeded (run 35431866734). Live health reports `fc0f432`.
 - Follow-ups: add the What's New row in Admin so the login primer matches the marker.
 
+## 2026-09-19 — Cursor — Phone layout: off-canvas menu and stacked tables
+- The shell was desktop-first: the hamburger opened a collapsed block, and catalog tables were wide sideways scrolls.
+- `am-layout.css` now slides the sidebar over the page below 992px, dims the page behind it, and turns data tables into labeled cards below 768px. Inputs stay 16px so iOS does not zoom. Workshop tiles stack to one column.
+- Side effects: none until pushed to `main`.
+- Follow-ups: add the What's New row in Admin once live.
+
+

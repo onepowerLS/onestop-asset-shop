@@ -56,8 +56,217 @@
 
 /* Mobile: stacked (default block flow) */
 @media (max-width: 991.98px) {
+    body {
+        overflow-x: hidden;
+    }
+
     main.content {
         width: 100%;
+        min-width: 0;
+    }
+
+    /* Off-canvas menu. Bootstrap collapse hides this with display:none;
+       keep it painted and slide it in so the hamburger actually opens a menu. */
+    #sidebarMenu.sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(88vw, 320px);
+        max-width: 320px;
+        height: 100vh !important;
+        height: 100dvh !important;
+        z-index: 1045;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        transform: translateX(-105%);
+        transition: transform 0.2s ease;
+        display: block !important;
+        visibility: hidden;
+        box-shadow: none;
+    }
+
+    #sidebarMenu.sidebar.show,
+    #sidebarMenu.sidebar.collapsing {
+        transform: translateX(0);
+        visibility: visible;
+        box-shadow: 0 0 24px rgba(0, 0, 0, 0.35);
+    }
+
+    body.am-nav-open {
+        overflow: hidden;
+    }
+
+    body.am-nav-open::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(17, 24, 39, 0.45);
+        z-index: 1040;
+    }
+
+    .navbar.navbar-theme-primary {
+        position: sticky;
+        top: 0;
+        z-index: 1030;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    .navbar-toggler {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    #sidebarMenu .nav-link {
+        padding-top: 0.7rem;
+        padding-bottom: 0.7rem;
+    }
+
+    .navbar-top .form-select {
+        min-width: 0 !important;
+        max-width: 9.5rem;
+        font-size: 16px;
+    }
+
+    .navbar-top .navbar-nav {
+        gap: 0.35rem;
+    }
+
+    main.content > .py-4,
+    main.content > .container,
+    main.content > .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .btn-toolbar {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .btn-toolbar > .btn,
+    .btn-toolbar > .btn-group,
+    .btn-toolbar > a.btn {
+        margin-bottom: 0.35rem;
+    }
+
+    h1.h2 {
+        font-size: 1.35rem;
+    }
+
+    .card-body {
+        padding: 0.9rem;
+    }
+
+    .input-group-lg > .form-control,
+    .input-group-lg > .btn {
+        font-size: 1rem;
+    }
+
+    .form-control,
+    .form-select,
+    textarea.form-control {
+        font-size: 16px;
+    }
+
+    .rw-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .rw-actions .btn {
+        display: block;
+        width: 100%;
+        margin: 0 0 0.5rem 0;
+    }
+}
+
+/* Phone: data tables become stacked cards so columns are not a sideways scroll. */
+@media (max-width: 767.98px) {
+    .table-responsive {
+        overflow: visible;
+    }
+
+    .table-responsive .dataTables_wrapper,
+    .dataTables_wrapper {
+        overflow: visible;
+    }
+
+    .table-responsive table,
+    table.dataTable {
+        display: block;
+        width: 100% !important;
+        border: 0;
+    }
+
+    .table-responsive thead,
+    table.dataTable thead {
+        display: none;
+    }
+
+    .table-responsive tbody,
+    .table-responsive tr,
+    .table-responsive td,
+    table.dataTable tbody,
+    table.dataTable tr,
+    table.dataTable td {
+        display: block;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    .table-responsive tr,
+    table.dataTable tbody tr {
+        border: 1px solid var(--am-gray-200);
+        border-radius: 0.6rem;
+        margin: 0 0 0.75rem;
+        padding: 0.55rem 0.75rem;
+        background: #fff;
+    }
+
+    .table-responsive td,
+    table.dataTable td {
+        border: 0;
+        padding: 0.28rem 0;
+        text-align: left !important;
+        white-space: normal;
+    }
+
+    .table-responsive td::before,
+    table.dataTable td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--am-gray-500);
+    }
+
+    .table-responsive td[data-label=""]::before,
+    table.dataTable td[data-label=""]::before,
+    .table-responsive td[colspan]::before,
+    table.dataTable td[colspan]::before {
+        content: none;
+    }
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        float: none;
+        text-align: left;
+        margin-bottom: 0.5rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .pagination {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .btn-group > .btn {
+        min-height: 40px;
     }
 }
 

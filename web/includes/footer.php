@@ -32,6 +32,58 @@ require_once __DIR__ . '/../config/firebase.php';
     <!-- DataTables (after jQuery) -->
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+    (function () {
+        function labelTable(table) {
+            if (!table || !table.tHead) return;
+            var heads = [];
+            table.tHead.querySelectorAll('th').forEach(function (th, i) {
+                heads[i] = (th.innerText || '').replace(/\s+/g, ' ').trim();
+            });
+            table.querySelectorAll('tbody tr').forEach(function (tr) {
+                Array.prototype.forEach.call(tr.children, function (td, i) {
+                    if (!td || td.tagName !== 'TD') return;
+                    if (td.hasAttribute('colspan')) {
+                        td.setAttribute('data-label', '');
+                        return;
+                    }
+                    td.setAttribute('data-label', heads[i] || '');
+                });
+            });
+        }
+        if (window.jQuery) {
+            jQuery(document).on('draw.dt', function (e, settings) {
+                if (settings && settings.nTable) labelTable(settings.nTable);
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('table').forEach(labelTable);
+            var menu = document.getElementById('sidebarMenu');
+            if (!menu || !window.bootstrap) return;
+            menu.addEventListener('show.bs.collapse', function () {
+                document.body.classList.add('am-nav-open');
+            });
+            menu.addEventListener('hidden.bs.collapse', function () {
+                document.body.classList.remove('am-nav-open');
+            });
+            document.body.addEventListener('click', function (event) {
+                if (!document.body.classList.contains('am-nav-open')) return;
+                if (event.target.closest('#sidebarMenu, .navbar-toggler')) return;
+                var inst = bootstrap.Collapse.getOrCreateInstance(menu, { toggle: false });
+                inst.hide();
+            });
+            menu.querySelectorAll('a.nav-link[href]').forEach(function (link) {
+                var href = link.getAttribute('href') || '';
+                if (href === '' || href.charAt(0) === '#') return;
+                link.addEventListener('click', function () {
+                    if (!window.matchMedia('(max-width: 991.98px)').matches) return;
+                    var inst = bootstrap.Collapse.getInstance(menu);
+                    if (inst) inst.hide();
+                });
+            });
+        });
+    })();
+    </script>
     
     <!-- QR Code Scanner -->
     <script src="<?php echo base_url('qr/scanner.js'); ?>"></script>
