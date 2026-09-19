@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/locale.php';
 require_once __DIR__ . '/../config/inventory_aggregate.php';
+require_once __DIR__ . '/../config/catalog_search.php';
 require_login();
 am_ensure_country_scope_from_session();
 
@@ -82,7 +83,8 @@ foreach ($allocations as $al) {
 // Join and filter in memory
 $assets = [];
 $needleRaw = trim($searchTerm);
-$needle = $needleRaw === '' ? '' : (function_exists('mb_strtolower') ? mb_strtolower($needleRaw, 'UTF-8') : strtolower($needleRaw));
+$searchParsed = $needleRaw === '' ? ['tokens' => [], 'related' => []] : am_catalog_search_parse($needleRaw);
+$searchActive = $searchParsed['tokens'] !== [];
 foreach ($assetsRaw as $asset) {
     if (!am_asset_passes_country_scope($asset, $countries, $locationById)) {
         continue;
@@ -108,32 +110,16 @@ foreach ($assetsRaw as $asset) {
     if ($categoryFilter !== '' && $categoryFilter !== $categoryId) {
         continue;
     }
-    if ($needle !== '') {
-        $cat = $categoryById[$categoryId] ?? [];
-        $loc = $locationById[$locationId] ?? [];
-        $blobParts = [
-            (string)($asset['name'] ?? ''),
-            implode(' ', (array)($asset['catalogue_aliases'] ?? [])),
-            (string)($asset['canonical_part_number'] ?? ''),
-            (string)($asset['description'] ?? ''),
-            (string)($asset['serial_number'] ?? ''),
-            (string)($asset['qr_code_id'] ?? ''),
-            (string)($asset['asset_tag'] ?? ''),
-            (string)($asset['legacy_tag'] ?? ''),
-            (string)($asset['manufacturer'] ?? ''),
-            (string)($asset['model'] ?? ''),
-            (string)($asset['notes'] ?? ''),
-            (string)($asset['ugp_part_id'] ?? ''),
-            (string)($asset['vehicle_type'] ?? ''),
-            (string)($asset['engine_number'] ?? ''),
-            (string)($asset['fuel_type'] ?? ''),
-            (string)($cat['category_name'] ?? ''),
-            (string)($loc['location_name'] ?? ''),
-            (string)($loc['location_code'] ?? ''),
-        ];
-        $searchBlob = implode(' ', $blobParts);
-        $searchBlob = function_exists('mb_strtolower') ? mb_strtolower($searchBlob, 'UTF-8') : strtolower($searchBlob);
-        if (!str_contains($searchBlob, $needle)) {
+    $cat = $categoryById[$categoryId] ?? [];
+    $loc = $locationById[$locationId] ?? [];
+    $match = null;
+    if ($searchActive) {
+        $match = am_catalog_search_match(am_catalog_search_fields($asset, [
+            'category_name' => (string)($cat['category_name'] ?? ''),
+            'location_name' => (string)($loc['location_name'] ?? ''),
+            'location_code' => (string)($loc['location_code'] ?? ''),
+        ]), $needleRaw);
+        if ($match === null) {
             continue;
         }
     }
@@ -154,17 +140,38 @@ foreach ($assetsRaw as $asset) {
     $asset['location_name'] = (string)($location['location_name'] ?? '');
     $asset['location_code'] = (string)($location['location_code'] ?? '');
     $asset['allocation_count'] = (int)($allocationCounts[$assetId] ?? 0);
+    $asset['search_score'] = (int)($match['score'] ?? 0);
+    $asset['search_reasons'] = $match['reasons'] ?? [];
 
     $assets[] = $asset;
 }
 
-usort($assets, function ($a, $b) {
+usort($assets, function ($a, $b) use ($searchActive) {
+    if ($searchActive && ($a['search_score'] ?? 0) !== ($b['search_score'] ?? 0)) {
+        return ($b['search_score'] ?? 0) <=> ($a['search_score'] ?? 0);
+    }
+    if ($searchActive) {
+        return strcasecmp((string)($a['name'] ?? ''), (string)($b['name'] ?? ''));
+    }
     return strcmp((string)($b['id'] ?? ''), (string)($a['id'] ?? ''));
 });
 
 $catalogGrouped = null;
 if ($catalogView === 'grouped' && $canCatalogGroup) {
     $catalogGrouped = am_inventory_aggregate_catalog_rows($assets, $countries);
+    if ($searchActive) {
+        usort($catalogGrouped, function ($a, $b) {
+            $score = static function (array $row): int {
+                $best = 0;
+                foreach ($row['assets'] ?? [] as $asset) {
+                    $best = max($best, (int)($asset['search_score'] ?? 0));
+                }
+                return $best;
+            };
+            $diff = $score($b) <=> $score($a);
+            return $diff !== 0 ? $diff : strcasecmp((string)($a['name'] ?? ''), (string)($b['name'] ?? ''));
+        });
+    }
 }
 
 // Filter options (master list for joins; pick list is $countriesPick)
@@ -216,18 +223,35 @@ include __DIR__ . '/../includes/header.php';
     <div class="alert alert-info py-2"><?php echo am_ui('assets_grouped_notice'); ?></div>
     <?php endif; ?>
 
-    <!-- Filters -->
+    <!-- Search and filters -->
     <div class="card border-0 shadow mb-4">
         <div class="card-body">
-            <form method="GET" action="" class="row g-3">
+            <form method="GET" action="">
                 <?php if ($catalogView === 'grouped'): ?>
                 <input type="hidden" name="catalog_view" value="grouped">
                 <?php endif; ?>
-                <div class="col-12 col-md-3">
-                    <label class="form-label"><?php echo htmlspecialchars(am_ui('assets_search')); ?></label>
-                    <input type="text" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="<?php echo htmlspecialchars(am_ui('assets_search_placeholder')); ?>">
+                <label class="form-label" for="catalog-search"><?php echo htmlspecialchars(am_ui('assets_search')); ?></label>
+                <div class="input-group input-group-lg mb-2">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input id="catalog-search" type="search" class="form-control" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>" placeholder="<?php echo htmlspecialchars(am_ui('assets_search_placeholder')); ?>" autofocus>
+                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(am_ui('assets_search')); ?></button>
                 </div>
-                <div class="col-12 col-md-2">
+                <p class="text-muted small mb-3"><?php echo htmlspecialchars(am_ui('assets_search_help', 'Search matches each word in the name, aliases, manufacturer, model, tags, notes, or category. Plurals count (drones finds drone), and a few related words do too (drone also finds UAV).')); ?></p>
+                <?php if ($searchActive): ?>
+                <p class="mb-3">
+                    <strong><?php echo count($assets); ?></strong>
+                    <?php echo htmlspecialchars(am_ui('assets_search_matches', 'matches')); ?>
+                    <?php echo htmlspecialchars(am_ui('assets_search_for', 'for')); ?>
+                    “<?php echo htmlspecialchars($needleRaw); ?>”.
+                    <?php echo htmlspecialchars(am_ui('assets_search_ranked', 'Closest matches are listed first.')); ?>
+                    <?php if ($searchParsed['related'] !== []): ?>
+                    <?php echo htmlspecialchars(am_ui('assets_search_also', 'Also checked related words:')); ?>
+                    <?php echo htmlspecialchars(implode(', ', $searchParsed['related'])); ?>.
+                    <?php endif; ?>
+                </p>
+                <?php endif; ?>
+                <div class="row g-3">
+                <div class="col-12 col-md-3">
                     <label class="form-label"><?php echo htmlspecialchars(am_ui('assets_classification')); ?></label>
                     <select class="form-select" name="item_class">
                         <option value=""><?php echo htmlspecialchars(am_ui('assets_all_classes')); ?></option>
@@ -280,6 +304,7 @@ include __DIR__ . '/../includes/header.php';
                         <i class="fas fa-filter me-2"></i><?php echo htmlspecialchars(am_ui('assets_filter')); ?>
                     </button>
                 </div>
+                </div>
             </form>
         </div>
     </div>
@@ -324,6 +349,16 @@ include __DIR__ . '/../includes/header.php';
                                 <a href="<?php echo base_url('assets/view.php?id=' . urlencode($rep)); ?>" class="fw-semibold"><?php echo htmlspecialchars($g['name'] ?? ''); ?></a>
                                 <?php else: ?>
                                 <?php echo htmlspecialchars($g['name'] ?? ''); ?>
+                                <?php endif; ?>
+                                <?php
+                                $groupReasons = [];
+                                foreach ($g['assets'] ?? [] as $ga) {
+                                    foreach ($ga['search_reasons'] ?? [] as $reason) {
+                                        $groupReasons[$reason] = true;
+                                    }
+                                }
+                                if ($groupReasons): ?>
+                                <br><small class="text-muted"><?php echo htmlspecialchars(am_ui('assets_search_matched', 'Matched')); ?> <?php echo htmlspecialchars(implode(', ', array_keys($groupReasons))); ?></small>
                                 <?php endif; ?>
                                 <?php if ((int)($g['line_count'] ?? 0) > 1): ?>
                                 <span class="badge bg-secondary ms-1"><?php echo (int)$g['line_count']; ?> records</span>
@@ -376,7 +411,11 @@ include __DIR__ . '/../includes/header.php';
                         <?php if (empty($assets)): ?>
                         <tr>
                             <td colspan="10" class="text-center text-gray-500 py-4">
+                                <?php if ($searchActive): ?>
+                                <?php echo htmlspecialchars(am_ui('assets_search_none', 'No items matched those words in the name, aliases, manufacturer, model, tags, notes, or category.')); ?>
+                                <?php else: ?>
                                 <?php echo htmlspecialchars(am_ui('assets_no_items')); ?><?php if (!am_is_auditor_readonly()): ?> <a href="<?php echo base_url('assets/add.php'); ?>"><?php echo htmlspecialchars(am_ui('assets_add_first')); ?></a><?php endif; ?>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php else: ?>
@@ -407,6 +446,9 @@ include __DIR__ . '/../includes/header.php';
                                 <a href="<?php echo base_url('assets/view.php?id=' . $asset['asset_id']); ?>" class="text-primary">
                                     <?php echo htmlspecialchars($asset['name']); ?>
                                 </a>
+                                <?php if (!empty($asset['search_reasons'])): ?>
+                                    <br><small class="text-muted"><?php echo htmlspecialchars(am_ui('assets_search_matched', 'Matched')); ?> <?php echo htmlspecialchars(implode(', ', $asset['search_reasons'])); ?></small>
+                                <?php endif; ?>
                                 <?php if ($asset['serial_number']): ?>
                                     <br><small class="text-gray-500">SN: <?php echo htmlspecialchars($asset['serial_number']); ?></small>
                                 <?php endif; ?>
@@ -505,7 +547,7 @@ $(document).ready(function() {
     var flat = <?php echo $catalogGrouped === null ? 'true' : 'false'; ?>;
     t.DataTable({
         pageLength: 25,
-        order: flat ? [[1, 'desc']] : [[0, 'asc']],
+        order: <?php echo $searchActive ? '[]' : ($catalogGrouped === null ? '[[1, "desc"]]' : '[[0, "asc"]]'); ?>,
         searching: false,
         language: {
             lengthMenu: "Show _MENU_ entries"

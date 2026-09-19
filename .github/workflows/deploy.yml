@@ -35,6 +35,7 @@ jobs:
           php tests/inventory_levels_site_change_test.php
           php tests/part_definitions_test.php
           php tests/reconciliation_test.php
+          php tests/catalog_search_test.php
           php tests/inventory_read_api_test.php
       
       - name: Deploy to EC2 via SSH

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../config/firestore.php';
 require_once __DIR__ . '/../../config/country_scope.php';
 require_once __DIR__ . '/../../config/inventory_levels.php';
+require_once __DIR__ . '/../../config/catalog_search.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -61,18 +62,6 @@ foreach ($inventoryLevels as $inv) {
     $stockByAsset[$aid]['alloc'] += $alloc;
 }
 
-$lower = static function (string $s): string {
-    return function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s);
-};
-
-$normalizedKey = static function (string $s) use ($lower): string {
-    $s = $lower($s);
-    $s = preg_replace('/[^a-z0-9]+/i', ' ', $s);
-    return preg_replace('/\s+/u', ' ', trim($s));
-};
-
-$qKey = $normalizedKey($qRaw);
-
 $results = [];
 
 foreach ($assets as $asset) {
@@ -105,36 +94,14 @@ foreach ($assets as $asset) {
     $locId = (string)($asset['location_id'] ?? '');
     $loc = $locationById[$locId] ?? [];
 
-    $blobParts = [
-        (string)($asset['name'] ?? ''),
-            implode(' ', (array)($asset['catalogue_aliases'] ?? [])),
-            (string)($asset['canonical_part_number'] ?? ''),
-        (string)($asset['asset_tag'] ?? ''),
-        (string)($asset['legacy_tag'] ?? ''),
-        (string)($asset['qr_code_id'] ?? ''),
-        (string)($asset['description'] ?? ''),
-        (string)($asset['manufacturer'] ?? ''),
-        (string)($asset['model'] ?? ''),
-        (string)($asset['notes'] ?? ''),
-        (string)($asset['ugp_part_id'] ?? ''),
-        (string)($cat['category_name'] ?? ''),
-        (string)($cat['category_code'] ?? ''),
-        (string)($loc['location_name'] ?? ''),
-        (string)($loc['location_code'] ?? ''),
-    ];
-    $blob = preg_replace('/\s+/u', ' ', implode(' ', $blobParts));
-    $blob = $lower($blob);
-    if (!str_contains($blob, $q)) {
+    $match = am_catalog_search_match(am_catalog_search_fields($asset, [
+        'category_name' => trim((string)($cat['category_name'] ?? '') . ' ' . (string)($cat['category_code'] ?? '')),
+        'location_name' => (string)($loc['location_name'] ?? ''),
+        'location_code' => (string)($loc['location_code'] ?? ''),
+    ]), $qRaw);
+    if ($match === null) {
         continue;
     }
-
-    $nameKey = $normalizedKey((string)($asset['name'] ?? ''));
-    $isStrongMatch = $qKey !== '' && $nameKey !== '' && (
-        $nameKey === $qKey
-        || str_starts_with($nameKey, $qKey)
-        || str_contains($nameKey, ' ' . $qKey)
-        || str_contains($nameKey, $qKey . ' ')
-    );
 
     $aid = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
     $results[] = [
@@ -151,21 +118,20 @@ foreach ($assets as $asset) {
         'quantity' => (int)($asset['quantity'] ?? 0),
         'quantity_on_hand' => (int)(($stockByAsset[$aid]['qoh'] ?? 0)),
         'quantity_allocated' => (int)(($stockByAsset[$aid]['alloc'] ?? 0)),
-        'strong_match' => $isStrongMatch,
+        'strong_match' => in_array('name', $match['reasons'], true),
+        'match_reasons' => $match['reasons'],
+        'score' => $match['score'],
         'view_url' => base_url('assets/view.php?id=' . urlencode($aid)),
         'edit_url' => base_url('assets/edit.php?id=' . urlencode($aid)),
     ];
-
-    if (count($results) >= $limit) {
-        break;
-    }
 }
 
 usort($results, function ($a, $b) {
-    if ($a['strong_match'] !== $b['strong_match']) {
-        return $b['strong_match'] ? 1 : -1;
+    if ($a['score'] !== $b['score']) {
+        return $b['score'] <=> $a['score'];
     }
     return strcasecmp($a['name'], $b['name']);
 });
+$results = array_slice($results, 0, $limit);
 
 echo json_encode(['ok' => true, 'items' => $results, 'q' => $qRaw], JSON_UNESCAPED_SLASHES);

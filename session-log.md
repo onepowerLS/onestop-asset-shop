@@ -177,3 +177,18 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - App: clearer upload error messages; browser-side JPEG compress ≤1600px before POST; documented drop-in in `deployment/99-am-uploads.ini` and `docs/RET_AM_WORKSHOP.md`.
 - Side effects: production PHP-FPM upload limits raised on EC2 `16.28.64.221`; AM code deploy follows push to `main`.
 - Follow-ups: Metro retries Suspension Clamp (and other class photos); hard-refresh if old page cached.
+
+## 2026-09-15 — Cursor — Fix workshop "outside your organization scope" on publish
+- Symptom: Metro could select LS AM candidates in RET–AM workshop but Publish failed with "An item is outside your organization scope."
+- Root cause: `saveAmReconciliation` required exact `asset.organization_id ∈ JWT scopeOrganizations`. AM PHP shows candidates after country→org fallback and ignores unrecognized grant org ids (defaults to all known AM orgs). Assets with empty/mismatched org ids passed the UI then failed the callable.
+- Fix (PR repo `15ac51b`): `assetInOrganizationScope` resolves org from country when missing and treats non-AM grant org ids as unrestricted (country gate remains). Deployed selectively: `saveAmReconciliation`, `confirmAmUgpMapping` to `pr-system-4ea55`.
+- Side effects: production Cloud Functions updated; Nexus SSO functions verified still listed.
+- Follow-ups: Metro hard-refresh / relaunch AM from Nexus, publish only true same-part matches (not Suspension Clamp / Stay Wire for Dead-End Clamp).
+
+## 2026-09-19 — Cursor — Catalog search matches words, plurals, and related terms
+- Catalog search was an exact phrase filter buried in the filter row, so "drones" missed "drone" and "UAV".
+- Added `web/config/catalog_search.php`: each word must match, plurals and a small related-word list (drone/UAV/quadcopter) count, name hits rank first, and the row says where it matched.
+- Catalog page has a search box with match count and related-word note. Same matcher is used by Add Item search and dispatch item search.
+- Side effects: none until pushed to `main` (EC2 deploy).
+- Follow-ups: add the What's New row in Admin once live.
+

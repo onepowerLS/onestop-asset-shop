@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../config/firestore.php';
 require_once __DIR__ . '/../../config/country_scope.php';
+require_once __DIR__ . '/../../config/catalog_search.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -88,10 +89,6 @@ function am_dispatch_search_resolve_asset_country_id(array $asset, array $countr
     return '';
 }
 
-$lower = static function (string $s): string {
-    return function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s);
-};
-
 $results = [];
 
 foreach ($assets as $asset) {
@@ -119,24 +116,17 @@ foreach ($assets as $asset) {
         $cat = $categoryById[$catId] ?? [];
         $locId = (string)($asset['location_id'] ?? '');
         $loc = $locationById[$locId] ?? [];
-        $blobParts = [
-            (string)($asset['name'] ?? ''),
-            (string)($asset['asset_tag'] ?? ''),
-            (string)($asset['legacy_tag'] ?? ''),
-            (string)($asset['description'] ?? ''),
-            (string)($asset['manufacturer'] ?? ''),
-            (string)($asset['model'] ?? ''),
-            (string)($asset['notes'] ?? ''),
-            (string)($asset['ugp_part_id'] ?? ''),
-            (string)($cat['category_name'] ?? ''),
-            (string)($loc['location_name'] ?? ''),
-            (string)($loc['location_code'] ?? ''),
-        ];
-        $blob = preg_replace('/\s+/u', ' ', implode(' ', $blobParts));
-        $blob = $lower($blob);
-        if (!str_contains($blob, $q)) {
+        $match = am_catalog_search_match(am_catalog_search_fields($asset, [
+            'category_name' => (string)($cat['category_name'] ?? ''),
+            'location_name' => (string)($loc['location_name'] ?? ''),
+            'location_code' => (string)($loc['location_code'] ?? ''),
+        ]), $qRaw);
+        if ($match === null) {
             continue;
         }
+        $searchScore = $match['score'];
+    } else {
+        $searchScore = 0;
     }
 
     $aid = (string)($asset['asset_id'] ?? $asset['id'] ?? '');
@@ -161,11 +151,16 @@ foreach ($assets as $asset) {
             0,
             (int)(($stockByAsset[$aid]['qoh'] ?? 0)) - (int)(($stockByAsset[$aid]['alloc'] ?? 0))
         ),
+        'score' => $searchScore,
     ];
-
-    if (count($results) >= 100) {
-        break;
-    }
 }
+
+usort($results, function ($a, $b) {
+    if (($a['score'] ?? 0) !== ($b['score'] ?? 0)) {
+        return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
+    }
+    return strcasecmp($a['name'], $b['name']);
+});
+$results = array_slice($results, 0, 100);
 
 echo json_encode(['ok' => true, 'items' => $results], JSON_UNESCAPED_SLASHES);
