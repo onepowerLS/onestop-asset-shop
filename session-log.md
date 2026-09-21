@@ -198,4 +198,13 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Side effects: pushed `8e4d98d` to `main`; Deploy to EC2 succeeded. Live health reports `8e4d98d`.
 - Follow-ups: add the What's New row in Admin so the login primer matches the marker. Hard-refresh on the phone if the old stylesheet is cached.
 
+## 2026-09-21 — Cursor — Dispatch catalog search timed out
+- Symptom: Monaheng / Motiki Ramothule, dispatch request, search "M16 pigtail" in Lesotho showed "Search failed. Try again." Three other lines were already on the request (PVC conduit, TTD 201, House Wire 6mm Black).
+- Cause: the search downloads the whole asset collection. A large Firestore page stalled (SSL EOF / 36s timeout around 15:08–15:15 Africa/Maseru). The browser got a non-JSON response.
+- Fix: smaller pages (250), one retry on a dropped connection, skip the extra slow fallback after a timeout, two-minute file cache, and a clear retry message. "pigtail" also matches "pig tail".
+- Side effects: deployed to production. Commit 98a84a1 pushed to origin/main. GitHub Actions Deploy to EC2 run 35606414345 succeeded. health.php at 2026-09-21T13:35:16Z reports commit 98a84a176007749a045e4eda833237c948aeda43. Live catalog scan (3982 assets) has no item named exactly "M16 pigtail"; closest Lesotho rows are M16 hex nuts for pigtail (1PWR-MAT-LSO-000239), M16 washers for pigtail (1PWR-MAT-LSO-000237), and Pigtail Screws (1PWR-MAT-LSO-000084).
+- Key files: web/api/dispatch/search-items.php, web/config/firebase.php, web/config/catalog_search.php, web/requests/dispatch-new.php
+- Follow-ups: they should hard-refresh the dispatch page and search again. Search "pigtail" to also see Pigtail Screws.
+
+
 
