@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../config/catalog_search.php';
 require_login();
 
 header('Content-Type: application/json');
+set_time_limit(90);
 
 $countryId = trim($_GET['country_id'] ?? '');
 $qRaw = trim((string)($_GET['q'] ?? ''));
@@ -30,10 +31,39 @@ if (!am_user_may_access_country_id($countryId, $countries)) {
     exit;
 }
 
-$assets = am_firestore_get_collection('am_core_assets', 10000);
+/**
+ * Smaller pages stay under the Firestore timeout. A two-minute file cache
+ * lets the next search succeed when the first download was interrupted.
+ *
+ * @return list<array<string, mixed>>
+ */
+function am_dispatch_search_collection(string $name, int $pageSize): array {
+    $file = sys_get_temp_dir() . '/am_dispatch_' . preg_replace('/[^a-z0-9_]+/i', '_', $name) . '.json';
+    if (is_file($file) && (time() - filemtime($file)) < 120) {
+        $cached = json_decode((string)file_get_contents($file), true);
+        if (is_array($cached) && $cached !== []) {
+            return $cached;
+        }
+    }
+    $token = function_exists('am_firestore_admin_bearer') ? am_firestore_admin_bearer() : '';
+    $rows = am_firestore_get_collection($name, $pageSize, $token !== '' ? $token : null);
+    if ($rows !== []) {
+        $encoded = json_encode($rows);
+        if (is_string($encoded) && $encoded !== '') {
+            @file_put_contents($file, $encoded);
+        }
+    }
+    return $rows;
+}
+
+$assets = am_dispatch_search_collection('am_core_assets', 250);
 $locations = am_get_pr_sites();
-$inventoryLevels = am_firestore_get_collection('am_core_inventory_levels', 4000);
-$categories = am_firestore_get_collection('pr_master_categories', 1000);
+$inventoryLevels = am_dispatch_search_collection('am_core_inventory_levels', 250);
+$categories = am_dispatch_search_collection('pr_master_categories', 250);
+if ($assets === []) {
+    echo json_encode(['ok' => false, 'error' => 'The catalog could not be loaded. Wait a few seconds and search again.', 'items' => []]);
+    exit;
+}
 
 $locationById = [];
 foreach ($locations as $l) {

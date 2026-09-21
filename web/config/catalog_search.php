@@ -149,6 +149,14 @@ function am_catalog_search_match(array $fields, string $query): ?array {
                     }
                 }
             }
+            $compact = implode('', $words);
+            foreach ($alts as $alt) {
+                if (strlen($alt) >= 4 && $compact !== '' && str_contains($compact, $alt)) {
+                    $bestKey = $key;
+                    $bestWeight = $weight;
+                    break;
+                }
+            }
         }
         if ($bestKey === null) {
             return null;
@@ -174,9 +182,15 @@ function am_catalog_search_fields(array $asset, array $extra = []): array {
     if (!is_array($aliases)) {
         $aliases = [$aliases];
     }
+    $aliasText = [];
+    foreach ($aliases as $alias) {
+        if (is_scalar($alias)) {
+            $aliasText[] = (string)$alias;
+        }
+    }
     return [
         'name' => (string)($asset['name'] ?? ''),
-        'alias' => trim(implode(' ', array_merge($aliases, [(string)($asset['canonical_part_number'] ?? '')]))),
+        'alias' => trim(implode(' ', array_merge($aliasText, [(string)($asset['canonical_part_number'] ?? '')]))),
         'tag' => trim(implode(' ', [
             (string)($asset['asset_tag'] ?? ''),
             (string)($asset['legacy_tag'] ?? ''),

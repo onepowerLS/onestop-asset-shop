@@ -246,7 +246,20 @@ function am_http_get_json(string $url, array $headers = []): array {
         $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         unset($ch);
 
-        if ($response === false || !empty($error) || $statusCode === 0) {
+        // A dropped TLS connection to Firestore times out after a partial page.
+        // Retry once. Do not follow that with a second 20s stream read, which
+        // pushes the PHP request past the point where the browser gives up.
+        if ($response === false || $statusCode === 0 || ($error !== '' && $error !== null)) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, $opts);
+            $response = curl_exec($ch);
+            $error = curl_error($ch);
+            $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            unset($ch);
+        }
+
+        $timedOut = is_string($error) && (stripos($error, 'timed out') !== false || stripos($error, 'unexpected eof') !== false);
+        if (!$timedOut && ($response === false || !empty($error) || $statusCode === 0)) {
             $stream = am_http_get_json_stream($url, $headers);
             $response = $stream['response'];
             $error = $stream['error'] ?: $error;

@@ -589,7 +589,12 @@ function doSearch(q) {
 
     var url = searchApiUrl + '?country_id=' + encodeURIComponent(countryId) + '&q=' + encodeURIComponent(q);
     fetch(url, { credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) {
+                throw new Error('search http ' + r.status);
+            }
+            return r.json();
+        })
         .then(function(data) {
             tbody.innerHTML = '';
             if (!data.ok || !data.items || data.items.length === 0) {
@@ -645,7 +650,7 @@ function doSearch(q) {
             });
         })
         .catch(function() {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">Search failed. Try again.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">The catalog did not load. Wait a few seconds and search again.</td></tr>';
         });
 }
 

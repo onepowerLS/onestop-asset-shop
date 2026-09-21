@@ -26,5 +26,7 @@ $related = am_catalog_search_parse('drones');
 check(in_array('uav', $related['related'], true) && in_array('quadcopter', $related['related'], true), 'related words are reported');
 $prefix = am_catalog_search_match(am_catalog_search_fields(['name' => 'Survey drone']), 'dro');
 check($prefix !== null, 'a prefix of three letters matches the word');
+$pigtail = am_catalog_search_match(am_catalog_search_fields(['name' => 'M16 pig tail']), 'M16 pigtail');
+check($pigtail !== null, 'pigtail matches pig tail');
 
 echo "catalog_search_test: OK\n";
