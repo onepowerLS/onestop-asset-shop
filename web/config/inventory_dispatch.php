@@ -6,6 +6,53 @@
  * event must be committed atomically with an immutable am_core_transactions row.
  */
 require_once __DIR__ . '/inventory_movements.php';
+require_once __DIR__ . '/inventory_levels.php';
+
+/**
+ * Choose the store a dispatch should issue from.
+ *
+ * Operator-selected source wins, then the country headquarters.
+ * Catalog `location_id` is only a last resort — fulfillment used to overwrite
+ * it with the last destination, so it is not a trustworthy home store.
+ *
+ * @param array<string, mixed> $payload
+ * @param array<string, mixed> $asset
+ * @param array<string, array<string, mixed>> $locByAnyKey
+ */
+function am_dispatch_resolve_source_location_code(
+    array $payload,
+    array $asset,
+    array $locByAnyKey,
+    string $countryCode
+): string {
+    $candidates = [
+        trim((string)($payload['source_site_code'] ?? '')),
+        trim((string)($payload['from_location_id'] ?? '')),
+    ];
+    foreach ($candidates as $raw) {
+        if ($raw === '') {
+            continue;
+        }
+        $canon = am_canonical_location_code($raw, $locByAnyKey, $countryCode);
+        if ($canon !== '') {
+            return $canon;
+        }
+    }
+
+    $hq = am_hq_location_code($countryCode, array_values($locByAnyKey));
+    if ($hq !== '') {
+        return $hq;
+    }
+
+    $assetLoc = trim((string)($asset['location_id'] ?? ''));
+    if ($assetLoc !== '') {
+        $canon = am_canonical_location_code($assetLoc, $locByAnyKey, $countryCode);
+        if ($canon !== '') {
+            return $canon;
+        }
+    }
+    return $assetLoc;
+}
 
 function am_dispatch_event_id(string $requestId, int $lineIndex, string $phase): string {
     $safeRequest = preg_replace('/[^A-Za-z0-9_-]/', '_', $requestId) ?: 'request';

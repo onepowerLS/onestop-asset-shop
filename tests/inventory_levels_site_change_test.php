@@ -33,6 +33,30 @@ expect_same('', am_canonical_location_code('site1', []), 'empty index does not e
 expect_same('LSO-HQ', am_canonical_location_code('1pwr_lesotho_hq', $locs), 'PR site id maps to LSO-HQ');
 expect_same('LSO-MAK', am_canonical_location_code('LSO-MAK', $locs), 'canonical code passes through');
 
+$hqSites = [
+    ['location_code' => 'LSO-MAK', 'country_code' => 'LSO', 'location_name' => 'Makebe'],
+    ['location_code' => 'LSO-HQ', 'country_code' => 'LSO', 'location_name' => 'Headquarters'],
+    ['location_code' => 'ZMB-HQ', 'country_code' => 'ZMB', 'location_name' => 'Zambia HQ'],
+];
+expect_same('LSO-HQ', am_hq_location_code('LSO', $hqSites), 'LSO headquarters is LSO-HQ');
+expect_same('ZMB-HQ', am_hq_location_code('ZMB', $hqSites), 'country filter picks that country HQ');
+expect_same(
+    'LSO-MAS',
+    am_hq_location_code('LSO', [
+        ['location_code' => 'LSO-MAS', 'country_code' => 'LSO', 'location_name' => 'Maseru Headquarters'],
+    ]),
+    'name containing headquarters is used when no -HQ code exists'
+);
+expect_same(
+    ['on_hand' => 3034, 'allocated' => 50, 'available' => 2984],
+    am_stockable_on_hand_totals([
+        ['quantity_on_hand' => 2734, 'quantity_allocated' => 50],
+        ['quantity_on_hand' => 200, 'quantity_allocated' => 0],
+        ['quantity_on_hand' => 100, 'quantity_allocated' => 0],
+    ]),
+    'item detail totals sum every site row, not the catalog location slice'
+);
+
 // Site change moves quantity (source zeroed, dest receives)
 expect_same(
     ['source_on_hand' => 0, 'source_allocated' => 0, 'destination_on_hand' => 92260],

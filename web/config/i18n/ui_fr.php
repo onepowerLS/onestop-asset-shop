@@ -229,8 +229,11 @@ return [
     'view_no_allocations' => 'Aucune attribution enregistree.',
     'view_no_transactions' => 'Aucune transaction enregistree.',
     'view_on_hand' => 'En stock',
+    'view_on_hand_total' => 'Total en stock',
     'view_allocated' => 'Attribue',
     'view_available_qty' => 'Disponible',
+    'view_catalog_location' => 'Emplacement catalogue',
+    'view_stock_by_site' => 'Stock par site',
 
     // Requests page
     'requests_ready_board' => 'Demandes de ready board',

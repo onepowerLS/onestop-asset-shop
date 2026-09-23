@@ -230,8 +230,11 @@ return [
     'view_no_allocations' => 'No allocations recorded.',
     'view_no_transactions' => 'No transactions recorded.',
     'view_on_hand' => 'On hand',
+    'view_on_hand_total' => 'Total on hand',
     'view_allocated' => 'Allocated',
     'view_available_qty' => 'Available',
+    'view_catalog_location' => 'Catalog location',
+    'view_stock_by_site' => 'Stock by site',
 
     // Requests page
     'requests_ready_board' => 'Ready board requests',
