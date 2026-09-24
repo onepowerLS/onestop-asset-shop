@@ -25,6 +25,9 @@ foreach ($locations as $l) {
 $assets = am_firestore_get_collection('am_core_assets', 2000);
 $assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
 $employees = am_employee_directory_load();
+usort($employees, function ($a, $b) {
+    return strcasecmp(am_employee_directory_display_name($a), am_employee_directory_display_name($b));
+});
 $allocations = am_firestore_get_collection('am_core_allocations', 2000);
 
 $assetById = [];
@@ -39,6 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $employeeId = trim($_POST['employee_id'] ?? '');
     $locationId = trim($_POST['location_id'] ?? '');
     $notes = trim($_POST['notes'] ?? '');
+    $allocationId = trim($_POST['allocation_id'] ?? '');
+
+    // Synthetic check-in rows use value "asset:{docId}" when no allocation doc exists.
+    if ($action === 'checkin' && str_starts_with($allocationId, 'asset:')) {
+        if ($assetDocId === '') {
+            $assetDocId = substr($allocationId, strlen('asset:'));
+        }
+        $allocationId = '';
+    }
 
     if ($assetDocId === '') $errors[] = 'Please select an item.';
 
@@ -54,11 +66,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'checkout') {
         if ($employeeId === '') $errors[] = 'Please select an employee.';
+        $empLabel = '';
+        foreach ($employees as $e) {
+            $eid = (string)($e['employee_id'] ?? $e['id'] ?? '');
+            if ($eid === $employeeId) {
+                $empLabel = am_employee_directory_display_name($e);
+                break;
+            }
+        }
 
         if (empty($errors)) {
             $allocData = [
                 'asset_id' => $assetDocId,
                 'employee_id' => $employeeId,
+                'employee_name' => $empLabel,
                 'allocated_by' => $_SESSION['user_id'] ?? '',
                 'allocation_date' => date('c'),
                 'expected_return_date' => $_POST['expected_return'] ?? '',
@@ -71,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'to_location_id' => $locationId,
                 'site_code' => $locationId,
                 'employee_id' => $employeeId,
+                'employee_name' => $empLabel,
                 'notes' => $notes,
                 'asset_name' => (string)($postedAsset['name'] ?? ''),
                 'asset_tag' => (string)($postedAsset['asset_tag'] ?? ''),
@@ -84,12 +106,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($allocResult['ok']) {
                 $success = 'Item checked out successfully.';
+                $allocations = am_firestore_get_collection('am_core_allocations', 2000);
+                $assets = am_firestore_get_collection('am_core_assets', 2000);
+                $assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
+                $assetById = [];
+                foreach ($assets as $a) {
+                    $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
+                    if ($aid !== '') $assetById[$aid] = $a;
+                }
             } else {
                 $errors[] = 'Check-out failed: ' . ($allocResult['error'] ?? 'Unknown error');
             }
         }
     } elseif ($action === 'checkin') {
-        $allocationId = trim($_POST['allocation_id'] ?? '');
+        if ($allocationId === '' && $assetDocId === '') {
+            $errors[] = 'Please select an allocation to return.';
+        }
 
         if (empty($errors)) {
             if ($allocationId !== '') {
@@ -125,17 +157,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $success = 'Item checked in successfully.';
+            $allocations = am_firestore_get_collection('am_core_allocations', 2000);
+            $assets = am_firestore_get_collection('am_core_assets', 2000);
+            $assets = array_values(array_filter($assets, fn($a) => am_asset_passes_country_scope($a, $countries, $locationById)));
+            $assetById = [];
+            foreach ($assets as $a) {
+                $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
+                if ($aid !== '') $assetById[$aid] = $a;
+            }
         }
     }
 }
 
+$employeeById = [];
+foreach ($employees as $e) {
+    $eid = (string)($e['employee_id'] ?? $e['id'] ?? '');
+    if ($eid !== '') $employeeById[$eid] = $e;
+}
+
+// Real Active allocation rows, plus CheckedOut assets that never got an allocation doc
+// (legacy imports / tablet paths that only flipped status).
 $activeAllocs = [];
+$assetsWithActiveAlloc = [];
 foreach ($allocations as $alloc) {
-    if ((string)($alloc['status'] ?? '') === 'Active') {
-        $aid = (string)($alloc['asset_id'] ?? '');
-        $alloc['_asset'] = $assetById[$aid] ?? [];
-        $activeAllocs[] = $alloc;
+    if ((string)($alloc['status'] ?? '') !== 'Active') {
+        continue;
     }
+    $aid = (string)($alloc['asset_id'] ?? '');
+    $alloc['_asset'] = $assetById[$aid] ?? [];
+    $alloc['_synthetic'] = false;
+    $activeAllocs[] = $alloc;
+    if ($aid !== '') {
+        $assetsWithActiveAlloc[$aid] = true;
+    }
+}
+foreach ($assets as $a) {
+    $st = (string)($a['status'] ?? '');
+    if ($st !== 'CheckedOut') {
+        continue;
+    }
+    $aid = (string)($a['asset_id'] ?? $a['id'] ?? '');
+    if ($aid === '' || isset($assetsWithActiveAlloc[$aid])) {
+        continue;
+    }
+    $activeAllocs[] = [
+        'id' => 'asset:' . $aid,
+        'asset_id' => $aid,
+        'employee_id' => (string)($a['employee_id'] ?? $a['assigned_to'] ?? ''),
+        'employee_name' => (string)($a['employee_name'] ?? $a['assigned_to_name'] ?? ''),
+        'allocation_date' => (string)($a['updated_at'] ?? $a['checkout_date'] ?? ''),
+        'expected_return_date' => '',
+        'notes' => 'Checked out (no allocation record)',
+        'status' => 'Active',
+        '_asset' => $a,
+        '_synthetic' => true,
+    ];
 }
 
 usort($activeAllocs, function ($a, $b) {
@@ -143,13 +219,8 @@ usort($activeAllocs, function ($a, $b) {
         <=> strtotime((string)($a['allocation_date'] ?? '1970-01-01'));
 });
 
-$availableAssets = array_filter($assets, fn($a) => in_array($a['status'] ?? '', ['Available', 'Good']));
+$availableAssets = array_filter($assets, fn($a) => in_array($a['status'] ?? '', ['Available', 'Good'], true));
 
-$employeeById = [];
-foreach ($employees as $e) {
-    $eid = (string)($e['employee_id'] ?? $e['id'] ?? '');
-    if ($eid !== '') $employeeById[$eid] = $e;
-}
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -196,12 +267,19 @@ include __DIR__ . '/../includes/header.php';
                                 <option value="">Select employee...</option>
                                 <?php foreach ($employees as $e):
                                     $eid = (string)($e['employee_id'] ?? $e['id'] ?? '');
+                                    $ename = am_employee_directory_display_name($e);
+                                    if ($eid === '' || $ename === '') {
+                                        continue;
+                                    }
                                 ?>
                                 <option value="<?php echo htmlspecialchars($eid); ?>">
-                                    <?php echo htmlspecialchars(($e['first_name'] ?? '') . ' ' . ($e['last_name'] ?? '')); ?>
+                                    <?php echo htmlspecialchars($ename); ?>
                                 </option>
                                 <?php endforeach; ?>
                             </select>
+                            <?php if (empty($employees)): ?>
+                            <div class="form-text text-danger">No employees loaded. Ask IT to sync the HR directory, then refresh.</div>
+                            <?php endif; ?>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Expected Return Date</label>
@@ -233,13 +311,25 @@ include __DIR__ . '/../includes/header.php';
                                     $aid = (string)($alloc['asset_id'] ?? '');
                                     $eid = (string)($alloc['employee_id'] ?? '');
                                     $emp = $employeeById[$eid] ?? [];
-                                    $aname = ($alloc['_asset']['name'] ?? 'Unknown');
+                                    $empLabel = am_employee_directory_display_name($emp);
+                                    if ($empLabel === '') {
+                                        $empLabel = trim((string)($alloc['employee_name'] ?? ''));
+                                    }
+                                    if ($empLabel === '') {
+                                        $empLabel = $eid !== '' ? $eid : 'Unknown employee';
+                                    }
+                                    $aname = (string)($alloc['_asset']['name'] ?? 'Unknown');
+                                    $atag = (string)($alloc['_asset']['asset_tag'] ?? '');
+                                    $label = ($atag !== '' ? $atag . ' — ' : '') . $aname . ' → ' . $empLabel;
                                 ?>
                                 <option value="<?php echo htmlspecialchars($allocId); ?>" data-asset-id="<?php echo htmlspecialchars($aid); ?>">
-                                    <?php echo htmlspecialchars($aname . ' → ' . ($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? $eid)); ?>
+                                    <?php echo htmlspecialchars($label); ?>
                                 </option>
                                 <?php endforeach; ?>
                             </select>
+                            <?php if (empty($activeAllocs)): ?>
+                            <div class="form-text text-muted">No checked-out items in your country scope right now.</div>
+                            <?php endif; ?>
                             <input type="hidden" name="asset_id" id="checkinAssetId">
                         </div>
                         <div class="mb-3">
@@ -285,15 +375,23 @@ include __DIR__ . '/../includes/header.php';
                             $asset = $alloc['_asset'];
                             $eid = (string)($alloc['employee_id'] ?? '');
                             $emp = $employeeById[$eid] ?? [];
+                            $empLabel = am_employee_directory_display_name($emp);
+                            if ($empLabel === '') {
+                                $empLabel = trim((string)($alloc['employee_name'] ?? ''));
+                            }
+                            if ($empLabel === '') {
+                                $empLabel = $eid !== '' ? $eid : '—';
+                            }
+                            $viewId = (string)($alloc['asset_id'] ?? '');
                         ?>
                         <tr>
                             <td>
-                                <a href="<?php echo base_url('assets/view.php?id=' . urlencode($alloc['asset_id'] ?? '')); ?>">
+                                <a href="<?php echo base_url('assets/view.php?id=' . urlencode($viewId)); ?>">
                                     <?php echo htmlspecialchars($asset['name'] ?? 'Unknown'); ?>
                                 </a>
                                 <br><small class="text-gray-500"><?php echo htmlspecialchars($asset['asset_tag'] ?? ''); ?></small>
                             </td>
-                            <td><?php echo htmlspecialchars(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? $eid)); ?></td>
+                            <td><?php echo htmlspecialchars($empLabel); ?></td>
                             <td><?php echo htmlspecialchars(substr((string)($alloc['allocation_date'] ?? ''), 0, 10)); ?></td>
                             <td><?php echo htmlspecialchars($alloc['expected_return_date'] ?? '—'); ?></td>
                             <td><?php echo htmlspecialchars(substr((string)($alloc['notes'] ?? ''), 0, 60)); ?></td>
