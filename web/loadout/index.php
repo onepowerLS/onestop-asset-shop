@@ -13,6 +13,7 @@ am_ensure_country_scope_from_session();
 $page_title = 'Load-out manifests';
 $statusFilter = trim($_GET['status'] ?? '');
 $tripFilter = trim($_GET['trip'] ?? '');
+$showCancelled = isset($_GET['show_cancelled']) && $_GET['show_cancelled'] === '1';
 
 $manifests = am_firestore_get_collection(AM_LOADOUT_COLLECTION, 2000);
 $countries = am_get_countries();
@@ -20,6 +21,8 @@ $manifests = array_values(array_filter($manifests, fn($m) => am_record_in_countr
 
 if ($statusFilter !== '') {
     $manifests = array_values(array_filter($manifests, fn($m) => (string)($m['status'] ?? '') === $statusFilter));
+} elseif (!$showCancelled) {
+    $manifests = array_values(array_filter($manifests, fn($m) => (string)($m['status'] ?? '') !== 'Cancelled'));
 }
 if ($tripFilter !== '') {
     $manifests = array_values(array_filter($manifests, function ($m) use ($tripFilter) {
@@ -86,6 +89,12 @@ include __DIR__ . '/../includes/header.php';
                 <div class="col-md-4">
                     <label class="form-label small text-muted">Trip ID contains</label>
                     <input type="text" name="trip" class="form-control form-control-sm" value="<?php echo htmlspecialchars($tripFilter); ?>" placeholder="e.g. FM trip document id">
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" name="show_cancelled" value="1" id="showCancelled" <?php echo $showCancelled ? 'checked' : ''; ?>>
+                        <label class="form-check-label small" for="showCancelled">Include Cancelled</label>
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-sm btn-secondary">Filter</button>

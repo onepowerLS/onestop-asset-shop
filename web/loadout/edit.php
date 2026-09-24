@@ -60,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['form_action'] ?? 'save';
     if ($action === 'delete' && !$isNew) {
         $st = (string)($manifest['status'] ?? '');
-        if ($st !== 'Draft') {
-            $errors[] = 'Only Draft manifests can be deleted.';
+        if (!in_array($st, ['Draft', 'Cancelled'], true)) {
+            $errors[] = 'Only Draft or Cancelled manifests can be deleted. Set status to Cancelled first if this was created by mistake.';
         } else {
             $del = am_firestore_delete_document(AM_LOADOUT_COLLECTION, $docId);
             if ($del['ok']) {
@@ -72,6 +72,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = $del['error'] ?? 'Delete failed.';
         }
     } else {
+        // Block browser double-submit on "New manifest" (creates LO-…-0034, 0035, …).
+        if ($isNew && $action === 'save') {
+            $submitToken = (string)($_POST['submit_token'] ?? '');
+            $expectedToken = (string)($_SESSION['loadout_submit_token'] ?? '');
+            unset($_SESSION['loadout_submit_token']);
+            if ($submitToken === '' || $expectedToken === '' || !hash_equals($expectedToken, $submitToken)) {
+                $errors[] = 'This form was already submitted. Check the load-out list — the manifest may already exist.';
+            }
+        }
         $title = trim((string)($_POST['title'] ?? ''));
         $status = trim((string)($_POST['status'] ?? 'Draft'));
         if (!in_array($status, $statuses, true)) {
@@ -240,6 +249,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($errors) && ($_POST['form_ac
     ];
 }
 
+if ($isNew) {
+    $_SESSION['loadout_submit_token'] = bin2hex(random_bytes(16));
+}
+
 include __DIR__ . '/../includes/header.php';
 ?>
 
@@ -258,7 +271,10 @@ include __DIR__ . '/../includes/header.php';
     <div class="alert alert-danger"><?php echo htmlspecialchars(implode(' ', $errors)); ?></div>
     <?php endif; ?>
 
-    <form method="post" class="card border-0 shadow">
+    <form method="post" class="card border-0 shadow" id="loadout-edit-form">
+        <?php if ($isNew): ?>
+        <input type="hidden" name="submit_token" value="<?php echo htmlspecialchars((string)($_SESSION['loadout_submit_token'] ?? '')); ?>">
+        <?php endif; ?>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
@@ -408,11 +424,15 @@ include __DIR__ . '/../includes/header.php';
         </div>
         <div class="card-footer bg-white d-flex flex-wrap gap-2 justify-content-between">
             <div>
-                <button type="submit" name="form_action" value="save" class="btn btn-primary">Save</button>
-                <a href="<?php echo base_url('loadout/index.php'); ?>" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" name="form_action" value="save" class="btn btn-primary" id="loadout-save-btn">Save</button>
+                <a href="<?php echo base_url('loadout/index.php'); ?>" class="btn btn-outline-secondary">Back to list</a>
             </div>
-            <?php if (!$isNew && (string)($manifest['status'] ?? '') === 'Draft'): ?>
-            <button type="submit" name="form_action" value="delete" class="btn btn-outline-danger" onclick="return confirm('Delete this draft manifest?');">Delete draft</button>
+            <?php
+            $canDelete = !$isNew && in_array((string)($manifest['status'] ?? ''), ['Draft', 'Cancelled'], true);
+            if ($canDelete):
+                $delLabel = (string)($manifest['status'] ?? '') === 'Cancelled' ? 'Delete cancelled manifest' : 'Delete draft';
+            ?>
+            <button type="submit" name="form_action" value="delete" class="btn btn-outline-danger" onclick="return confirm('Delete this manifest permanently?');"><?php echo htmlspecialchars($delLabel); ?></button>
             <?php endif; ?>
         </div>
     </form>
@@ -420,6 +440,16 @@ include __DIR__ . '/../includes/header.php';
 
 <script>
 (function () {
+    var form = document.getElementById('loadout-edit-form');
+    if (form) {
+        form.addEventListener('submit', function () {
+            var saveBtn = document.getElementById('loadout-save-btn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving…';
+            }
+        });
+    }
     var table = document.getElementById('lines-table');
     if (!table) return;
     var tbody = table.querySelector('tbody');
