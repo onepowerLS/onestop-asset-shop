@@ -217,10 +217,9 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Symptom: Thabo Molibeli — Check-Out/In: Item and Location work; Employee and "allocation to return" look empty. Active Allocations (0).
 - Cause: HR cache `am_reference_employees` stores `name`, but the page rendered `first_name`/`last_name` only → 123 blank options. `am_core_allocations` has 0 docs while ~1000 assets are `CheckedOut`, so the return list had nothing.
 - Fix: use `am_employee_directory_display_name`; list CheckedOut assets as returnable when no allocation row exists; store `employee_name` on new check-outs.
-- Side effects: pending deploy with this commit.
+- Side effects: live at `df7d19d` (health 2026-09-24T16:03:53Z). GHA health step raced with the docs follow-up push; code is on EC2.
 - Key files: `web/checkout/index.php`
-- Follow-ups: Thabo hard-refresh Check-Out/In.
-
+- Follow-ups: Thabo hard-refresh Check-Out/In. New check-outs will appear under Active Allocations; legacy CheckedOut items show as returnable without an allocation row.
 
 
 
