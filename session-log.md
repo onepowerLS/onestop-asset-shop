@@ -213,6 +213,14 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Deploy: GitHub Actions SSH deploy first failed (ec2-user sudo password-gated after React2Shell). Hotfixed via SSM, then installed `/etc/sudoers.d/90-am-deploy` (NOPASSWD for git/chown/chmod/tee/httpd reload/php only — not ALL). GHA run 35987920377 succeeded. health.php reports `cbc5888` at 2026-09-24T10:34:23Z.
 - Follow-ups: Metro hard-refresh Load-out list — only LO-2026-0034. Accidental extras: Edit → status Cancelled → Save (list hides Cancelled by default).
 
+## 2026-09-24 — Cursor — Check-Out/In empty employee and return dropdowns
+- Symptom: Thabo Molibeli — Check-Out/In: Item and Location work; Employee and "allocation to return" look empty. Active Allocations (0).
+- Cause: HR cache `am_reference_employees` stores `name`, but the page rendered `first_name`/`last_name` only → 123 blank options. `am_core_allocations` has 0 docs while ~1000 assets are `CheckedOut`, so the return list had nothing.
+- Fix: use `am_employee_directory_display_name`; list CheckedOut assets as returnable when no allocation row exists; store `employee_name` on new check-outs.
+- Side effects: pending deploy with this commit.
+- Key files: `web/checkout/index.php`
+- Follow-ups: Thabo hard-refresh Check-Out/In.
+
 
 
 
