@@ -228,5 +228,13 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Side effects: AM `6f3197b` live (health 2026-09-25T13:30:41Z). Nexus `mintSSOToken` selective deploy succeeded; createUser still listed. PR https://github.com/onepowerLS/nexus-portal/pull/19.
 - Follow-ups: Hlomohang must **relaunch AM from Nexus** (sign out/in) so the new Approve buttons appear under his Level C session. Merge Nexus PR #19 when ready.
 
+## 2026-09-25 — Cursor — Grant Hlomohang IS&T Lead
+- Request: Hlomohang should have IT lead permission.
+- HR prod (`hr.1pwrafrica.com` / `13.246.55.153`): set `user_departments.is_lead=1` for user_id 185 (`sethuntsa@1pwrafrica.com`) on department_id 1 (IS&T). Admin secondary left non-lead.
+- With IS&T `am: C` + Lead → effective AM Level B (`approve_assets`), including phone-request approve and IT queue manage after relaunch.
+- Also patched Firestore cache `am_reference_employees/1pwr135` memberships.is_lead for IS&T (directory cache; live SSO still reads HR API).
+- Side effects: production HR DB write; Firestore cache patch. No function redeploy needed.
+- Follow-ups: Hlomohang relaunches AM from Nexus so mintSSOToken issues Level B claims.
+
 
 
