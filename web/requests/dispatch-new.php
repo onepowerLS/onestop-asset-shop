@@ -9,6 +9,7 @@ require_once __DIR__ . '/../config/authz.php';
 require_once __DIR__ . '/../config/country_scope.php';
 require_once __DIR__ . '/../config/request_workflows.php';
 require_once __DIR__ . '/../config/employee_directory.php';
+require_once __DIR__ . '/../config/inventory_levels.php';
 require_login();
 
 $page_title = 'Dispatch request';
@@ -58,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $submitterName  = trim((string)($_POST['submitter_name'] ?? ''));
     $submitterEmail = trim((string)($_POST['submitter_email'] ?? ''));
+    $sourceSiteCode = trim((string)($_POST['source_site_code'] ?? ''));
     $siteCode       = trim((string)($_POST['site_code'] ?? ''));
     $dispatchDate   = trim((string)($_POST['dispatch_date'] ?? ''));
     $receiverName   = trim((string)($_POST['receiver_name'] ?? ''));
@@ -66,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($submitterName === '')  $errors[] = 'Your name is required.';
     if ($submitterEmail === '' || !filter_var($submitterEmail, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required.';
+    if ($sourceSiteCode === '') $errors[] = 'Source store is required.';
     if ($siteCode === '')       $errors[] = 'Destination site is required.';
     if ($dispatchDate === '')   $errors[] = 'Dispatch date is required.';
     if ($receiverName === '')   $errors[] = 'Receiver name is required.';
@@ -119,18 +122,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Verify site is in user's country scope
+    // Verify source and destination are in the user's country scope
     $siteCountryOk = false;
     $siteName = '';
+    $sourceCountryOk = false;
+    $sourceSiteName = '';
     foreach ($sites as $s) {
         $sc = (string)($s['location_code'] ?? '');
         if ($sc === $siteCode) {
             $siteCountryOk = true;
             $siteName = (string)($s['location_name'] ?? '');
-            break;
+        }
+        if ($sc === $sourceSiteCode) {
+            $sourceCountryOk = true;
+            $sourceSiteName = (string)($s['location_name'] ?? '');
         }
     }
+    if (!$sourceCountryOk) $errors[] = 'Selected source store is not in your permitted countries.';
     if (!$siteCountryOk) $errors[] = 'Selected site is not in your permitted countries.';
+    if ($sourceSiteCode !== '' && $sourceSiteCode === $siteCode) {
+        // Same-site issue is allowed (Consume). No extra error.
+    }
 
     if (empty($errors)) {
         $allReq = am_firestore_get_collection('am_core_requests', 3000);
@@ -140,6 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payload = [
             'submitter_name'  => $submitterName,
             'submitter_email' => $submitterEmail,
+            'source_site_code'=> $sourceSiteCode,
+            'source_site_name'=> $sourceSiteName,
             'site_code'       => $siteCode,
             'site_name'       => $siteName,
             'dispatch_date'   => $dispatchDate,
@@ -180,6 +194,11 @@ $defaults = [
     'submitter_name'  => (string)($_SESSION['username'] ?? ''),
 ];
 
+$selectedCountryCode = strtoupper((string)($userCountries[$selectedCountryId]['country_code'] ?? ''));
+$defaultSourceCode = am_hq_location_code($selectedCountryCode, $sites);
+$postedSource = trim((string)($_POST['source_site_code'] ?? ''));
+$selectedSourceCode = $postedSource !== '' ? $postedSource : $defaultSourceCode;
+
 include __DIR__ . '/../includes/header.php';
 ?>
 
@@ -193,7 +212,7 @@ include __DIR__ . '/../includes/header.php';
                 </ol>
             </nav>
             <h1 class="h2"><?php echo htmlspecialchars($template['label'] ?? 'Inventory dispatch request'); ?></h1>
-            <p class="mb-0 text-gray-600">Request items dispatched from HQ/warehouse to a site within your country.</p>
+            <p class="mb-0 text-gray-600">Request items issued from headquarters (or another store you choose) to a site within your country.</p>
         </div>
         <a href="<?php echo base_url('requests/workflow-index.php'); ?>" class="btn btn-outline-secondary btn-sm">Back to list</a>
     </div>
@@ -280,7 +299,26 @@ include __DIR__ . '/../includes/header.php';
                         <?php endif; ?>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label" for="site_code">Site <span class="text-danger">*</span></label>
+                        <label class="form-label" for="source_site_code">Issue from <span class="text-danger">*</span></label>
+                        <select name="source_site_code" id="source_site_code" class="form-select" required>
+                            <option value="">Select source store…</option>
+                            <?php foreach ($sites as $s):
+                                $scc = (string)($s['country_code'] ?? '');
+                                $scode = (string)($s['location_code'] ?? '');
+                                $isHq = str_ends_with(strtoupper($scode), '-HQ') || strtoupper($scode) === 'HQ';
+                            ?>
+                            <option value="<?php echo htmlspecialchars($scode); ?>"
+                                data-country="<?php echo htmlspecialchars($scc); ?>"
+                                data-hq="<?php echo $isHq ? '1' : '0'; ?>"
+                                <?php echo $selectedSourceCode === $scode ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars(($s['location_name'] ?? '') . ' (' . $scode . ')' . ($isHq ? ' — headquarters' : '')); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Defaults to headquarters. Change only when stock must leave another store.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="site_code">Destination site <span class="text-danger">*</span></label>
                         <?php if (empty($sites)): ?>
                         <div class="alert alert-danger py-2 mb-2 small">
                             <i class="fas fa-exclamation-triangle me-1"></i>
@@ -512,32 +550,40 @@ var countryToCode = {};
 ?>countryToCode[<?php echo json_encode($cid); ?>] = <?php echo json_encode($cc); ?>;
 <?php endif; endforeach; ?>
 
+function filterSelectByCountry(selectId, preferHq) {
+    var siteSelect = document.getElementById(selectId);
+    if (!siteSelect) return;
+    var sel = document.getElementById('country_id');
+    var selCountryId = sel ? sel.value : '';
+    var targetCode = countryToCode[selCountryId] || '';
+    var currentVal = siteSelect.value;
+    var found = false;
+    var hqVal = '';
+    for (var i = 0; i < siteSelect.options.length; i++) {
+        var opt = siteSelect.options[i];
+        if (opt.value === '') continue;
+        var optCountry = opt.getAttribute('data-country') || '';
+        var visible = targetCode === '' || optCountry === targetCode;
+        opt.style.display = visible ? '' : 'none';
+        if (visible && opt.getAttribute('data-hq') === '1' && hqVal === '') {
+            hqVal = opt.value;
+        }
+        if (visible && opt.value === currentVal) found = true;
+    }
+    if (!found) {
+        siteSelect.value = preferHq && hqVal !== '' ? hqVal : '';
+    }
+}
+
 function filterSitesByCountry() {
     var sel = document.getElementById('country_id');
     if (!sel) {
         syncSearchCountryLabel();
         return;
     }
-    var selCountryId = sel.value;
-    var targetCode = countryToCode[selCountryId] || '';
-    var siteSelect = document.getElementById('site_code');
-    if (siteSelect) {
-        var currentVal = siteSelect.value;
-        var found = false;
-        for (var i = 0; i < siteSelect.options.length; i++) {
-            var opt = siteSelect.options[i];
-            if (opt.value === '') continue; // placeholder
-            var optCountry = opt.getAttribute('data-country') || '';
-            if (targetCode === '' || optCountry === targetCode) {
-                opt.style.display = '';
-                if (opt.value === currentVal) found = true;
-            } else {
-                opt.style.display = 'none';
-            }
-        }
-        if (!found) siteSelect.value = '';
-    }
-    countryId = selCountryId;
+    filterSelectByCountry('site_code', false);
+    filterSelectByCountry('source_site_code', true);
+    countryId = sel.value;
     syncSearchCountryLabel();
 }
 

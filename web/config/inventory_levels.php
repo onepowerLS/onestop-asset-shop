@@ -23,6 +23,73 @@ function am_build_location_index(array $locations): array {
 }
 
 /**
+ * Headquarters location_code for a country (e.g. LSO-HQ).
+ *
+ * @param list<array<string, mixed>> $locations
+ */
+function am_hq_location_code(string $countryCode, array $locations): string {
+    $countryCode = strtoupper(trim($countryCode));
+    $want = $countryCode !== '' ? $countryCode . '-HQ' : '';
+    foreach ($locations as $loc) {
+        if (!is_array($loc)) {
+            continue;
+        }
+        $code = strtoupper(trim((string)($loc['location_code'] ?? '')));
+        $cc = strtoupper(trim((string)($loc['country_code'] ?? '')));
+        if ($want !== '' && $code === $want) {
+            return $code;
+        }
+        if ($countryCode !== '' && $cc !== '' && $cc !== $countryCode) {
+            continue;
+        }
+        if ($code === 'HQ' || str_ends_with($code, '-HQ')) {
+            return $code === 'HQ' && $countryCode !== '' ? $countryCode . '-HQ' : $code;
+        }
+    }
+    foreach ($locations as $loc) {
+        if (!is_array($loc)) {
+            continue;
+        }
+        $cc = strtoupper(trim((string)($loc['country_code'] ?? '')));
+        if ($countryCode !== '' && $cc !== '' && $cc !== $countryCode) {
+            continue;
+        }
+        $name = strtolower((string)($loc['location_name'] ?? ''));
+        if (!str_contains($name, 'headquarter') && !str_contains($name, 'head office')) {
+            continue;
+        }
+        $code = trim((string)($loc['location_code'] ?? ''));
+        if ($code !== '') {
+            return strtoupper($code);
+        }
+    }
+    return '';
+}
+
+/**
+ * Sum stockable inventory rows (already de-duplicated) into headline totals.
+ *
+ * @param list<array<string, mixed>> $rows
+ * @return array{on_hand:int, allocated:int, available:int}
+ */
+function am_stockable_on_hand_totals(array $rows): array {
+    $onHand = 0;
+    $allocated = 0;
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $onHand += (int)($row['quantity_on_hand'] ?? 0);
+        $allocated += (int)($row['quantity_allocated'] ?? 0);
+    }
+    return [
+        'on_hand' => $onHand,
+        'allocated' => $allocated,
+        'available' => max(0, $onHand - $allocated),
+    ];
+}
+
+/**
  * Resolve a location id/code to its canonical location_code.
  * Returns '' when the id cannot be resolved — never echo an unresolved raw id as a key
  * (that created parallel rows like site1 alongside LSO-HQ).

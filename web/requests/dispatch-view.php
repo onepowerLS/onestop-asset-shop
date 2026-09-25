@@ -65,22 +65,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $locByAnyKey = [];
-                foreach ($allLocations as $l) {
-                    $lid = (string)($l['id'] ?? $l['location_id'] ?? '');
-                    $lcode = (string)($l['location_code'] ?? '');
-                    if ($lid !== '') {
-                        $locByAnyKey[$lid] = $l;
-                    }
-                    if ($lcode !== '' && $lcode !== $lid) {
-                        $locByAnyKey[$lcode] = $l;
-                    }
-                }
+                $locByAnyKey = am_build_location_index($allLocations);
 
                 $reqCountryId = (string)($req['requested_for_country'] ?? '');
+                $reqCountryCode = am_country_code_for_id($reqCountryId, am_get_countries());
                 $destSiteCode = (string)($workPayload['site_code'] ?? '');
                 $destLoc = $locByAnyKey[$destSiteCode] ?? [];
                 $destLocationCode = (string)($destLoc['location_code'] ?? $destSiteCode);
+                if ($reqCountryCode === '' && preg_match('/^([A-Z]{3})-/', strtoupper($destLocationCode), $m)) {
+                    $reqCountryCode = $m[1];
+                }
+                if (trim((string)($workPayload['source_site_code'] ?? '')) === '') {
+                    $workPayload['source_site_code'] = am_dispatch_resolve_source_location_code(
+                        $workPayload,
+                        [],
+                        $locByAnyKey,
+                        $reqCountryCode
+                    );
+                    $srcHome = $locByAnyKey[$workPayload['source_site_code']] ?? [];
+                    $workPayload['source_site_name'] = (string)($srcHome['location_name'] ?? $workPayload['source_site_code']);
+                }
 
                 $invByKey = [];
                 foreach ($allInvLevels as $inv) {
@@ -109,9 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         continue;
                     }
 
-                    $srcLocId = (string)($asset['location_id'] ?? '');
-                    $srcLoc = $locByAnyKey[$srcLocId] ?? [];
-                    $srcLocationCode = (string)($srcLoc['location_code'] ?? $srcLocId);
+                    $srcLocationCode = am_dispatch_resolve_source_location_code(
+                        $workPayload,
+                        $asset,
+                        $locByAnyKey,
+                        $reqCountryCode
+                    );
                     if ($srcLocationCode === '') {
                         continue;
                     }
@@ -331,19 +338,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ];
                             }
 
-                            $destinationName = (string)($destLoc['location_name'] ?? $destSiteCode);
-                            if ((string)($asset['location_id'] ?? '') !== $destLocationCode) {
-                                $inventoryOps[] = [
-                                    'mode' => 'update',
-                                    'collection' => 'am_core_assets',
-                                    'id' => $liAssetId,
-                                    'data' => [
-                                        'location_id' => $destLocationCode,
-                                        'location_name' => $destinationName,
-                                        'updated_at' => date('c'),
-                                    ],
-                                ];
-                            }
                         }
 
                         $fulfillmentTxn = am_dispatch_transaction_data(
@@ -412,6 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 $reqCountryId = (string)($req['requested_for_country'] ?? '');
+                $reqCountryCode = am_country_code_for_id($reqCountryId, am_get_countries());
                 $allLocations = am_get_pr_sites();
                 $allAssets = am_firestore_get_collection('am_core_assets', 10000);
                 $assetById = [];
@@ -421,16 +416,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $assetById[$aid] = $a;
                     }
                 }
-                $locByAnyKey = [];
-                foreach ($allLocations as $l) {
-                    $lid = (string)($l['id'] ?? $l['location_id'] ?? '');
-                    $lcode = (string)($l['location_code'] ?? '');
-                    if ($lid !== '') {
-                        $locByAnyKey[$lid] = $l;
-                    }
-                    if ($lcode !== '' && $lcode !== $lid) {
-                        $locByAnyKey[$lcode] = $l;
-                    }
+                $locByAnyKey = am_build_location_index($allLocations);
+                if (trim((string)($workPayload['source_site_code'] ?? '')) === '') {
+                    $workPayload['source_site_code'] = am_dispatch_resolve_source_location_code(
+                        $workPayload,
+                        [],
+                        $locByAnyKey,
+                        $reqCountryCode
+                    );
+                    $srcHome = $locByAnyKey[$workPayload['source_site_code']] ?? [];
+                    $workPayload['source_site_name'] = (string)($srcHome['location_name'] ?? $workPayload['source_site_code']);
                 }
                 foreach ($items as $idx => $li) {
                     $liAssetId = (string)($li['asset_id'] ?? '');
@@ -439,9 +434,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         continue;
                     }
                     $asset = $assetById[$liAssetId] ?? [];
-                    $srcLocId = (string)($asset['location_id'] ?? '');
-                    $srcLoc = $locByAnyKey[$srcLocId] ?? [];
-                    $srcLocationCode = (string)($srcLoc['location_code'] ?? $srcLocId);
+                    $srcLocationCode = am_dispatch_resolve_source_location_code(
+                        $workPayload,
+                        $asset,
+                        $locByAnyKey,
+                        $reqCountryCode
+                    );
                     if ($srcLocationCode === '') {
                         continue;
                     }
@@ -688,10 +686,13 @@ include __DIR__ . '/../includes/header.php';
                 </div>
             </div>
 
-            <!-- Destination -->
+            <!-- Stores -->
             <div class="card border-0 shadow mb-3">
-                <div class="card-header"><h2 class="fs-6 fw-bold mb-0"><i class="fas fa-location-dot me-2 text-success"></i>Destination</h2></div>
+                <div class="card-header"><h2 class="fs-6 fw-bold mb-0"><i class="fas fa-location-dot me-2 text-success"></i>Stores</h2></div>
                 <div class="card-body">
+                    <p class="mb-1 small text-gray-500">Issue from</p>
+                    <p class="mb-2"><strong><?php echo htmlspecialchars($payload['source_site_name'] ?? $payload['source_site_code'] ?? 'Headquarters (default)'); ?></strong></p>
+                    <p class="mb-1 small text-gray-500">Destination</p>
                     <p class="mb-1"><strong><?php echo htmlspecialchars($payload['site_name'] ?? $payload['site_code'] ?? '—'); ?></strong></p>
                     <p class="mb-1 small text-gray-600"><?php echo htmlspecialchars($countryLabel); ?></p>
                     <p class="mb-0 small text-gray-600">

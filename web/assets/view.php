@@ -73,40 +73,39 @@ $classLabels = ['FixedAsset' => am_ui('class_fixed_asset'), 'Material' => am_ui(
 $cls = (string)($asset['item_class'] ?? '');
 $isStockable = in_array($cls, ['Material', 'Consumable', 'Inventory'], true);
 
-$stockQohAll = 0;
-$stockAllocAll = 0;
-$stockQohHere = 0;
-$stockAllocHere = 0;
-$stockRowCountAll = 0;
-$stockRowCountHere = 0;
-$assetLocRaw = (string)($asset['location_id'] ?? '');
-$assetLocCanonical = am_canonical_location_code($assetLocRaw, $locationById);
-
 $itemInventoryRows = am_inventory_rows_for_asset($assetId, $inventoryLevels, $locationById, $asset);
-foreach ($itemInventoryRows as $inv) {
-    $stockRowCountAll++;
-    $qoh = (int)($inv['quantity_on_hand'] ?? 0);
-    $alloc = (int)($inv['quantity_allocated'] ?? 0);
-    $stockQohAll += $qoh;
-    $stockAllocAll += $alloc;
-
-    $invLocCanonical = am_canonical_location_code((string)($inv['location_id'] ?? ''), $locationById);
-    if ($assetLocCanonical !== '' && $invLocCanonical === $assetLocCanonical) {
-        $stockRowCountHere++;
-        $stockQohHere += $qoh;
-        $stockAllocHere += $alloc;
-    }
-}
-
-$useCurrentLocationRows = $isStockable && $stockRowCountHere > 0;
-$hasInventoryRows = $stockRowCountAll > 0;
+$stockTotals = am_stockable_on_hand_totals($itemInventoryRows);
+$hasInventoryRows = $itemInventoryRows !== [];
 $effectiveQoh = $isStockable
-    ? ($useCurrentLocationRows ? $stockQohHere : ($hasInventoryRows ? $stockQohAll : (int)($asset['quantity'] ?? 1)))
+    ? ($hasInventoryRows ? $stockTotals['on_hand'] : (int)($asset['quantity'] ?? 1))
     : (int)($asset['quantity'] ?? 1);
-$effectiveAlloc = $isStockable
-    ? ($useCurrentLocationRows ? $stockAllocHere : $stockAllocAll)
-    : 0;
-$effectiveAvail = max(0, $effectiveQoh - $effectiveAlloc);
+$effectiveAlloc = $isStockable ? $stockTotals['allocated'] : 0;
+$effectiveAvail = $isStockable ? $stockTotals['available'] : max(0, $effectiveQoh);
+
+$stockBySite = [];
+foreach ($itemInventoryRows as $inv) {
+    $rowCode = am_canonical_location_code((string)($inv['location_id'] ?? ''), $locationById);
+    if ($rowCode === '') {
+        $rowCode = trim((string)($inv['location_id'] ?? ''));
+    }
+    $rowLoc = $locationById[$rowCode] ?? [];
+    $rowQoh = (int)($inv['quantity_on_hand'] ?? 0);
+    $rowAlloc = (int)($inv['quantity_allocated'] ?? 0);
+    $stockBySite[] = [
+        'code' => $rowCode,
+        'name' => (string)($rowLoc['location_name'] ?? $rowCode),
+        'on_hand' => $rowQoh,
+        'allocated' => $rowAlloc,
+        'available' => max(0, $rowQoh - $rowAlloc),
+        'is_hq' => $rowCode !== '' && (strtoupper($rowCode) === 'HQ' || str_ends_with(strtoupper($rowCode), '-HQ')),
+    ];
+}
+usort($stockBySite, static function (array $a, array $b): int {
+    if ($a['is_hq'] !== $b['is_hq']) {
+        return $a['is_hq'] ? -1 : 1;
+    }
+    return $b['on_hand'] <=> $a['on_hand'];
+});
 
 // Imported/legacy items pre-date the transaction ledger. Show a clearly
 // labelled opening snapshot so users can still see date, quantity and site;
@@ -269,7 +268,7 @@ if (am_is_manager_role()) {
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars(($country['country_name'] ?? '') . ' (' . ($country['country_code'] ?? '') . ')'); ?></p>
                         </div>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500"><?php echo htmlspecialchars(am_ui('th_location')); ?></small>
+                            <small class="text-gray-500"><?php echo htmlspecialchars($isStockable ? am_ui('view_catalog_location') : am_ui('th_location')); ?></small>
                             <p class="fw-bold mb-0"><?php echo htmlspecialchars($location['location_name'] ?? 'N/A'); ?></p>
                         </div>
                         <div class="col-6 col-md-4">
@@ -278,7 +277,7 @@ if (am_is_manager_role()) {
                         </div>
                         <?php if ($cls !== 'FixedAsset'): ?>
                         <div class="col-6 col-md-4">
-                            <small class="text-gray-500"><?php echo $isStockable ? htmlspecialchars(am_ui('view_on_hand')) : htmlspecialchars(am_ui('form_quantity')); ?></small>
+                            <small class="text-gray-500"><?php echo $isStockable ? htmlspecialchars(am_ui('view_on_hand_total')) : htmlspecialchars(am_ui('form_quantity')); ?></small>
                             <p class="fw-bold mb-0"><?php echo (int)$effectiveQoh; ?> <?php echo htmlspecialchars($asset['unit_of_measure'] ?? 'EA'); ?></p>
                         </div>
                         <?php if ($isStockable): ?>
@@ -301,6 +300,44 @@ if (am_is_manager_role()) {
                     </div>
                 </div>
             </div>
+
+            <?php if ($isStockable && $stockBySite !== []): ?>
+            <div class="card border-0 shadow mt-4">
+                <div class="card-header"><h2 class="fs-5 fw-bold mb-0"><?php echo htmlspecialchars(am_ui('view_stock_by_site')); ?></h2></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th><?php echo htmlspecialchars(am_ui('th_location')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('view_on_hand')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('view_allocated')); ?></th>
+                                    <th class="text-end"><?php echo htmlspecialchars(am_ui('view_available_qty')); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($stockBySite as $siteRow): ?>
+                                <tr>
+                                    <td>
+                                        <?php echo htmlspecialchars($siteRow['name'] !== '' ? $siteRow['name'] : '—'); ?>
+                                        <?php if ($siteRow['code'] !== ''): ?>
+                                        <code class="text-muted ms-1"><?php echo htmlspecialchars($siteRow['code']); ?></code>
+                                        <?php endif; ?>
+                                        <?php if (!empty($siteRow['is_hq'])): ?>
+                                        <span class="badge bg-secondary ms-1">HQ</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end"><?php echo (int)$siteRow['on_hand']; ?></td>
+                                    <td class="text-end"><?php echo (int)$siteRow['allocated']; ?></td>
+                                    <td class="text-end"><?php echo (int)$siteRow['available']; ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <?php if ($cls === 'FixedAsset'): ?>
             <div class="card border-0 shadow mt-4">

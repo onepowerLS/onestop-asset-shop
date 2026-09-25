@@ -132,6 +132,11 @@ Tests run automatically on push to `develop` or `main`:
 - [ ] Cancelling an Approved request releases the reservation and creates one `Return` transaction
 - [ ] Retrying any status action does not duplicate the balance change or transaction (deterministic event IDs)
 - [ ] A failed inventory/event commit leaves the request status unchanged and shows an actionable error
+- [ ] **Issue from** defaults to the country headquarters (e.g. LSO-HQ); destination is a separate field
+- [ ] Changing **Request country** re-filters Issue from and re-selects that country's HQ
+- [ ] Approving/fulfilling/cancelling a request without `source_site_code` issues from HQ, not the catalog `location_id`
+- [ ] Fulfillment updates per-site `am_core_inventory_levels` and does **not** overwrite `am_core_assets.location_id`
+- [ ] Item detail (`assets/view.php`) shows **Total on hand** across all sites plus a **Stock by site** table (a 100-unit site slice must not replace the country total)
 
 #### QR Labels (web/admin/qr-labels.php)
 - [ ] Coverage stats (assigned, pending, percentage)
