@@ -49,6 +49,15 @@ function am_can_request_assets(): bool {
         || am_is_admin_role();
 }
 
+/**
+ * Phone / tablet request queue (Submitted → Approved / Fulfilled / …).
+ * Matches Firestore: am_core_phone_requests update requires operate_assets.
+ * IT desk staff are typically Level C operators, not Level B asset approvers.
+ */
+function am_can_manage_phone_requests(): bool {
+    return am_can_operate_assets();
+}
+
 /** SIM: assign to team / cost pool — delegated operator task (Level C+). */
 function am_can_sim_team_assign(): bool {
     return am_can_operate_assets();

@@ -43,6 +43,8 @@ $_SESSION = [
     'privilege_version' => '2026.08.10.3',
 ];
 authz_expect(am_can_operate_assets(), 'signed Level C operator can mutate assets');
+authz_expect(am_can_manage_phone_requests(), 'signed Level C operator can manage phone requests');
+authz_expect(!am_is_manager_role(), 'signed Level C operator is not an asset approver');
 authz_expect(!am_is_admin_role(), 'signed Level C operator is not an administrator');
 
 $_SESSION = [

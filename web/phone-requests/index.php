@@ -18,6 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
     if ($action === 'create') {
         am_require_can_request();
+    } elseif ($action === 'update_status') {
+        if (!am_can_manage_phone_requests()) {
+            $_SESSION['flash_error'] = am_privilege_denial_text(
+                ['Level C (operate assets) or higher'],
+                'approve or update phone requests'
+            );
+            header('Location: ' . base_url('phone-requests/index.php'));
+            exit;
+        }
+        am_require_can_mutate();
     } else {
         am_require_can_mutate();
     }
@@ -53,17 +63,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = (string)($result['error'] ?? 'Failed to submit.');
         }
         $showForm = true;
-    } elseif ($action === 'update_status' && am_is_manager_role()) {
+    } elseif ($action === 'update_status') {
         $docId = trim((string)($_POST['doc_id'] ?? ''));
         $newStatus = trim((string)($_POST['new_status'] ?? ''));
         $fulfilled = trim((string)($_POST['fulfilled_notes'] ?? ''));
         if ($docId !== '' && in_array($newStatus, am_phone_request_statuses(), true)) {
-            $upd = ['status' => $newStatus];
+            $upd = [
+                'status' => $newStatus,
+                'updated_at' => date('c'),
+                'updated_by' => (string)($_SESSION['user_id'] ?? ''),
+                'updated_by_name' => (string)($_SESSION['username'] ?? ''),
+            ];
             if ($fulfilled !== '') {
                 $upd['fulfilled_notes'] = $fulfilled;
             }
-            am_firestore_update_document(AM_PHONE_REQUESTS_COLLECTION, $docId, $upd);
-            $_SESSION['flash_success'] = 'Request updated.';
+            $res = am_firestore_update_document(AM_PHONE_REQUESTS_COLLECTION, $docId, $upd);
+            if ($res['ok']) {
+                $_SESSION['flash_success'] = 'Request updated to ' . $newStatus . '.';
+            } else {
+                $_SESSION['flash_error'] = 'Could not update request: ' . (string)($res['error'] ?? 'Unknown error');
+            }
         }
         header('Location: ' . base_url('phone-requests/index.php'));
         exit;
@@ -72,6 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $flash = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_success']);
+$flashErr = $_SESSION['flash_error'] ?? '';
+unset($_SESSION['flash_error']);
+
+$canManage = am_can_manage_phone_requests() && !am_is_auditor_readonly();
 
 usort($rows, function ($a, $b) {
     return strtotime((string)($b['requested_at'] ?? '')) <=> strtotime((string)($a['requested_at'] ?? ''));
@@ -87,6 +110,10 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <?php if ($flash !== ''): ?><div class="alert alert-success"><?php echo htmlspecialchars($flash); ?></div><?php endif; ?>
+<?php if ($flashErr !== ''): ?><div class="alert alert-danger"><?php echo htmlspecialchars($flashErr); ?></div><?php endif; ?>
+<?php if (!$canManage && am_can_request_assets()): ?>
+<div class="alert alert-info">You can submit phone requests. Approving or fulfilling them needs Asset Management Level C (operate). Ask Nexus/IS&amp;T if your AM access is only Level D.</div>
+<?php endif; ?>
 
 <?php if ($showForm && am_can_request_assets()): ?>
     <div class="card border-0 shadow mb-4">
@@ -154,6 +181,20 @@ include __DIR__ . '/../includes/header.php';
                             <td class="small"><?php echo htmlspecialchars(substr((string)($r['requested_at'] ?? ''), 0, 16)); ?></td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#pr<?php echo htmlspecialchars(md5($rid)); ?>">View</button>
+                                <?php if ($canManage && (string)($r['status'] ?? '') === 'Submitted'): ?>
+                                <form method="post" class="d-inline">
+                                    <input type="hidden" name="action" value="update_status">
+                                    <input type="hidden" name="doc_id" value="<?php echo htmlspecialchars($rid); ?>">
+                                    <input type="hidden" name="new_status" value="Approved">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="post" class="d-inline">
+                                    <input type="hidden" name="action" value="update_status">
+                                    <input type="hidden" name="doc_id" value="<?php echo htmlspecialchars($rid); ?>">
+                                    <input type="hidden" name="new_status" value="Rejected">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Reject this request?');">Reject</button>
+                                </form>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <tr class="collapse" id="pr<?php echo htmlspecialchars(md5($rid)); ?>">
@@ -162,7 +203,7 @@ include __DIR__ . '/../includes/header.php';
                                 <?php if (!empty($r['notes'])): ?>
                                     <p class="mb-1"><strong>Notes</strong><br><?php echo nl2br(htmlspecialchars((string)$r['notes'])); ?></p>
                                 <?php endif; ?>
-                                <?php if (am_is_manager_role() && !am_is_auditor_readonly()): ?>
+                                <?php if ($canManage): ?>
                                     <form method="post" class="row g-2 align-items-end mt-2">
                                         <input type="hidden" name="action" value="update_status">
                                         <input type="hidden" name="doc_id" value="<?php echo htmlspecialchars($rid); ?>">
@@ -177,7 +218,7 @@ include __DIR__ . '/../includes/header.php';
                                             <input type="text" name="fulfilled_notes" class="form-control form-control-sm" placeholder="Fulfillment notes" value="<?php echo htmlspecialchars((string)($r['fulfilled_notes'] ?? '')); ?>">
                                         </div>
                                         <div class="col-auto">
-                                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                            <button type="submit" class="btn btn-sm btn-primary">Save status</button>
                                         </div>
                                     </form>
                                 <?php endif; ?>
