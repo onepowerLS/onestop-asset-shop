@@ -225,8 +225,8 @@ a5b6fc9 Wire AM locations to PR portal's canonical sites collection
 - Symptom: Hlomohang Sethuntsa (IS&T) — Phone requests list only showed View on Submitted PHR rows; no Approve.
 - Cause: status UI/POST required `am_is_manager_role()` (Level B `approve_assets`). Firestore already allows `operate_assets` (Level C). IS&T department grant was `am: D` (requester-only); Hlomohang still reaches C via secondary Admin membership, but the page hid controls.
 - Fix (AM): `am_can_manage_phone_requests()` = operate; Approve/Reject on Submitted rows; clearer denial. Fix (Nexus): IS&T department `am: C` so pure IS&T can manage phone/SIM without Admin secondary.
-- Side effects: pending deploy.
-- Follow-ups: Hlomohang relaunch AM from Nexus after mintSSOToken deploy so signed claims refresh.
+- Side effects: AM `6f3197b` live (health 2026-09-25T13:30:41Z). Nexus `mintSSOToken` selective deploy succeeded; createUser still listed. PR https://github.com/onepowerLS/nexus-portal/pull/19.
+- Follow-ups: Hlomohang must **relaunch AM from Nexus** (sign out/in) so the new Approve buttons appear under his Level C session. Merge Nexus PR #19 when ready.
 
 
 
