@@ -1,5 +1,11 @@
 # Session Log — 1PWR Asset Management
 
+## 2026-09-21 — Cursor — Post-React2Shell AM secret rewrite
+- Shared EC2 `16.28.64.221` was rooted via EHS React2Shell. AM `/var/www/onestop-asset-shop/.env` was mode 755 (world-readable) and still had the **old** Fleet integration key plus the **deleted** Firebase user key `2cec6286`.
+- As root via SSM: wrote new `FLEET_INTEGRATION_API_KEY`, `HR_API_KEY_AM_PORTAL`, `CRON_SECRET`, `AM_API_KEY_UGRIDPREDICT`; copied the rotated EHS Firebase Admin JSON; `chmod 600`. Local `uGridPREDICT/.env` and `1PWR Nexus/.secrets/am-cron-secret.txt` updated to match. No host crontab referenced `CRON_SECRET`.
+- Side effects: SSM command on `i-0dda937da2c9d0018` ~17:28Z. AM homepage 200. Incident: `1PWR Nexus/nexus-portal/docs/incidents/INCIDENT_20260921_REACT2SHELL.md`.
+- Follow-ups: rotate `PR_CATALOG_API_KEY` / `AM_VEHICLES_API_KEY` if those issuers can be updated together; `FIREBASE_ADMIN_BEARER_TOKEN` left (not inline SA JSON).
+
 ## Session: Jan 25, 2026
 
 ### 1. Nexus Portal & Unified Identity Plan
